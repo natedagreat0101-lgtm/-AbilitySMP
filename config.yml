@@ -1,0 +1,132 @@
+# Custom power settings:
+flame:
+  cooldown: 8
+  fireball-yield: 2.0
+
+speed:
+  cooldown: 5
+  dash-strength: 2.2
+  dash-up: 0.4
+
+shadow:
+  cooldown: 12
+  range: 25
+
+thor:
+  cooldown: 10
+  range: 30
+
+hunter:
+  cooldown: 12
+  range: 25
+  pull-strength: 1.6
+  pull-up: 0.25
+
+stealer:
+  cooldown: 20
+  range: 20
+  duration: 15
+
+feather:
+  cooldown: 10
+  launch-strength: 2.3
+
+healer:
+  cooldown: 25
+
+aqua:
+  cooldown: 14
+  speed: 0.8
+  duration-ticks: 40
+
+tank:
+  cooldown: 15
+  stun-seconds: 3
+
+# Limited Halloween power:
+jack-o-lantern:
+  cooldown: 30
+  range: 25
+  wither-duration-seconds: 5
+  wither-amplifier: 1
+  hearts-stolen: 3
+  invisibility-duration-seconds: 5
+  glow-radius: 30
+  limited: true
+
+# Ghost power: invisible + haunt nearest enemy (wither + steal hearts), idle: faster + enemies glow
+ghost:
+  cooldown: 30
+  range: 20
+  wither-seconds: 3
+  hearts-stolen: 4
+  invisibility-duration-seconds: 10
+  glow-radius: 30
+
+# Mimic power: idle = 2 lives, super = turn into your enemy (and hit them for 3 hearts)
+mimic:
+  cooldown: 45
+  range: 20
+  lives: 2
+  damage-hearts: 3
+  disguise-duration-seconds: 15
+
+# Chance to drop a power (1 = 100 %, 0.01 = 1 %):
+drops:
+  enabled: true
+  flame: 0.20
+  speed: 0.15
+  tank: 0.03
+  thor: 0.12
+  shadow: 0.10
+  healer: 0.08
+  feather: 0.10
+  stealer: 0.06
+  aqua: 0.12
+  hunter: 0.12
+  jack-o-lantern: 0.01
+  ghost: 0.08
+  mimic: 0.06
+
+# Reroll if the first power isn't the wanted one:
+rerolling:
+  enabled: true
+  window-minutes: 10
+
+# Potion-effect levels:
+passives:
+  speed-level: 2
+  thor-strength-level: 1
+  stealer-haste-level: 1
+  healer-regeneration-level: 2
+  aqua-dolphins-grace-level: 1
+  ghost-speed-level: 1
+
+# Tank extra hearts:
+  tank-extra-hearts: 4
+
+# Hunter glow radius (blocks):
+  hunter-glow-radius: 30
+
+# Jack O' Lantern passive glow radius (blocks):
+  jack-o-lantern-glow-radius: 30
+
+# Show particles of power:
+  particles-enabled: true
+
+# All enabled powers (delete to disable):
+powers:
+  enabled:
+    - flame
+    - speed
+    - tank
+    - thor
+    - shadow
+    - healer
+    - feather
+    - stealer
+    - aqua
+    - hunter
+    - jack-o-lantern
+    - ghost
+    - mimic

@@ -1,0 +1,17 @@
+name: AbilitySMP
+version: 2.0
+main: me.abilitysmp.AbilitySMP
+api-version: '1.21'
+description: All SMP powers in one plugin, including Ghost and Mimic
+softdepend: [LibsDisguises]
+commands:
+  power:
+    description: Give or remove a power
+    usage: /power <give|take|list|reload> ...
+    permission: abilitysmp.admin
+  reroll:
+    description: Reroll your power (only right after you first join)
+    usage: /reroll
+permissions:
+  abilitysmp.admin:
+    default: op
