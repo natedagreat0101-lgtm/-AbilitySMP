@@ -1,17 +1,19 @@
 name: AbilitySMP
-version: 2.0
+version: 3.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
-description: All SMP powers in one plugin, including Ghost and Mimic
-softdepend: [LibsDisguises]
+description: All SMP powers, power items and a battle pass in one plugin
 commands:
   power:
-    description: Give or remove a power
-    usage: /power <give|take|list|reload> ...
+    description: Give or remove a power (admin)
+    usage: /power <give|item|take|list|points|resetseason|reload> ...
     permission: abilitysmp.admin
   reroll:
     description: Reroll your power (only right after you first join)
     usage: /reroll
+  pass:
+    description: Open the battle pass
+    usage: /pass
 permissions:
   abilitysmp.admin:
     default: op

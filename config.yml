@@ -1,4 +1,9 @@
-# Custom power settings:
+config-version: 3
+
+# ------------------------------------------------------------------
+# Powers: right-click with a sword to use your power.
+# Power items (nether stars): right-click one to gain that power.
+# ------------------------------------------------------------------
 flame:
   cooldown: 8
   fireball-yield: 2.0
@@ -43,18 +48,16 @@ tank:
   cooldown: 15
   stun-seconds: 3
 
-# Limited Halloween power:
 jack-o-lantern:
+  limited: true
   cooldown: 30
   range: 25
   wither-duration-seconds: 5
   wither-amplifier: 1
   hearts-stolen: 3
   invisibility-duration-seconds: 5
-  glow-radius: 30
-  limited: true
+  steal-duration: 300
 
-# Ghost power: invisible + haunt nearest enemy (wither + steal hearts), idle: faster + enemies glow
 ghost:
   cooldown: 30
   range: 20
@@ -62,16 +65,30 @@ ghost:
   hearts-stolen: 4
   invisibility-duration-seconds: 10
   glow-radius: 30
+  steal-duration: 300       # seconds until stolen hearts return (0 = until death/quit)
+  min-hearts-left: 1
 
-# Mimic power: idle = 2 lives, super = turn into your enemy (and hit them for 3 hearts)
-mimic:
-  cooldown: 45
+# Vampire: leech the nearest enemy (they take damage, you heal) and wither them.
+vampire:
+  cooldown: 25
   range: 20
-  lives: 2
-  damage-hearts: 3
-  disguise-duration-seconds: 15
+  wither-seconds: 4
+  wither-amplifier: 0
+  leech-seconds: 5
+  leech-per-pulse: 1.0      # HP taken from the enemy and given to you, 2 pulses per second
 
-# Chance to drop a power (1 = 100 %, 0.01 = 1 %):
+# Teleporter: dash to the nearest enemy, freeze them, fling them back, damage them.
+teleporter:
+  cooldown: 30
+  range: 30
+  dash-speed: 2.0
+  freeze-ticks: 20
+  fling-distance: 20        # blocks (walls and obstacles shorten it)
+  damage-hearts: 4
+
+# ------------------------------------------------------------------
+# Chance to get a power (used as weights when a new player joins):
+# ------------------------------------------------------------------
 drops:
   enabled: true
   flame: 0.20
@@ -86,14 +103,15 @@ drops:
   hunter: 0.12
   jack-o-lantern: 0.01
   ghost: 0.08
-  mimic: 0.06
+  vampire: 0.06
+  teleporter: 0.04
 
 # Reroll if the first power isn't the wanted one:
 rerolling:
   enabled: true
   window-minutes: 10
 
-# Potion-effect levels:
+# Potion-effect levels and idle settings:
 passives:
   speed-level: 2
   thor-strength-level: 1
@@ -101,17 +119,10 @@ passives:
   healer-regeneration-level: 2
   aqua-dolphins-grace-level: 1
   ghost-speed-level: 1
-
-# Tank extra hearts:
+  teleporter-speed-level: 3
   tank-extra-hearts: 4
-
-# Hunter glow radius (blocks):
   hunter-glow-radius: 30
-
-# Jack O' Lantern passive glow radius (blocks):
   jack-o-lantern-glow-radius: 30
-
-# Show particles of power:
   particles-enabled: true
 
 # All enabled powers (delete to disable):
@@ -129,4 +140,50 @@ powers:
     - hunter
     - jack-o-lantern
     - ghost
-    - mimic
+    - vampire
+    - teleporter
+
+# ------------------------------------------------------------------
+# Battle pass (/pass)
+#   points-per-level 100 = 20 minutes (5 pts/min) OR 5 kills (20 pts/kill) per level.
+#   Both add up toward the same level.
+#   Rewards: "item:MATERIAL:AMOUNT" or "power:POWERNAME" (gives a power item)
+# ------------------------------------------------------------------
+battlepass:
+  enabled: true
+  tiers: 30
+  points-per-level: 100
+  points-per-minute: 5
+  points-per-kill: 20
+  season-days: 14
+  rewards:
+    1: ["item:BREAD:16"]
+    2: ["item:IRON_INGOT:16"]
+    3: ["item:COOKED_BEEF:16"]
+    4: ["item:ARROW:32"]
+    5: ["power:FLAME"]
+    6: ["item:EXPERIENCE_BOTTLE:16"]
+    7: ["item:GOLD_INGOT:16"]
+    8: ["item:GOLDEN_APPLE:2"]
+    9: ["item:DIAMOND:2"]
+    10: ["power:FEATHER"]
+    11: ["item:COOKED_BEEF:32"]
+    12: ["item:OBSIDIAN:8"]
+    13: ["item:ENDER_PEARL:4"]
+    14: ["item:DIAMOND:4"]
+    15: ["power:AQUA"]
+    16: ["item:EXPERIENCE_BOTTLE:32"]
+    17: ["item:GOLDEN_APPLE:4"]
+    18: ["item:DIAMOND_SWORD:1"]
+    19: ["item:DIAMOND:6"]
+    20: ["power:GHOST"]
+    21: ["item:EXPERIENCE_BOTTLE:48"]
+    22: ["item:TOTEM_OF_UNDYING:1"]
+    23: ["item:DIAMOND:8"]
+    24: ["item:ENDER_PEARL:8"]
+    25: ["power:VAMPIRE"]
+    26: ["item:ENCHANTED_GOLDEN_APPLE:1"]
+    27: ["item:NETHERITE_SCRAP:4"]
+    28: ["item:DIAMOND:12"]
+    29: ["item:NETHERITE_INGOT:1"]
+    30: ["power:TELEPORTER"]
