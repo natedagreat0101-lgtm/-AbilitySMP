@@ -19,7 +19,13 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Enemy;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fireball;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
+import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -37,6 +43,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -105,12 +112,15 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     private final Random random = new Random();
 
     private File dataFile;
-    private YamlConfiguration data;
+    YamlConfiguration data;
     private File passFile;
     private YamlConfiguration passYaml;
     private int season = 1;
     private long seasonStart = 0L;
     private NamespacedKey powerItemKey;
+    private NamespacedKey rerollKey;
+    Tutorial tutorial;
+    Admin admin;
 
     // =====================================================================
     // Lifecycle
@@ -121,6 +131,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         saveDefaultConfig();
         migrateConfig();
         powerItemKey = new NamespacedKey(this, "power_item");
+        rerollKey = new NamespacedKey(this, "reroll_token");
+        registerRerollRecipe();
 
         dataFile = new File(getDataFolder(), "players.yml");
         loadData();
@@ -128,7 +140,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         loadPass();
         checkSeason();
 
+        tutorial = new Tutorial(this);
+        admin = new Admin(this);
         Bukkit.getPluginManager().registerEvents(this, this);
+        Bukkit.getPluginManager().registerEvents(tutorial, this);
+        Bukkit.getPluginManager().registerEvents(admin, this);
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
         Bukkit.getScheduler().runTaskTimer(this, this::minuteTick, 1200L, 1200L);
         for (Player p : Bukkit.getOnlinePlayers()) setupPlayer(p);
@@ -136,6 +152,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (admin != null) admin.shutdown();
         for (Player p : Bukkit.getOnlinePlayers()) clearHeartSteals(p);
         savePass();
     }
@@ -153,6 +170,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             cfg.set("powers.enabled", enabled);
             cfg.set("config-version", 3);
         }
+        if (v < 4) cfg.set("config-version", 4);
         cfg.options().copyDefaults(true);
         saveConfig();
     }
@@ -172,7 +190,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
     }
 
-    private void saveData() {
+    void saveData() {
         try {
             data.save(dataFile);
         } catch (IOException e) {
@@ -223,15 +241,36 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         return v.normalize();
     }
 
-    private Player nearestEnemy(Player from, double range) {
-        Player best = null;
+    /** Players and (by default) hostile mobs count as enemies. Pets, villagers and armor stands never do. */
+    private boolean isEnemy(Player from, Entity e) {
+        if (e.equals(from) || !e.isValid() || e.isDead()) return false;
+        if (e instanceof Player other) {
+            return other.getGameMode() != GameMode.SPECTATOR && getConfig().getBoolean("enemies.players", true);
+        }
+        if (!(e instanceof LivingEntity) || e instanceof ArmorStand) return false;
+        if (e instanceof Enemy) return getConfig().getBoolean("enemies.hostile-mobs", true);
+        if (e instanceof Tameable t && t.isTamed()) return false;
+        return e instanceof Mob && getConfig().getBoolean("enemies.passive-mobs", false);
+    }
+
+    private List<LivingEntity> enemiesNear(Player from, double radius) {
+        List<LivingEntity> out = new ArrayList<>();
+        for (LivingEntity le : from.getWorld().getNearbyLivingEntities(from.getLocation(), radius)) {
+            if (isEnemy(from, le) && le.getLocation().distanceSquared(from.getLocation()) <= radius * radius) {
+                out.add(le);
+            }
+        }
+        return out;
+    }
+
+    private LivingEntity nearestEnemy(Player from, double range) {
+        LivingEntity best = null;
         double bestDist = range * range;
-        for (Player other : from.getWorld().getPlayers()) {
-            if (other.equals(from) || other.getGameMode() == GameMode.SPECTATOR) continue;
-            double dist = other.getLocation().distanceSquared(from.getLocation());
+        for (LivingEntity le : enemiesNear(from, range)) {
+            double dist = le.getLocation().distanceSquared(from.getLocation());
             if (dist <= bestDist) {
                 bestDist = dist;
-                best = other;
+                best = le;
             }
         }
         return best;
@@ -242,11 +281,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     private void glowNearby(Player owner, double radius) {
-        for (Player other : owner.getWorld().getPlayers()) {
-            if (other.equals(owner) || other.getGameMode() == GameMode.SPECTATOR) continue;
-            if (other.getLocation().distanceSquared(owner.getLocation()) <= radius * radius) {
-                other.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 40, 0, true, false, false));
-            }
+        for (LivingEntity other : enemiesNear(owner, radius)) {
+            other.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 40, 0, true, false, false));
         }
     }
 
@@ -340,22 +376,30 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     private void setupPlayer(Player p) {
         UUID id = p.getUniqueId();
         clearHeartSteals(p); // safety net after crashes
-        if (!data.contains("players." + id) && getConfig().getBoolean("drops.enabled", true)) {
-            Power rolled = roll(id, null);
-            if (rolled != null) {
-                data.set("players." + id + ".rerolled", false);
-                data.set("players." + id + ".first-join-at", System.currentTimeMillis());
-                setPower(p, rolled);
-                p.sendMessage(Component.text("You got the " + pretty(rolled.key()) + " power! Right-click with a sword to use it.",
-                        NamedTextColor.GOLD));
-                if (getConfig().getBoolean("rerolling.enabled", true)) {
-                    p.sendMessage(Component.text("Don't like it? Use /reroll within "
-                            + i("rerolling.window-minutes", 10) + " minutes.", NamedTextColor.GRAY));
+        p.discoverRecipe(rerollKey);
+        boolean firstJoin = !data.contains("players." + id);
+        if (firstJoin) {
+            data.set("players." + id + ".rerolled", false);
+            data.set("players." + id + ".first-join-at", System.currentTimeMillis());
+            saveData();
+            if (getConfig().getBoolean("drops.enabled", true)) {
+                Power rolled = roll(id, null);
+                if (rolled != null) {
+                    setPower(p, rolled);
+                    p.sendMessage(Component.text("You got the " + pretty(rolled.key()) + " power! Right-click with a sword to use it.",
+                            NamedTextColor.GOLD));
+                    if (getConfig().getBoolean("rerolling.enabled", true)) {
+                        p.sendMessage(Component.text("Don't like it? Use /reroll within "
+                                + i("rerolling.window-minutes", 10) + " minutes.", NamedTextColor.GRAY));
+                    }
                 }
-                return;
             }
+            applyTankHearts(p);
+            tutorial.onFirstJoin(p);
+            return;
         }
         applyTankHearts(p);
+        Notes.joinHint(this, p);
     }
 
     private void applyTankHearts(Player p) {
@@ -432,13 +476,58 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     // =====================================================================
+    // Reroll token (craftable): diamonds all around + gold block in the middle
+    // =====================================================================
+
+    private ItemStack rerollItem() {
+        ItemStack it = new ItemStack(Material.AMETHYST_SHARD);
+        ItemMeta m = it.getItemMeta();
+        m.displayName(line("Reroll Token", NamedTextColor.LIGHT_PURPLE));
+        m.lore(List.of(line("Right-click to reroll your power.", NamedTextColor.GRAY),
+                line("You get a new random power. The old one is lost!", NamedTextColor.DARK_GRAY)));
+        m.setEnchantmentGlintOverride(true);
+        m.getPersistentDataContainer().set(rerollKey, PersistentDataType.STRING, "1");
+        it.setItemMeta(m);
+        return it;
+    }
+
+    private boolean isRerollToken(ItemStack item) {
+        return item != null && item.getType() == Material.AMETHYST_SHARD && item.hasItemMeta()
+                && item.getItemMeta().getPersistentDataContainer().has(rerollKey, PersistentDataType.STRING);
+    }
+
+    private void registerRerollRecipe() {
+        Bukkit.removeRecipe(rerollKey);
+        if (!getConfig().getBoolean("reroll.recipe-enabled", true)) return;
+        ShapedRecipe r = new ShapedRecipe(rerollKey, rerollItem());
+        r.shape("DDD", "DGD", "DDD");
+        r.setIngredient('D', Material.DIAMOND);
+        r.setIngredient('G', Material.GOLD_BLOCK);
+        Bukkit.addRecipe(r);
+    }
+
+    private void useRerollToken(Player p, ItemStack hand) {
+        Power old = powerOf(p);
+        Power next = roll(p.getUniqueId(), old);
+        if (next == null) {
+            bar(p, "No other power is available to roll.", NamedTextColor.RED);
+            return;
+        }
+        hand.setAmount(hand.getAmount() - 1);
+        setPower(p, next);
+        p.sendMessage(Component.text("Rerolled! You now have the " + pretty(next.key()) + " power.", colorFor(next)));
+        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 0.6f);
+        puff(p.getLocation().add(0, 1, 0), Particle.END_ROD, 30);
+    }
+
+    // =====================================================================
     // Idle abilities (run once per second)
     // =====================================================================
 
     private void passiveTick() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             Power power = powerOf(p);
-            if (power == null || !isEnabled(power) || p.getGameMode() == GameMode.SPECTATOR) continue;
+            if (power == null || !isEnabled(power) || p.getGameMode() == GameMode.SPECTATOR || admin.isCursed(p)) continue;
 
             switch (power) {
                 case FLAME -> effect(p, PotionEffectType.FIRE_RESISTANCE, 1);
@@ -514,9 +603,20 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             return;
         }
 
+        // Reroll token: get a new random power
+        if (isRerollToken(hand)) {
+            e.setCancelled(true);
+            useRerollToken(p, hand);
+            return;
+        }
+
         Power power = powerOf(p);
         if (power == null || !isEnabled(power)) return;
         if (!isSword(hand)) return;
+        if (admin.isCursed(p)) {
+            admin.sealedMessage(p);
+            return;
+        }
 
         if (onCooldown(p)) return;
         activate(p, power);
@@ -558,14 +658,14 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
 
             case THOR -> {
-                Player t = nearestEnemy(p, d("thor.range", 30));
+                LivingEntity t = nearestEnemy(p, d("thor.range", 30));
                 if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
                 startCooldown(p, power);
                 t.getWorld().strikeLightning(t.getLocation());
             }
 
             case SHADOW -> {
-                Player t = nearestEnemy(p, d("shadow.range", 25));
+                LivingEntity t = nearestEnemy(p, d("shadow.range", 25));
                 if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
                 startCooldown(p, power);
                 Location tl = t.getLocation();
@@ -579,7 +679,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
 
             case HUNTER -> {
-                Player t = nearestEnemy(p, d("hunter.range", 25));
+                LivingEntity t = nearestEnemy(p, d("hunter.range", 25));
                 if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
                 startCooldown(p, power);
                 Vector pull = p.getLocation().toVector().subtract(t.getLocation().toVector());
@@ -591,7 +691,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
 
             case STEALER -> {
-                Player t = nearestEnemy(p, d("stealer.range", 20));
+                LivingEntity t = nearestEnemy(p, d("stealer.range", 20));
                 if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
                 startCooldown(p, power);
                 int ticks = i("stealer.duration", 15) * 20;
@@ -646,12 +746,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 startCooldown(p, power);
                 int ticks = i("tank.stun-seconds", 3) * 20;
                 double radius = d("tank.range", 8);
-                for (Player other : p.getWorld().getPlayers()) {
-                    if (other.equals(p) || other.getGameMode() == GameMode.SPECTATOR) continue;
-                    if (other.getLocation().distanceSquared(p.getLocation()) > radius * radius) continue;
+                for (LivingEntity other : enemiesNear(p, radius)) {
                     other.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, ticks, 10));
                     other.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, ticks, 128));
-                    other.sendActionBar(Component.text("Stunned!", NamedTextColor.RED));
+                    if (other instanceof Player op) op.sendActionBar(Component.text("Stunned!", NamedTextColor.RED));
                 }
                 puff(p.getLocation().add(0, 0.5, 0), Particle.CRIT, 40);
                 p.playSound(p.getLocation(), Sound.ENTITY_IRON_GOLEM_ATTACK, 1f, 0.7f);
@@ -683,7 +781,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     private void haunt(Player ghost, Power power, double range, int witherSec, int witherAmp,
                        int hearts, int invisSec) {
-        Player target = nearestEnemy(ghost, range);
+        LivingEntity target = nearestEnemy(ghost, range);
         if (target == null) {
             bar(ghost, "No one in range to haunt.", NamedTextColor.GRAY);
             return; // no cooldown spent
@@ -696,12 +794,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
         puff(ghost.getLocation().add(0, 1, 0), Particle.SOUL, 30);
         puff(target.getLocation().add(0, 1, 0), Particle.SOUL, 30);
-        target.playSound(target.getLocation(), Sound.ENTITY_VEX_AMBIENT, 1f, 0.5f);
+        target.getWorld().playSound(target.getLocation(), Sound.ENTITY_VEX_AMBIENT, 1f, 0.5f);
         ghost.playSound(ghost.getLocation(), Sound.ENTITY_ALLAY_DEATH, 1f, 0.6f);
-        bar(target, "You are being haunted...", NamedTextColor.DARK_PURPLE);
+        if (target instanceof Player hp) bar(hp, "You are being haunted...", NamedTextColor.DARK_PURPLE);
     }
 
-    private void stealHearts(Player ghost, Player target, Power power, int hearts) {
+    private void stealHearts(Player ghost, LivingEntity target, Power power, int hearts) {
         double want = hearts * 2.0;
         double minLeft = i("ghost.min-hearts-left", 1) * 2.0;
 
@@ -716,6 +814,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         removeModifier(gMax, gainKey);
 
         double stolen = Math.min(want, tMax.getValue() - minLeft);
+        double cap = i("ghost.max-extra-hearts", 10) * 2.0;
+        if (cap > 0) stolen = Math.min(stolen, cap - gainedHearts(gMax));
         if (stolen <= 0) return;
 
         tMax.addModifier(new AttributeModifier(drainKey, -stolen, AttributeModifier.Operation.ADD_NUMBER));
@@ -734,12 +834,22 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     private void returnHearts(UUID ghostId, UUID targetId) {
-        Player g = Bukkit.getPlayer(ghostId);
-        Player t = Bukkit.getPlayer(targetId);
-        if (t != null) removeModifier(t.getAttribute(Attribute.MAX_HEALTH), key(DRAIN + ghostId));
-        if (g != null) removeModifier(g.getAttribute(Attribute.MAX_HEALTH), key(GAIN + targetId));
+        Entity g = Bukkit.getEntity(ghostId);
+        Entity t = Bukkit.getEntity(targetId);
+        if (t instanceof LivingEntity tl) removeModifier(tl.getAttribute(Attribute.MAX_HEALTH), key(DRAIN + ghostId));
+        if (g instanceof LivingEntity gl) removeModifier(gl.getAttribute(Attribute.MAX_HEALTH), key(GAIN + targetId));
         Set<UUID> set = drained.get(ghostId);
         if (set != null) set.remove(targetId);
+    }
+
+    private double gainedHearts(AttributeInstance inst) {
+        double sum = 0;
+        String ns = getName().toLowerCase(Locale.ROOT);
+        for (AttributeModifier m : inst.getModifiers()) {
+            NamespacedKey k = m.getKey();
+            if (k.getNamespace().equals(ns) && k.getKey().startsWith(GAIN)) sum += m.getAmount();
+        }
+        return sum;
     }
 
     private void removeModifier(AttributeInstance inst, NamespacedKey k) {
@@ -768,7 +878,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     // =====================================================================
 
     private void vampire(Player v) {
-        Player target = nearestEnemy(v, d("vampire.range", 20));
+        LivingEntity target = nearestEnemy(v, d("vampire.range", 20));
         if (target == null) {
             bar(v, "No one in range to leech.", NamedTextColor.GRAY);
             return; // no cooldown spent
@@ -787,7 +897,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
             @Override
             public void run() {
-                if (n++ >= pulses || !v.isOnline() || !target.isOnline() || v.isDead() || target.isDead()
+                if (n++ >= pulses || !v.isOnline() || !target.isValid() || v.isDead() || target.isDead()
                         || v.getWorld() != target.getWorld()
                         || v.getLocation().distanceSquared(target.getLocation()) > maxRange * maxRange) {
                     cancel();
@@ -803,10 +913,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }.runTaskTimer(this, 0L, 10L);
 
         v.playSound(v.getLocation(), Sound.ENTITY_BAT_TAKEOFF, 1f, 0.6f);
-        bar(target, "A vampire is draining you!", NamedTextColor.DARK_RED);
+        if (target instanceof Player vp) bar(vp, "A vampire is draining you!", NamedTextColor.DARK_RED);
     }
 
-    private void bloodLine(Player a, Player b) {
+    private void bloodLine(Player a, LivingEntity b) {
         if (!particles()) return;
         Location cur = a.getLocation().add(0, 1, 0);
         Vector step = b.getLocation().add(0, 1, 0).toVector().subtract(cur.toVector());
@@ -824,7 +934,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     // =====================================================================
 
     private void teleporter(Player tp) {
-        Player target = nearestEnemy(tp, d("teleporter.range", 30));
+        LivingEntity target = nearestEnemy(tp, d("teleporter.range", 30));
         if (target == null) {
             bar(tp, "No one in range.", NamedTextColor.GRAY);
             return; // no cooldown spent
@@ -840,7 +950,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
             @Override
             public void run() {
-                if (!tp.isOnline() || tp.isDead() || !target.isOnline() || target.isDead()
+                if (!tp.isOnline() || tp.isDead() || !target.isValid() || target.isDead()
                         || tp.getWorld() != target.getWorld() || t++ > 40) {
                     cancel();
                     return;
@@ -857,7 +967,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }.runTaskTimer(this, 0L, 1L);
     }
 
-    private void slam(Player tp, Player target, int freezeTicks) {
+    private void slam(Player tp, LivingEntity target, int freezeTicks) {
         tp.setVelocity(new Vector(0, 0, 0));
 
         // freeze
@@ -865,11 +975,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         target.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, freezeTicks + 5, 128));
         target.setFreezeTicks(target.getMaxFreezeTicks());
         puff(target.getLocation().add(0, 1, 0), Particle.SNOWFLAKE, 40);
-        target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_HURT_FREEZE, 1f, 1f);
-        bar(target, "Frozen!", NamedTextColor.AQUA);
+        target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_HURT_FREEZE, 1f, 1f);
+        if (target instanceof Player fp) bar(fp, "Frozen!", NamedTextColor.AQUA);
 
         Bukkit.getScheduler().runTaskLater(this, () -> {
-            if (!target.isOnline() || target.isDead()) return;
+            if (!target.isValid() || target.isDead()) return;
             target.removePotionEffect(PotionEffectType.SLOWNESS);
             target.removePotionEffect(PotionEffectType.JUMP_BOOST);
             target.setFreezeTicks(0);
@@ -877,7 +987,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }, freezeTicks);
     }
 
-    private void fling(Player tp, Player target) {
+    private void fling(Player tp, LivingEntity target) {
         Vector away = target.getLocation().toVector().subtract(tp.getLocation().toVector());
         away.setY(0);
         if (away.lengthSquared() < 1.0E-4) away = flat(tp.getLocation());
@@ -888,14 +998,14 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         final double speed = d("teleporter.fling-distance", 20) / ticks;
 
         target.damage(d("teleporter.damage-hearts", 4) * 2.0, tp);
-        target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, 1f, 0.8f);
+        target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, 1f, 0.8f);
 
         new BukkitRunnable() {
             int t = 0;
 
             @Override
             public void run() {
-                if (!target.isOnline() || target.isDead() || t++ >= ticks) {
+                if (!target.isValid() || target.isDead() || t++ >= ticks) {
                     cancel();
                     return;
                 }
@@ -1031,6 +1141,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     private String describeReward(String reward) {
         String[] parts = reward.split(":");
         if (parts.length < 2) return reward;
+        if (parts[0].equalsIgnoreCase("reroll")) return parseInt(parts[1], 1) + "x Reroll Token";
         if (parts[0].equalsIgnoreCase("power")) return pretty(parts[1]) + " Power";
         int amount = parts.length > 2 ? parseInt(parts[2], 1) : 1;
         return amount + "x " + pretty(parts[1]);
@@ -1046,6 +1157,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     private ItemStack iconFor(String reward) {
         String[] parts = reward.split(":");
+        if (parts.length >= 2 && parts[0].equalsIgnoreCase("reroll")) {
+            return new ItemStack(Material.AMETHYST_SHARD);
+        }
         if (parts.length >= 2 && parts[0].equalsIgnoreCase("power")) {
             return new ItemStack(Material.NETHER_STAR);
         }
@@ -1058,9 +1172,15 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         return new ItemStack(Material.PAPER);
     }
 
-    private void giveReward(Player p, String reward) {
+    void giveReward(Player p, String reward) {
         String[] parts = reward.split(":");
         if (parts.length < 2) return;
+        if (parts[0].equalsIgnoreCase("reroll")) {
+            ItemStack token = rerollItem();
+            token.setAmount(Math.max(1, Math.min(64, parseInt(parts[1], 1))));
+            give(p, token);
+            return;
+        }
         if (parts[0].equalsIgnoreCase("power")) {
             Power pw = Power.parse(parts[1]);
             if (pw == null) {
@@ -1264,6 +1384,22 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         String name = cmd.getName().toLowerCase(Locale.ROOT);
         if (name.equals("reroll")) return reroll(sender);
+        if (name.equals("notes")) {
+            Notes.show(this, sender, args);
+            return true;
+        }
+        if (name.equals("skip")) {
+            if (sender instanceof Player sp) tutorial.skip(sp);
+            return true;
+        }
+        if (name.equals("tutorial")) {
+            if (sender instanceof Player tp2) tutorial.restart(tp2);
+            return true;
+        }
+        if (name.equals("panel")) {
+            admin.command(sender, args);
+            return true;
+        }
         if (name.equals("pass")) {
             if (sender instanceof Player p) openPass(p);
             else sender.sendMessage("Players only.");
@@ -1271,7 +1407,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
 
         String usage = "Usage: /power give <power> <player> | item <power> <player> | take <player> | list | "
-                + "points <player> <amount> | resetseason | reload";
+                + "token <player> | points <player> <amount> | resetseason | reload";
         if (args.length == 0) {
             sender.sendMessage(usage);
             return true;
@@ -1312,6 +1448,13 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 setPower(t, null);
                 t.sendMessage(Component.text("Your power was removed.", NamedTextColor.GRAY));
                 sender.sendMessage("Removed power from " + t.getName() + ".");
+            }
+            case "token" -> {
+                if (args.length < 2) { sender.sendMessage(usage); return true; }
+                Player t = Bukkit.getPlayerExact(args[1]);
+                if (t == null) { sender.sendMessage("Player not online."); return true; }
+                give(t, rerollItem());
+                sender.sendMessage("Gave a reroll token to " + t.getName() + ".");
             }
             case "points" -> {
                 if (args.length < 3) { sender.sendMessage(usage); return true; }

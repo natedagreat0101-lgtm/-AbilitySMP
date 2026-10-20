@@ -1,12 +1,16 @@
 name: AbilitySMP
-version: 3.0
+version: 4.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
-description: All SMP powers, power items and a battle pass in one plugin
+description: Unbound SMP - powers, battle pass, tutorial, admin panel and Halloween events
 commands:
   power:
     description: Give or remove a power (admin)
-    usage: /power <give|item|take|list|points|resetseason|reload> ...
+    usage: /power <give|item|take|list|token|points|resetseason|reload> ...
+    permission: abilitysmp.admin
+  panel:
+    description: Open the admin panel
+    usage: /panel
     permission: abilitysmp.admin
   reroll:
     description: Reroll your power (only right after you first join)
@@ -14,6 +18,15 @@ commands:
   pass:
     description: Open the battle pass
     usage: /pass
+  notes:
+    description: Patch notes and how to use new features
+    usage: /notes [all]
+  skip:
+    description: Skip the tutorial
+    usage: /skip
+  tutorial:
+    description: Replay the tutorial
+    usage: /tutorial
 permissions:
   abilitysmp.admin:
     default: op

@@ -1,4 +1,4 @@
-config-version: 3
+config-version: 4
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -67,6 +67,7 @@ ghost:
   glow-radius: 30
   steal-duration: 300       # seconds until stolen hearts return (0 = until death/quit)
   min-hearts-left: 1
+  max-extra-hearts: 10      # most extra hearts a Ghost can hold from stealing (0 = no limit)
 
 # Vampire: leech the nearest enemy (they take damage, you heal) and wither them.
 vampire:
@@ -168,7 +169,7 @@ battlepass:
     9: ["item:DIAMOND:2"]
     10: ["power:FEATHER"]
     11: ["item:COOKED_BEEF:32"]
-    12: ["item:OBSIDIAN:8"]
+    12: ["reroll:1"]
     13: ["item:ENDER_PEARL:4"]
     14: ["item:DIAMOND:4"]
     15: ["power:AQUA"]
@@ -187,3 +188,49 @@ battlepass:
     28: ["item:DIAMOND:12"]
     29: ["item:NETHERITE_INGOT:1"]
     30: ["power:TELEPORTER"]
+
+# ------------------------------------------------------------------
+# Who counts as an enemy for powers (targeting, glow, stun)
+# ------------------------------------------------------------------
+enemies:
+  players: true
+  hostile-mobs: true
+  passive-mobs: false       # cows, pigs etc. (pets and villagers are never targeted)
+
+# ------------------------------------------------------------------
+# Reroll token: diamonds around a gold block. Right-click for a new random power.
+# ------------------------------------------------------------------
+reroll:
+  recipe-enabled: true
+
+# ------------------------------------------------------------------
+# New player tutorial (/skip to skip, /tutorial to replay)
+# ------------------------------------------------------------------
+tutorial:
+  enabled: true
+  finish-reward: ["item:BREAD:8"]
+
+# ------------------------------------------------------------------
+# Admin panel (/panel): music tracks and Halloween events.
+# Tracks are sound keys. Vanilla discs work out of the box. To use your own audio,
+# add it to a resource pack (server.properties resource-pack=...) and put its sound key here,
+# for example:  my-theme: "unbound:halloween_theme"
+# Note: YouTube links can't be played by a server plugin.
+# ------------------------------------------------------------------
+music:
+  tracks:
+    disc-13: "minecraft:music_disc.13"
+    disc-11: "minecraft:music_disc.11"
+    cat: "minecraft:music_disc.cat"
+    stal: "minecraft:music_disc.stal"
+    pigstep: "minecraft:music_disc.pigstep"
+    otherside: "minecraft:music_disc.otherside"
+    disc-5: "minecraft:music_disc.5"
+    cave-ambience: "minecraft:ambient.cave"
+
+halloween:
+  music: "minecraft:music_disc.13"
+  music-length-seconds: 178
+  curse-seconds: 60
+  max-lanterns: 120
+  lantern-interval-seconds: 5
