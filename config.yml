@@ -1,4 +1,4 @@
-config-version: 4
+config-version: 5
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -8,10 +8,12 @@ flame:
   cooldown: 8
   fireball-yield: 2.0
 
+# Speed is the starter power: idle Speed I, super = Speed III burst
 speed:
-  cooldown: 5
-  dash-strength: 2.2
-  dash-up: 0.4
+  cooldown: 30
+  idle-level: 1
+  super-level: 3
+  super-seconds: 8
 
 shadow:
   cooldown: 12
@@ -69,7 +71,7 @@ ghost:
   min-hearts-left: 1
   max-extra-hearts: 10      # most extra hearts a Ghost can hold from stealing (0 = no limit)
 
-# Vampire: leech the nearest enemy (they take damage, you heal) and wither them.
+# Vampire: latch onto the nearest enemy (sneak to let go), drain them with fake blood, wither them.
 vampire:
   cooldown: 25
   range: 20
@@ -77,6 +79,14 @@ vampire:
   wither-amplifier: 0
   leech-seconds: 5
   leech-per-pulse: 1.0      # HP taken from the enemy and given to you, 2 pulses per second
+
+# Void: idle Strength III. Super: wither + big damage to the nearest enemy.
+void:
+  cooldown: 40
+  range: 25
+  wither-seconds: 5
+  wither-amplifier: 1
+  damage-hearts: 7
 
 # Teleporter: dash to the nearest enemy, freeze them, fling them back, damage them.
 teleporter:
@@ -88,7 +98,7 @@ teleporter:
   damage-hearts: 4
 
 # ------------------------------------------------------------------
-# Chance to get a power (used as weights when a new player joins):
+# Chance weights used when someone rerolls their power:
 # ------------------------------------------------------------------
 drops:
   enabled: true
@@ -106,6 +116,7 @@ drops:
   ghost: 0.08
   vampire: 0.06
   teleporter: 0.04
+  void: 0.05
 
 # Reroll if the first power isn't the wanted one:
 rerolling:
@@ -121,6 +132,7 @@ passives:
   aqua-dolphins-grace-level: 1
   ghost-speed-level: 1
   teleporter-speed-level: 3
+  void-strength-level: 3
   tank-extra-hearts: 4
   hunter-glow-radius: 30
   jack-o-lantern-glow-radius: 30
@@ -143,51 +155,7 @@ powers:
     - ghost
     - vampire
     - teleporter
-
-# ------------------------------------------------------------------
-# Battle pass (/pass)
-#   points-per-level 100 = 20 minutes (5 pts/min) OR 5 kills (20 pts/kill) per level.
-#   Both add up toward the same level.
-#   Rewards: "item:MATERIAL:AMOUNT" or "power:POWERNAME" (gives a power item)
-# ------------------------------------------------------------------
-battlepass:
-  enabled: true
-  tiers: 30
-  points-per-level: 100
-  points-per-minute: 5
-  points-per-kill: 20
-  season-days: 14
-  rewards:
-    1: ["item:BREAD:16"]
-    2: ["item:IRON_INGOT:16"]
-    3: ["item:COOKED_BEEF:16"]
-    4: ["item:ARROW:32"]
-    5: ["power:FLAME"]
-    6: ["item:EXPERIENCE_BOTTLE:16"]
-    7: ["item:GOLD_INGOT:16"]
-    8: ["item:GOLDEN_APPLE:2"]
-    9: ["item:DIAMOND:2"]
-    10: ["power:FEATHER"]
-    11: ["item:COOKED_BEEF:32"]
-    12: ["reroll:1"]
-    13: ["item:ENDER_PEARL:4"]
-    14: ["item:DIAMOND:4"]
-    15: ["power:AQUA"]
-    16: ["item:EXPERIENCE_BOTTLE:32"]
-    17: ["item:GOLDEN_APPLE:4"]
-    18: ["item:DIAMOND_SWORD:1"]
-    19: ["item:DIAMOND:6"]
-    20: ["power:GHOST"]
-    21: ["item:EXPERIENCE_BOTTLE:48"]
-    22: ["item:TOTEM_OF_UNDYING:1"]
-    23: ["item:DIAMOND:8"]
-    24: ["item:ENDER_PEARL:8"]
-    25: ["power:VAMPIRE"]
-    26: ["item:ENCHANTED_GOLDEN_APPLE:1"]
-    27: ["item:NETHERITE_SCRAP:4"]
-    28: ["item:DIAMOND:12"]
-    29: ["item:NETHERITE_INGOT:1"]
-    30: ["power:TELEPORTER"]
+    - void
 
 # ------------------------------------------------------------------
 # Who counts as an enemy for powers (targeting, glow, stun)
@@ -234,3 +202,76 @@ halloween:
   curse-seconds: 60
   max-lanterns: 120
   lantern-interval-seconds: 5
+
+# ------------------------------------------------------------------
+# New players start with this power and a Power Activator sword
+# ------------------------------------------------------------------
+starter-power: speed
+
+activator:
+  required: true            # true = only the Power Activator sword uses powers, false = any sword
+
+# ------------------------------------------------------------------
+# Unbound points: earned from quests and playtime, spent at upgrade stations
+# (an admin sets a station with /station add while looking at a block)
+# ------------------------------------------------------------------
+points:
+  play-minutes: 20          # every 20 minutes online...
+  play-reward: 10           # ...gives this many points
+
+upgrade:
+  max-level: 5
+  costs: [25, 50, 100, 200] # price of level 2, 3, 4, 5
+  power-per-level: 0.10     # +10% range, damage and duration per level
+  cooldown-per-level: 0.10  # -10% cooldown per level
+
+# Quest types: KILL_MOBS, KILL_PLAYERS, BREAK_LOGS, MINE_ORES, USE_POWER, COLLECT_CANDY
+# A finished quest gives its points and starts over by itself.
+quests:
+  mob-slayer:
+    name: "Mob Slayer"
+    description: "Kill hostile mobs"
+    type: KILL_MOBS
+    target: 20
+    reward: 15
+  player-hunter:
+    name: "Player Hunter"
+    description: "Kill other players"
+    type: KILL_PLAYERS
+    target: 3
+    reward: 25
+  lumberjack:
+    name: "Lumberjack"
+    description: "Chop logs"
+    type: BREAK_LOGS
+    target: 32
+    reward: 10
+  deep-miner:
+    name: "Deep Miner"
+    description: "Mine ores"
+    type: MINE_ORES
+    target: 24
+    reward: 20
+  power-user:
+    name: "Power User"
+    description: "Use your power"
+    type: USE_POWER
+    target: 15
+    reward: 10
+  candy-collector:
+    name: "Candy Collector"
+    description: "Collect candy on Trick or Treat Night"
+    type: COLLECT_CANDY
+    target: 20
+    reward: 15
+
+# ------------------------------------------------------------------
+# Trick or Treat Night (admin panel button)
+# ------------------------------------------------------------------
+trickortreat:
+  interval-seconds: 20
+  max-huts: 20
+  huts-per-player: 2
+  cooldown-seconds: 20
+  treat-chance: 0.7
+  candy-per-coin: 5

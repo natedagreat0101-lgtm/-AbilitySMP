@@ -32,7 +32,7 @@ final class Tutorial implements Listener {
 
     enum Step {
         WELCOME, MOVE, FIND_TREE, MINE_WOOD, PLANKS, TABLE, PLACE_TABLE, PICKAXE, STONE,
-        TIP_FOOD, TIP_LIGHT, TIP_BED, COMMANDS, DONE
+        TIP_FOOD, TIP_LIGHT, TIP_BED, POWER, COMMANDS, DONE
     }
 
     private final AbilitySMP plugin;
@@ -62,6 +62,7 @@ final class Tutorial implements Listener {
             case TIP_FOOD -> "Stay fed";
             case TIP_LIGHT -> "Stay safe";
             case TIP_BED -> "Sleep through the night";
+            case POWER -> "Your Power Activator";
             case COMMANDS -> "Server commands";
             case DONE -> "Tutorial complete!";
         };
@@ -81,7 +82,8 @@ final class Tutorial implements Listener {
             case TIP_FOOD -> "Eat food when your hunger bar drops. RIGHT CLICK to eat";
             case TIP_LIGHT -> "Place torches. Mobs spawn in the dark!";
             case TIP_BED -> "Craft a bed (3 wool + 3 planks), RIGHT CLICK it at night";
-            case COMMANDS -> "/pass   /notes   /reroll   and right-click a sword for your power";
+            case POWER -> "Hold the Power Activator sword and RIGHT CLICK to use your power!";
+            case COMMANDS -> "/quests  /points  /notes  - earn Unbound points to upgrade your power";
             case DONE -> "Have fun on Unbound SMP!";
         };
     }
@@ -97,7 +99,7 @@ final class Tutorial implements Listener {
             case PLACE_TABLE -> "RIGHT CLICK the ground with the crafting table";
             case PICKAXE -> "Right-click your table: craft sticks, then a wooden pickaxe";
             case STONE -> "Stone: " + prog + "/3 (hold LEFT CLICK on stone)";
-            case TIP_FOOD, TIP_LIGHT, TIP_BED, COMMANDS -> subtitle(s);
+            case TIP_FOOD, TIP_LIGHT, TIP_BED, POWER, COMMANDS -> subtitle(s);
             case DONE -> "";
         };
     }
@@ -106,7 +108,7 @@ final class Tutorial implements Listener {
     private static int timed(Step s) {
         return switch (s) {
             case WELCOME -> 7;
-            case TIP_FOOD, TIP_LIGHT, TIP_BED -> 8;
+            case TIP_FOOD, TIP_LIGHT, TIP_BED, POWER -> 8;
             case COMMANDS -> 10;
             default -> 0;
         };

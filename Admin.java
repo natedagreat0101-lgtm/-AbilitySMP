@@ -145,8 +145,8 @@ final class Admin implements Listener {
         inv.setItem(10, item(Material.WRITABLE_BOOK, "Send admin message", NamedTextColor.GOLD,
                 "Click, then type in chat.", "Shows as [Admin] YourName: message"));
         inv.setItem(12, item(Material.GOLDEN_APPLE, "Heal and feed everyone", NamedTextColor.GREEN));
-        inv.setItem(14, item(Material.CLOCK, "Start new battle pass season", NamedTextColor.AQUA,
-                "Wipes everyone's progress!"));
+        inv.setItem(14, item(Material.ANVIL, "Make looked-at block an Upgrade Station", NamedTextColor.AQUA,
+                "Look at a block (within 6 blocks), then click.", "Players right-click it to upgrade powers."));
         inv.setItem(16, item(Material.JUKEBOX, "Music", NamedTextColor.LIGHT_PURPLE, "Open the track list"));
 
         inv.setItem(19, item(Material.SUNFLOWER, "Sky: Day", NamedTextColor.YELLOW,
@@ -164,6 +164,8 @@ final class Admin implements Listener {
         inv.setItem(38, item(Material.NOTE_BLOCK, "Halloween: Spooky music", NamedTextColor.GOLD, on(musicOn)));
         inv.setItem(39, item(Material.WITHER_SKELETON_SKULL, "Halloween: Mob Curse", NamedTextColor.DARK_RED,
                 on(curseOn), "Killing a hostile mob seals", "your power for a while"));
+        inv.setItem(40, item(Material.PUMPKIN_PIE, "Trick or Treat Night", NamedTextColor.GOLD,
+                on(plugin.tot.isActive()), "Little huts appear around players.", "Candy can be traded for Halloween Coins."));
         inv.setItem(41, item(Material.CARVED_PUMPKIN, "Full Halloween Night", NamedTextColor.GOLD,
                 "Orange sky + lanterns + music + curse"));
         inv.setItem(43, item(Material.REDSTONE_BLOCK, "Stop all events", NamedTextColor.RED));
@@ -224,7 +226,7 @@ final class Admin implements Listener {
                 return false;
             }
             case 12 -> healAll();
-            case 14 -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "power resetseason");
+            case 14 -> plugin.unbound.addStation(p, p.getTargetBlockExact(6));
             case 19 -> setSky("DAY");
             case 20 -> setSky("ORANGE");
             case 21 -> setSky("NIGHT");
@@ -235,6 +237,7 @@ final class Admin implements Listener {
             case 37 -> toggleLanterns();
             case 38 -> toggleHalloweenMusic();
             case 39 -> toggleCurse();
+            case 40 -> toggleTrickOrTreat();
             case 41 -> fullHalloween();
             case 43 -> stopAllEvents();
             default -> {
@@ -444,6 +447,18 @@ final class Admin implements Listener {
                 NamedTextColor.DARK_RED));
     }
 
+    private void toggleTrickOrTreat() {
+        if (plugin.tot.isActive()) {
+            plugin.tot.stop(true);
+            if (musicOn) stopHalloweenMusic();
+            setSky("NONE");
+        } else {
+            setSky("NIGHT");
+            if (!musicOn) startHalloweenMusic();
+            plugin.tot.start();
+        }
+    }
+
     private void fullHalloween() {
         if (skyMode.equals("ORANGE") && lanternsOn && musicOn && curseOn) {
             stopAllEvents();
@@ -462,6 +477,7 @@ final class Admin implements Listener {
         if (musicOn) stopHalloweenMusic();
         curseOn = false;
         cursed.clear();
+        plugin.tot.stop(false);
         Bukkit.broadcast(Component.text("The Halloween events have ended.", NamedTextColor.GRAY));
     }
 
