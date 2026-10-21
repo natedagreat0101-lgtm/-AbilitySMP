@@ -65,7 +65,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     enum Power {
         FLAME, SPEED, TANK, THOR, SHADOW, HEALER, FEATHER, STEALER, AQUA, HUNTER,
-        JACK_O_LANTERN, GHOST, VAMPIRE, TELEPORTER, VOID;
+        GHOST, VAMPIRE, TELEPORTER, VOID;
+
+        /** Halloween powers: only Ghost and Vampire. */
+        boolean isHalloween() {
+            return this == GHOST || this == VAMPIRE;
+        }
 
         /** Name used in config.yml, e.g. jack-o-lantern */
         String key() {
@@ -75,6 +80,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         static Power parse(String s) {
             if (s == null) return null;
             String n = s.trim().toUpperCase(Locale.ROOT).replace('-', '_');
+            if (n.equals("JACK_O_LANTERN")) return GHOST; // Jack O Lantern was removed
             if (n.equals("MIMIC")) return VOID; // Mimic was removed, Void replaces it
             try {
                 return valueOf(n);
@@ -102,6 +108,14 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Admin admin;
     Unbound unbound;
     TrickOrTreat tot;
+    Profile profile;
+    Ranks ranks;
+    Locker locker;
+    Menus menus;
+    PowerMenus powerMenus;
+    Haunted haunted;
+    Horseman horseman;
+    Duel duel;
     private NamespacedKey activatorKey;
     private final Set<UUID> needsActivator = new HashSet<>();
 
@@ -121,8 +135,16 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         dataFile = new File(getDataFolder(), "players.yml");
         loadData();
 
+        profile = new Profile(this);
         unbound = new Unbound(this);
         tot = new TrickOrTreat(this);
+        ranks = new Ranks(this);
+        locker = new Locker(this);
+        menus = new Menus();
+        powerMenus = new PowerMenus(this);
+        haunted = new Haunted(this);
+        horseman = new Horseman(this);
+        duel = new Duel(this);
         tutorial = new Tutorial(this);
         admin = new Admin(this);
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -130,6 +152,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(admin, this);
         Bukkit.getPluginManager().registerEvents(unbound, this);
         Bukkit.getPluginManager().registerEvents(tot, this);
+        Bukkit.getPluginManager().registerEvents(ranks, this);
+        Bukkit.getPluginManager().registerEvents(locker, this);
+        Bukkit.getPluginManager().registerEvents(menus, this);
+        Bukkit.getPluginManager().registerEvents(haunted, this);
+        Bukkit.getPluginManager().registerEvents(horseman, this);
+        Bukkit.getPluginManager().registerEvents(duel, this);
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
         for (Player p : Bukkit.getOnlinePlayers()) setupPlayer(p);
     }
@@ -137,8 +165,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         if (admin != null) admin.shutdown();
+        if (horseman != null) horseman.shutdown();
+        if (duel != null) duel.shutdown();
+        if (haunted != null) haunted.shutdown();
         if (tot != null) tot.stop(false);
         if (unbound != null) unbound.save();
+        if (profile != null) profile.save();
         for (Player p : Bukkit.getOnlinePlayers()) clearHeartSteals(p);
     }
 
@@ -163,6 +195,15 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             cfg.set("battlepass", null);   // the battle pass was removed
             cfg.set("speed.cooldown", 30); // Speed's super is now a Speed III burst
             cfg.set("config-version", 5);
+        }
+        if (v < 6) {
+            List<String> en6 = new ArrayList<>(cfg.getStringList("powers.enabled"));
+            en6.remove("jack-o-lantern");
+            cfg.set("powers.enabled", en6);
+            cfg.set("jack-o-lantern", null);
+            cfg.set("drops.jack-o-lantern", null);
+            cfg.set("passives.jack-o-lantern-glow-radius", null);
+            cfg.set("config-version", 6);
         }
         cfg.options().copyDefaults(true);
         saveConfig();
@@ -207,7 +248,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         return powers.get(p.getUniqueId());
     }
 
-    private boolean isEnabled(Power p) {
+    boolean isEnabled(Power p) {
         return getConfig().getStringList("powers.enabled").contains(p.key());
     }
 
@@ -215,7 +256,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         return new NamespacedKey(this, s.toLowerCase(Locale.ROOT));
     }
 
-    private void bar(Player p, String text, NamedTextColor color) {
+    void bar(Player p, String text, NamedTextColor color) {
         p.sendActionBar(Component.text(text, color));
     }
 
@@ -279,7 +320,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
     }
 
-    private static String pretty(String s) {
+    static String pretty(String s) {
         StringBuilder sb = new StringBuilder();
         for (String part : s.toLowerCase(Locale.ROOT).split("[_-]")) {
             if (part.isEmpty()) continue;
@@ -325,7 +366,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         List<Double> weights = new ArrayList<>();
         double total = 0;
         for (Power p : Power.values()) {
-            if (p == exclude || !isEnabled(p)) continue;
+            if (p == exclude || !isEnabled(p) || profile.owns(forWho, p)) continue;
             double w = d("drops." + p.key(), 0);
             if (w <= 0) continue;
             if (isLimited(p) && isHeldByOther(p, forWho)) continue;
@@ -352,8 +393,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             powers.put(id, power);
             data.set("players." + id + ".power", power.name());
         }
+        if (power != null) profile.addOwned(id, power);
         applyTankHearts(p);
         saveData();
+        if (ranks != null) ranks.evaluate(p);
     }
 
     private void removePowerEffects(Player p) {
@@ -388,6 +431,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             tutorial.onFirstJoin(p);
             return;
         }
+        profile.addOwned(id, Power.SPEED);
+        if (powerOf(p) != null) profile.addOwned(id, powerOf(p));
         applyTankHearts(p);
         giveActivatorOnce(p);
         Notes.joinHint(this, p);
@@ -407,7 +452,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     // Power items (nether stars)
     // =====================================================================
 
-    private NamedTextColor colorFor(Power p) {
+    NamedTextColor colorFor(Power p) {
         return switch (p) {
             case FLAME -> NamedTextColor.GOLD;
             case SPEED -> NamedTextColor.AQUA;
@@ -419,7 +464,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case STEALER -> NamedTextColor.DARK_PURPLE;
             case AQUA -> NamedTextColor.BLUE;
             case HUNTER -> NamedTextColor.GREEN;
-            case JACK_O_LANTERN -> NamedTextColor.RED;
             case GHOST -> NamedTextColor.DARK_AQUA;
             case VAMPIRE -> NamedTextColor.DARK_RED;
             case TELEPORTER -> NamedTextColor.DARK_BLUE;
@@ -427,7 +471,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         };
     }
 
-    private ItemStack powerItem(Power p) {
+    ItemStack powerItem(Power p) {
         ItemStack it = new ItemStack(Material.NETHER_STAR);
         ItemMeta m = it.getItemMeta();
         m.displayName(line(pretty(p.key()) + " Power", colorFor(p)));
@@ -445,33 +489,55 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         return Power.parse(v);
     }
 
+    /** Holding right-click fires the use event again and again; this guard makes one click = one use. */
+    private final Map<UUID, Long> starGuard = new HashMap<>();
+
     private void useStar(Player p, ItemStack hand, Power newPower) {
+        long now = System.currentTimeMillis();
+        if (now - starGuard.getOrDefault(p.getUniqueId(), 0L) < 1500L) return;
+        starGuard.put(p.getUniqueId(), now);
+
         if (!isEnabled(newPower)) {
             bar(p, "That power is disabled.", NamedTextColor.RED);
             return;
         }
-        Power old = powerOf(p);
-        if (old == newPower) {
-            bar(p, "You already have that power.", NamedTextColor.GRAY);
-            return;
-        }
-        if (isLimited(newPower) && isHeldByOther(newPower, p.getUniqueId())) {
-            bar(p, "Someone already holds that power.", NamedTextColor.RED);
+        if (profile.owns(p, newPower)) {
+            bar(p, "You already own that power. Use /powers to equip it.", NamedTextColor.GRAY);
             return;
         }
         hand.setAmount(hand.getAmount() - 1);
-        setPower(p, newPower);
-        if (old != null) give(p, powerItem(old)); // nothing is lost when swapping
-        p.sendMessage(Component.text("You now have the " + pretty(newPower.key()) + " power!", colorFor(newPower)));
+        setPower(p, newPower); // unlocks it permanently and equips it
+        p.sendMessage(Component.text("You unlocked and equipped the " + pretty(newPower.key()) + " power!",
+                colorFor(newPower)));
         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 0.8f);
         puff(p.getLocation().add(0, 1, 0), Particle.END_ROD, 30);
+    }
+
+    /** Equip a power you already own (used by the power menu). */
+    boolean equipPower(Player p, Power pw) {
+        if (!profile.owns(p, pw)) {
+            bar(p, "You don't own that power yet. Check /shop.", NamedTextColor.RED);
+            return false;
+        }
+        if (!isEnabled(pw)) {
+            bar(p, "That power is disabled.", NamedTextColor.RED);
+            return false;
+        }
+        if (powerOf(p) == pw) {
+            bar(p, "Already equipped.", NamedTextColor.GRAY);
+            return true;
+        }
+        setPower(p, pw);
+        p.sendMessage(Component.text("Equipped the " + pretty(pw.key()) + " power.", colorFor(pw)));
+        p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_DIAMOND, 1f, 1.2f);
+        return true;
     }
 
     // =====================================================================
     // Reroll token (craftable): diamonds all around + gold block in the middle
     // =====================================================================
 
-    private ItemStack rerollItem() {
+    ItemStack rerollItem() {
         ItemStack it = new ItemStack(Material.AMETHYST_SHARD);
         ItemMeta m = it.getItemMeta();
         m.displayName(line("Reroll Token", NamedTextColor.LIGHT_PURPLE));
@@ -502,7 +568,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Power old = powerOf(p);
         Power next = roll(p.getUniqueId(), old);
         if (next == null) {
-            bar(p, "No other power is available to roll.", NamedTextColor.RED);
+            bar(p, "You already own every power that can be rolled.", NamedTextColor.RED);
             return;
         }
         hand.setAmount(hand.getAmount() - 1);
@@ -533,7 +599,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                     effect(p, PotionEffectType.DOLPHINS_GRACE, i("passives.aqua-dolphins-grace-level", 1));
                 }
                 case HUNTER -> glowNearby(p, d("passives.hunter-glow-radius", 30));
-                case JACK_O_LANTERN -> glowNearby(p, d("passives.jack-o-lantern-glow-radius", 30));
                 case GHOST -> {
                     effect(p, PotionEffectType.SPEED, i("passives.ghost-speed-level", 1));
                     glowNearby(p, d("ghost.glow-radius", 30));
@@ -560,7 +625,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case STEALER -> Particle.WITCH;
             case AQUA -> Particle.SPLASH;
             case HUNTER -> Particle.END_ROD;
-            case JACK_O_LANTERN, GHOST -> Particle.SOUL;
+            case GHOST -> Particle.SOUL;
             case VAMPIRE -> Particle.CRIMSON_SPORE;
             case TELEPORTER -> Particle.PORTAL;
             case VOID -> Particle.REVERSE_PORTAL;
@@ -607,6 +672,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Power power = powerOf(p);
         if (power == null || !isEnabled(power)) return;
         if (!canActivate(hand)) return;
+        if (duel.blocksPowers(p)) {
+            bar(p, "Powers are disabled in duels.", NamedTextColor.GRAY);
+            return;
+        }
         if (admin.isCursed(p)) {
             admin.sealedMessage(p);
             return;
@@ -751,13 +820,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 puff(p.getLocation().add(0, 0.5, 0), Particle.CRIT, 40);
                 p.playSound(p.getLocation(), Sound.ENTITY_IRON_GOLEM_ATTACK, 1f, 0.7f);
             }
-
-            case JACK_O_LANTERN -> haunt(p, power,
-                    d(k + ".range", 25) * um(p),
-                    i(k + ".wither-duration-seconds", 5),
-                    i(k + ".wither-amplifier", 1),
-                    i(k + ".hearts-stolen", 3),
-                    i(k + ".invisibility-duration-seconds", 5));
 
             case GHOST -> haunt(p, power,
                     d(k + ".range", 20) * um(p),
@@ -1238,7 +1300,32 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
             return true;
         }
-        if (name.equals("points") || name.equals("quests") || name.equals("station") || name.equals("upgrade")) {
+        if (name.equals("powers") || name.equals("shop") || name.equals("quests") || name.equals("locker")) {
+            if (!(sender instanceof Player mp)) {
+                sender.sendMessage("Players only.");
+                return true;
+            }
+            switch (name) {
+                case "powers" -> powerMenus.openPowers(mp, false);
+                case "shop" -> powerMenus.openShop(mp);
+                case "quests" -> powerMenus.openQuests(mp);
+                default -> locker.open(mp);
+            }
+            return true;
+        }
+        if (name.equals("duel")) {
+            duel.command(sender, args);
+            return true;
+        }
+        if (name.equals("boss")) {
+            horseman.command(sender, args);
+            return true;
+        }
+        if (name.equals("halloween")) {
+            haunted.command(sender, args);
+            return true;
+        }
+        if (name.equals("points") || name.equals("station") || name.equals("upgrade")) {
             unbound.command(sender, name, args);
             return true;
         }
