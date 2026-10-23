@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "5.0";
+    static final String VERSION = "6.0";
 
     private Notes() {
     }
@@ -28,35 +28,33 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v5.0 =====");
-        l(s, "Power Activator sword");
-        how(s, "you start with a sword named Power Activator. Hold it and right-click to use your power. "
-                + "It is soulbound: it can't be dropped and comes back when you die. Lost it? Use /activator.");
-        l(s, "New starter power: Speed");
-        how(s, "new players start with Speed. Idle: Speed I. Super: a Speed III burst for 8 seconds.");
-        l(s, "Powers from admins are items");
-        how(s, "when an admin gives you a power you get a glowing nether star. Right-click it to gain the power "
-                + "(your old power comes back as a star).");
-        l(s, "Battle pass removed");
-        how(s, "replaced by Unbound points, quests and power upgrades (below).");
-        l(s, "Unbound points");
-        how(s, "earn them from quests and by playing: 10 points every 20 minutes. /points shows your balance.");
-        l(s, "Quests");
-        how(s, "/quests lists them: kill mobs or players, chop logs, mine ores, use your power, collect candy. "
-                + "When you finish one you get points and it resets by itself so you can do it again.");
-        l(s, "Upgrade station");
-        how(s, "right-click an upgrade station (an admin sets them up) and spend Unbound points to level up your "
-                + "power. Each level: shorter cooldown, more range, damage and duration. Max level 5.");
-        l(s, "New power: Void");
-        how(s, "idle: Strength III. Super: the nearest enemy gets Wither and takes 7 hearts of damage.");
-        l(s, "Vampire is now attached");
-        how(s, "your super latches you onto the enemy's back while you drain them, with fake blood spraying out. "
-                + "Sneak to let go. Mimic is gone.");
-        l(s, "Trick or Treat Night (admin event)");
-        how(s, "little huts appear around players. Right-click the trick-or-treater at the door for candy (or a "
-                + "harmless trick). Sneak + right-click to trade 5 candy for a Halloween Coin.");
+        h(s, "===== Unbound SMP Patch Notes: v6.0 (Halloween Part 2) =====");
+        l(s, "Haunted Forest (Halloween dimension)");
+        how(s, "build a portal frame out of jack-o'-lanterns (at least 2 wide, 3 tall inside) and light it with "
+                + "flint and steel. Every mob you defeat there drops 5 Halloween Coins. Look for trick-or-treat huts "
+                + "and loot chests.");
+        l(s, "Duels: /duel <player>");
+        how(s, "the other player runs /duel accept. You fight in an arena, nobody dies and nobody loses items. "
+                + "The winner earns Unbound points.");
+        l(s, "Boss: /boss fight Headless Horseman");
+        how(s, "3 phases: gravestones, then slashes and pumpkin heads, then raging with fireballs, zombies and double "
+                + "damage. Win for 50 Unbound points and 30 Halloween Coins.");
+        l(s, "Ranks");
+        how(s, "your rank rises with playtime and Halloween ranks come from the Haunted Forest. They are permanent. "
+                + "Pick which one to show in /locker.");
+        l(s, "/locker");
+        how(s, "your permanent collection: equip ranks and trails, and see how to unlock the rest.");
+        l(s, "Menus: /powers, /shop, /quests");
+        how(s, "scrollable menus. /powers: left-click a power to equip it. /shop: buy powers with Unbound points, or "
+                + "Halloween Coins for Ghost and Vampire. /quests: your quest progress.");
+        l(s, "Fixes");
+        how(s, "powers no longer swap back by themselves, and quest kills now count even from wither, fire and powers.");
+        l(s, "Jack O' Lantern power removed");
+        how(s, "only Ghost and Vampire are Halloween powers now. Anyone who had it now has Ghost.");
 
         if (all) {
+            h(s, "===== v5.0 =====");
+            l(s, "Power Activator sword, Speed starter power, Unbound points, quests, upgrade stations, Void, attached Vampire, Trick or Treat Night.");
             h(s, "===== v4.0 =====");
             l(s, "Mobs are enemies: powers and glow effects hit hostile mobs too.");
             l(s, "Reroll Token: 8 diamonds around a gold block. Right-click to roll a new power.");

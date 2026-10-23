@@ -310,7 +310,7 @@ final class Admin implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) applySky(p);
     }
 
-    private void applySky(Player p) {
+    void applySky(Player p) {
         switch (skyMode) {
             case "DAY" -> p.setPlayerTime(6000L, false);
             case "ORANGE" -> p.setPlayerTime(12600L, false);

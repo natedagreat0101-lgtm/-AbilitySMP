@@ -1,5 +1,5 @@
 name: AbilitySMP
-version: 5.0
+version: 6.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
 description: Unbound SMP - powers, Power Activator, quests, upgrades, tutorial, admin panel and Halloween events
@@ -41,6 +41,25 @@ commands:
   tutorial:
     description: Replay the tutorial
     usage: /tutorial
+  powers:
+    description: Open the power menu to equip your powers
+    usage: /powers
+  shop:
+    description: Buy new powers
+    usage: /shop
+  locker:
+    description: Your permanent collection - ranks, trails and more
+    usage: /locker
+  duel:
+    description: Challenge a player to a friendly duel
+    usage: /duel <player|accept|deny>
+  boss:
+    description: Fight a boss
+    usage: /boss fight Headless Horseman
+  halloween:
+    description: Halloween dimension tools (admin)
+    usage: /halloween <enter|leave|status>
+    permission: abilitysmp.admin
 permissions:
   abilitysmp.admin:
     default: op

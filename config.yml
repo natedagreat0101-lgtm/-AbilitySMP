@@ -1,4 +1,4 @@
-config-version: 5
+config-version: 6
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -49,16 +49,6 @@ aqua:
 tank:
   cooldown: 15
   stun-seconds: 3
-
-jack-o-lantern:
-  limited: true
-  cooldown: 30
-  range: 25
-  wither-duration-seconds: 5
-  wither-amplifier: 1
-  hearts-stolen: 3
-  invisibility-duration-seconds: 5
-  steal-duration: 300
 
 ghost:
   cooldown: 30
@@ -112,7 +102,6 @@ drops:
   stealer: 0.06
   aqua: 0.12
   hunter: 0.12
-  jack-o-lantern: 0.01
   ghost: 0.08
   vampire: 0.06
   teleporter: 0.04
@@ -135,7 +124,6 @@ passives:
   void-strength-level: 3
   tank-extra-hearts: 4
   hunter-glow-radius: 30
-  jack-o-lantern-glow-radius: 30
   particles-enabled: true
 
 # All enabled powers (delete to disable):
@@ -151,7 +139,6 @@ powers:
     - stealer
     - aqua
     - hunter
-    - jack-o-lantern
     - ghost
     - vampire
     - teleporter
@@ -197,6 +184,7 @@ music:
     cave-ambience: "minecraft:ambient.cave"
 
 halloween:
+  enabled: true      # false = portal, Haunted Forest mobs, boss and events are off. Ranks and progress stay.
   music: "minecraft:music_disc.13"
   music-length-seconds: 178
   curse-seconds: 60
@@ -225,7 +213,8 @@ upgrade:
   power-per-level: 0.10     # +10% range, damage and duration per level
   cooldown-per-level: 0.10  # -10% cooldown per level
 
-# Quest types: KILL_MOBS, KILL_PLAYERS, BREAK_LOGS, MINE_ORES, USE_POWER, COLLECT_CANDY
+# Quest types: KILL_MOBS, KILL_PLAYERS, BREAK_LOGS, MINE_ORES, USE_POWER, COLLECT_CANDY,
+#              KILL_HAUNTED, HAUNTED_MINUTES, DUEL_WIN, BOSS_KILL
 # A finished quest gives its points and starts over by itself.
 quests:
   mob-slayer:
@@ -265,6 +254,31 @@ quests:
     target: 20
     reward: 15
 
+  haunted-hunter:
+    name: "Haunted Hunter"
+    description: "Defeat mobs in the Haunted Forest"
+    type: KILL_HAUNTED
+    target: 30
+    reward: 20
+  haunted-survivor:
+    name: "Forest Survivor"
+    description: "Spend minutes in the Haunted Forest"
+    type: HAUNTED_MINUTES
+    target: 10
+    reward: 15
+  duelist:
+    name: "Duelist"
+    description: "Win friendly duels"
+    type: DUEL_WIN
+    target: 2
+    reward: 15
+  horseman-slayer:
+    name: "Horseman Slayer"
+    description: "Defeat the Headless Horseman"
+    type: BOSS_KILL
+    target: 1
+    reward: 30
+
 # ------------------------------------------------------------------
 # Trick or Treat Night (admin panel button)
 # ------------------------------------------------------------------
@@ -275,3 +289,92 @@ trickortreat:
   cooldown-seconds: 20
   treat-chance: 0.7
   candy-per-coin: 5
+
+# ------------------------------------------------------------------
+# Haunted Forest (Halloween dimension): portal = jack-o-lantern frame lit with flint and steel
+# ------------------------------------------------------------------
+haunted:
+  world-name: haunted_forest
+  coins-per-kill: 5          # Halloween Coins for every mob you defeat there
+  mob-cap: 12                # custom mobs near each player
+  hut-chance: 0.12           # chance that a new chunk gets a trick-or-treat hut
+  chest-chance: 0.20         # chance that a new chunk gets a lone loot chest
+  survive-minutes: 20        # for the Halloween Survivor / King ranks
+
+# ------------------------------------------------------------------
+# Headless Horseman boss: /boss fight Headless Horseman
+# ------------------------------------------------------------------
+horseman:
+  health: 100
+  rage-health: 25            # phase 3 (raging) starts at this health
+  arena-x: 0
+  arena-y: 200
+  arena-z: -4000
+  reward-points: 50
+  reward-coins: 30
+  gravestone-damage: 6
+  pumpkin-damage: 8
+  slash-damage: 6            # phase 3 doubles all of these
+
+# ------------------------------------------------------------------
+# Duels: /duel <player>, then the other player runs /duel accept
+# ------------------------------------------------------------------
+duel:
+  arena-x: 0
+  arena-y: 220
+  arena-z: 4000
+  win-points: 15
+  countdown-seconds: 5
+  max-minutes: 3
+  allow-powers: false        # false = fair fights without powers
+  reward-cooldown-minutes: 10  # no reward for beating the same player again too soon
+  request-seconds: 60
+
+# ------------------------------------------------------------------
+# Ranks. Normal ranks upgrade by total playtime (minutes). Add more entries to continue upward.
+# Halloween ranks are built in and are permanent once unlocked.
+# ------------------------------------------------------------------
+ranks:
+  normal:
+    new-here:
+      name: "I'm New Here"
+      minutes: 0
+    noob:
+      name: "Noob"
+      minutes: 20
+    unbound-pro:
+      name: "Unbound Pro"
+      minutes: 40
+    unbound-veteran:
+      name: "Unbound Veteran"
+      minutes: 60
+    unbound-expert:
+      name: "Unbound Expert"
+      minutes: 120
+    unbound-king:
+      name: "Unbound King"
+      minutes: 160
+  halloween:
+    veteran-kills: 50
+    expert-kills: 150
+
+# ------------------------------------------------------------------
+# Power shop (/shop). prices = Unbound points, coin-prices = Halloween Coins.
+# A power with no price is not for sale.
+# ------------------------------------------------------------------
+shop:
+  prices:
+    flame: 40
+    feather: 40
+    aqua: 50
+    healer: 60
+    hunter: 60
+    shadow: 70
+    stealer: 80
+    thor: 100
+    tank: 100
+    teleporter: 150
+    void: 150
+  coin-prices:
+    ghost: 80
+    vampire: 100

@@ -281,6 +281,64 @@ final class TrickOrTreat implements Listener {
     // Interaction
     // =====================================================================
 
+    // ---- used by the shop, the Haunted Forest and the boss rewards
+
+    ItemStack candyItem() {
+        return candy();
+    }
+
+    ItemStack coinItem() {
+        return coin();
+    }
+
+    private boolean isCoin(ItemStack it) {
+        return it != null && it.getType() == Material.GOLD_NUGGET && it.hasItemMeta()
+                && it.getItemMeta().getPersistentDataContainer().has(coinKey, PersistentDataType.STRING);
+    }
+
+    void giveCoins(Player p, int amount) {
+        while (amount > 0) {
+            int n = Math.min(amount, 64);
+            ItemStack c = coin();
+            c.setAmount(n);
+            plugin.give(p, c);
+            amount -= n;
+        }
+    }
+
+    int countCoins(Player p) {
+        int total = 0;
+        for (ItemStack it : p.getInventory().getContents()) {
+            if (isCoin(it)) total += it.getAmount();
+        }
+        return total;
+    }
+
+    void removeCoins(Player p, int amount) {
+        ItemStack[] contents = p.getInventory().getContents();
+        for (int i = 0; i < contents.length && amount > 0; i++) {
+            ItemStack it = contents[i];
+            if (!isCoin(it)) continue;
+            int take = Math.min(amount, it.getAmount());
+            it.setAmount(it.getAmount() - take);
+            amount -= take;
+        }
+    }
+
+    /** A trick-or-treater. Persistent ones (Haunted Forest huts) stay; event ones vanish on restart. */
+    Villager spawnNpc(World w, Location loc, Vector dir, boolean persistent) {
+        loc.setDirection(dir);
+        return w.spawn(loc, Villager.class, vil -> {
+            vil.setAI(false);
+            vil.setInvulnerable(true);
+            vil.setSilent(true);
+            vil.setPersistent(persistent);
+            vil.customName(Component.text("Right-click: Trick or Treat!", NamedTextColor.GOLD, TextDecoration.BOLD));
+            vil.setCustomNameVisible(true);
+            vil.getPersistentDataContainer().set(npcKey, PersistentDataType.STRING, "1");
+        });
+    }
+
     @EventHandler
     public void onNpc(PlayerInteractEntityEvent e) {
         if (!(e.getRightClicked() instanceof Villager v)) return;

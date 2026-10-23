@@ -14,6 +14,10 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.MemoryConfiguration;
+import org.bukkit.entity.Projectile;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.LivingEntity;
@@ -57,17 +61,6 @@ final class Unbound implements Listener {
         final Map<String, Integer> progress = new HashMap<>();
         final Map<String, Integer> levels = new HashMap<>();
     }
-
-    static final class UpgradeHolder implements InventoryHolder {
-        Inventory inv;
-
-        @Override
-        public Inventory getInventory() {
-            return inv;
-        }
-    }
-
-    private static final int UPGRADE_SLOT = 13;
 
     private final AbilitySMP plugin;
     private final File file;
@@ -159,6 +152,9 @@ final class Unbound implements Listener {
     }
 
     private void minuteTick() {
+        long cutoff = System.currentTimeMillis() - 60_000L;
+        lastAttackAt.values().removeIf(t -> t < cutoff);
+        lastAttacker.keySet().retainAll(lastAttackAt.keySet());
         int need = Math.max(1, plugin.getConfig().getInt("points.play-minutes", 20));
         int reward = plugin.getConfig().getInt("points.play-reward", 10);
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -202,7 +198,7 @@ final class Unbound implements Listener {
         return Math.max(0.3, 1.0 - plugin.getConfig().getDouble("upgrade.cooldown-per-level", 0.10) * (level(p) - 1));
     }
 
-    private int costFor(int currentLevel) {
+    int costFor(int currentLevel) {
         List<Integer> costs = plugin.getConfig().getIntegerList("upgrade.costs");
         if (costs.isEmpty()) return 50 * currentLevel;
         if (currentLevel - 1 < costs.size()) return costs.get(currentLevel - 1);
@@ -213,8 +209,55 @@ final class Unbound implements Listener {
     // Quests (repeatable: they reset by themselves when you finish them)
     // =====================================================================
 
-    private ConfigurationSection quests() {
-        return plugin.getConfig().getConfigurationSection("quests");
+    private ConfigurationSection fallbackQuests;
+
+    /** The quests from config.yml, or built-in defaults if that section is missing or empty. */
+    ConfigurationSection quests() {
+        ConfigurationSection s = plugin.getConfig().getConfigurationSection("quests");
+        if (s != null && !s.getKeys(false).isEmpty()) return s;
+        if (fallbackQuests == null) {
+            MemoryConfiguration m = new MemoryConfiguration();
+            defaultQuest(m, "mob-slayer", "Mob Slayer", "Kill hostile mobs", "KILL_MOBS", 20, 15);
+            defaultQuest(m, "player-hunter", "Player Hunter", "Kill other players", "KILL_PLAYERS", 3, 25);
+            defaultQuest(m, "lumberjack", "Lumberjack", "Chop logs", "BREAK_LOGS", 32, 10);
+            defaultQuest(m, "deep-miner", "Deep Miner", "Mine ores", "MINE_ORES", 24, 20);
+            defaultQuest(m, "power-user", "Power User", "Use your power", "USE_POWER", 15, 10);
+            fallbackQuests = m;
+        }
+        return fallbackQuests;
+    }
+
+    private void defaultQuest(MemoryConfiguration m, String id, String name, String desc, String type, int target, int reward) {
+        ConfigurationSection q = m.createSection(id);
+        q.set("name", name);
+        q.set("description", desc);
+        q.set("type", type);
+        q.set("target", target);
+        q.set("reward", reward);
+    }
+
+    // ---- who killed it: the vanilla killer, or the last player who hit it (wither, fire, powers...)
+
+    private final Map<UUID, UUID> lastAttacker = new HashMap<>();
+    private final Map<UUID, Long> lastAttackAt = new HashMap<>();
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onHit(EntityDamageByEntityEvent e) {
+        Player attacker = null;
+        if (e.getDamager() instanceof Player pl) attacker = pl;
+        else if (e.getDamager() instanceof Projectile pr && pr.getShooter() instanceof Player pl2) attacker = pl2;
+        if (attacker == null) return;
+        lastAttacker.put(e.getEntity().getUniqueId(), attacker.getUniqueId());
+        lastAttackAt.put(e.getEntity().getUniqueId(), System.currentTimeMillis());
+    }
+
+    Player killerOf(LivingEntity dead) {
+        Player k = dead.getKiller();
+        UUID id = lastAttacker.remove(dead.getUniqueId());
+        Long at = lastAttackAt.remove(dead.getUniqueId());
+        if (k != null) return k;
+        if (id == null || at == null || System.currentTimeMillis() - at > 12_000L) return null;
+        return Bukkit.getPlayer(id);
     }
 
     void addProgress(Player p, String type, int amount) {
@@ -244,6 +287,7 @@ final class Unbound implements Listener {
                 p.sendMessage(Component.text("Quest complete: " + q.getString("name", id) + " (+" + reward
                         + " Unbound points). It has reset, so you can do it again!", NamedTextColor.GREEN));
                 p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
+                save(); // quest progress and rewards are saved the moment a quest is finished
             }
         }
     }
@@ -251,7 +295,7 @@ final class Unbound implements Listener {
     @EventHandler
     public void onKill(EntityDeathEvent e) {
         LivingEntity dead = e.getEntity();
-        Player killer = dead.getKiller();
+        Player killer = killerOf(dead);
         if (killer == null || killer.equals(dead)) return;
         if (dead instanceof Player) addProgress(killer, "KILL_PLAYERS", 1);
         else if (dead instanceof Enemy) addProgress(killer, "KILL_MOBS", 1);
@@ -320,111 +364,58 @@ final class Unbound implements Listener {
         Block b = e.getClickedBlock();
         if (b == null || !stations.contains(keyOf(b))) return;
         e.setCancelled(true);
-        openUpgrade(e.getPlayer());
+        plugin.powerMenus.openPowers(e.getPlayer(), true);
     }
 
     // =====================================================================
-    // Upgrade menu
+    // Menu support (the menus themselves live in PowerMenus)
     // =====================================================================
 
-    private ItemStack item(Material m, String name, NamedTextColor color, String... lore) {
-        ItemStack it = new ItemStack(m);
-        ItemMeta meta = it.getItemMeta();
-        meta.displayName(Component.text(name, color).decoration(TextDecoration.ITALIC, false));
-        if (lore.length > 0) {
-            List<Component> l = new ArrayList<>();
-            for (String s : lore) l.add(Component.text(s, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-            meta.lore(l);
-        }
-        it.setItemMeta(meta);
-        return it;
+    int progress(Player p, String questId) {
+        return pd(p).progress.getOrDefault(questId, 0);
     }
 
-    void openUpgrade(Player p) {
-        UpgradeHolder holder = new UpgradeHolder();
-        Inventory inv = Bukkit.createInventory(holder, 27, Component.text("Power Upgrade Station", NamedTextColor.DARK_PURPLE));
-        holder.inv = inv;
-        fillUpgrade(inv, p);
-        p.openInventory(inv);
+    int completed(Player p) {
+        return pd(p).completed;
     }
 
-    private void fillUpgrade(Inventory inv, Player p) {
-        ItemStack filler = item(Material.BLACK_STAINED_GLASS_PANE, " ", NamedTextColor.BLACK);
-        for (int s = 0; s < 27; s++) inv.setItem(s, filler);
-
-        AbilitySMP.Power pw = plugin.powerOf(p);
-        int lvl = level(p, pw);
-        int max = maxLevel();
-        double pct = plugin.getConfig().getDouble("upgrade.power-per-level", 0.10) * 100;
-        double cd = plugin.getConfig().getDouble("upgrade.cooldown-per-level", 0.10) * 100;
-
-        if (pw == null) {
-            inv.setItem(11, item(Material.BARRIER, "You have no power", NamedTextColor.RED));
-            inv.setItem(UPGRADE_SLOT, item(Material.BARRIER, "Nothing to upgrade", NamedTextColor.RED));
-        } else {
-            inv.setItem(11, item(Material.NETHER_STAR, pw.key().toUpperCase().replace('-', ' ') + "  -  Level " + lvl + "/" + max,
-                    NamedTextColor.GOLD,
-                    "Each level: -" + (int) cd + "% cooldown,",
-                    "+" + (int) pct + "% range, damage and duration"));
-            if (lvl >= max) {
-                inv.setItem(UPGRADE_SLOT, item(Material.NETHERITE_INGOT, "Max level reached!", NamedTextColor.GREEN));
-            } else {
-                int cost = costFor(lvl);
-                boolean can = points(p) >= cost;
-                inv.setItem(UPGRADE_SLOT, item(can ? Material.ANVIL : Material.BARRIER,
-                        "Upgrade to level " + (lvl + 1), can ? NamedTextColor.GREEN : NamedTextColor.RED,
-                        "Cost: " + cost + " Unbound points",
-                        "You have: " + points(p),
-                        can ? "Click to upgrade!" : "Not enough points yet"));
-            }
-        }
-        inv.setItem(15, item(Material.EMERALD, "Your Unbound points: " + points(p), NamedTextColor.AQUA,
-                "Earn them from quests (/quests)",
-                "and every " + plugin.getConfig().getInt("points.play-minutes", 20) + " minutes you play."));
+    int playMinutes(Player p) {
+        return pd(p).minutes;
     }
 
-    @EventHandler
-    public void onUpgradeClick(InventoryClickEvent e) {
-        if (!(e.getInventory().getHolder() instanceof UpgradeHolder h)) return;
-        e.setCancelled(true);
-        if (!(e.getWhoClicked() instanceof Player p)) return;
-        if (e.getClickedInventory() == null || e.getClickedInventory() != e.getInventory()) return;
-        if (e.getRawSlot() == UPGRADE_SLOT) {
-            tryUpgrade(p);
-            fillUpgrade(h.inv, p);
-        }
+    boolean spend(Player p, int cost) {
+        PlayerData d = pd(p);
+        if (d.points < cost) return false;
+        d.points -= cost;
+        dirty = true;
+        save();
+        return true;
     }
 
-    @EventHandler
-    public void onUpgradeDrag(InventoryDragEvent e) {
-        if (e.getInventory().getHolder() instanceof UpgradeHolder) e.setCancelled(true);
-    }
-
-    private void tryUpgrade(Player p) {
-        AbilitySMP.Power pw = plugin.powerOf(p);
-        if (pw == null) {
-            p.sendMessage(Component.text("You don't have a power to upgrade.", NamedTextColor.RED));
-            return;
+    /** Buys the next level of a power you own. Returns true if it worked. */
+    boolean upgrade(Player p, AbilitySMP.Power pw) {
+        if (!plugin.profile.owns(p, pw)) {
+            p.sendMessage(Component.text("You don't own that power.", NamedTextColor.RED));
+            return false;
         }
         int lvl = level(p, pw);
         if (lvl >= maxLevel()) {
-            p.sendMessage(Component.text("Your power is already at max level.", NamedTextColor.GRAY));
-            return;
+            p.sendMessage(Component.text("That power is already at max level.", NamedTextColor.GRAY));
+            return false;
         }
         int cost = costFor(lvl);
-        PlayerData d = pd(p);
-        if (d.points < cost) {
+        if (!spend(p, cost)) {
             p.sendMessage(Component.text("Not enough Unbound points: you need " + cost + ".", NamedTextColor.RED));
-            return;
+            return false;
         }
-        d.points -= cost;
-        d.levels.put(pw.name(), lvl + 1);
+        pd(p).levels.put(pw.name(), lvl + 1);
         dirty = true;
         save();
         p.sendMessage(Component.text("Your " + pw.key().replace('-', ' ') + " power is now level " + (lvl + 1) + "!",
                 NamedTextColor.GREEN));
         p.playSound(p.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1.2f);
         p.getWorld().spawnParticle(Particle.END_ROD, p.getLocation().add(0, 1, 0), 40, 0.4, 0.6, 0.4, 0.05);
+        return true;
     }
 
     // =====================================================================
@@ -460,7 +451,7 @@ final class Unbound implements Listener {
             }
             case "upgrade" -> {
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }
-                openUpgrade(p);
+                plugin.powerMenus.openPowers(p, true);
             }
             case "station" -> {
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }
