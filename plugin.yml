@@ -1,5 +1,5 @@
 name: AbilitySMP
-version: 6.0
+version: 7.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
 description: Unbound SMP - powers, Power Activator, quests, upgrades, tutorial, admin panel and Halloween events
@@ -27,7 +27,7 @@ commands:
     description: Get a new Power Activator sword if you lost yours
     usage: /activator
   points:
-    description: Show your Unbound points
+    description: Show your Unbound Coins
     usage: /points
   quests:
     description: Show your quests
@@ -45,7 +45,7 @@ commands:
     description: Open the power menu to equip your powers
     usage: /powers
   shop:
-    description: Buy new powers
+    description: Buy powers (the stock restocks every few minutes)
     usage: /shop
   locker:
     description: Your permanent collection - ranks, trails and more
@@ -56,9 +56,13 @@ commands:
   boss:
     description: Fight a boss
     usage: /boss fight Headless Horseman
-  halloween:
-    description: Halloween dimension tools (admin)
-    usage: /halloween <enter|leave|status>
+  halloweenshop:
+    description: Spend Halloween Coins (limited-time items inside)
+    usage: /halloweenshop
+    aliases: [hshop]
+  shopkeeper:
+    description: Give shopkeeper spawn eggs or remove a shopkeeper (admin)
+    usage: /shopkeeper egg <power|halloween> [player] [amount]
     permission: abilitysmp.admin
 permissions:
   abilitysmp.admin:

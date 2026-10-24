@@ -1,4 +1,4 @@
-config-version: 6
+config-version: 7
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -200,7 +200,7 @@ activator:
   required: true            # true = only the Power Activator sword uses powers, false = any sword
 
 # ------------------------------------------------------------------
-# Unbound points: earned from quests and playtime, spent at upgrade stations
+# Unbound Coins: earned from quests and playtime, spent at upgrade stations
 # (an admin sets a station with /station add while looking at a block)
 # ------------------------------------------------------------------
 points:
@@ -214,7 +214,7 @@ upgrade:
   cooldown-per-level: 0.10  # -10% cooldown per level
 
 # Quest types: KILL_MOBS, KILL_PLAYERS, BREAK_LOGS, MINE_ORES, USE_POWER, COLLECT_CANDY,
-#              KILL_HAUNTED, HAUNTED_MINUTES, DUEL_WIN, BOSS_KILL
+#              DUEL_WIN, BOSS_KILL
 # A finished quest gives its points and starts over by itself.
 quests:
   mob-slayer:
@@ -254,18 +254,6 @@ quests:
     target: 20
     reward: 15
 
-  haunted-hunter:
-    name: "Haunted Hunter"
-    description: "Defeat mobs in the Haunted Forest"
-    type: KILL_HAUNTED
-    target: 30
-    reward: 20
-  haunted-survivor:
-    name: "Forest Survivor"
-    description: "Spend minutes in the Haunted Forest"
-    type: HAUNTED_MINUTES
-    target: 10
-    reward: 15
   duelist:
     name: "Duelist"
     description: "Win friendly duels"
@@ -289,17 +277,6 @@ trickortreat:
   cooldown-seconds: 20
   treat-chance: 0.7
   candy-per-coin: 5
-
-# ------------------------------------------------------------------
-# Haunted Forest (Halloween dimension): portal = jack-o-lantern frame lit with flint and steel
-# ------------------------------------------------------------------
-haunted:
-  world-name: haunted_forest
-  coins-per-kill: 5          # Halloween Coins for every mob you defeat there
-  mob-cap: 12                # custom mobs near each player
-  hut-chance: 0.12           # chance that a new chunk gets a trick-or-treat hut
-  chest-chance: 0.20         # chance that a new chunk gets a lone loot chest
-  survive-minutes: 20        # for the Halloween Survivor / King ranks
 
 # ------------------------------------------------------------------
 # Headless Horseman boss: /boss fight Headless Horseman
@@ -359,10 +336,13 @@ ranks:
     expert-kills: 150
 
 # ------------------------------------------------------------------
-# Power shop (/shop). prices = Unbound points, coin-prices = Halloween Coins.
-# A power with no price is not for sale.
+# Power Shop (/shop). Restocks on a timer. Every power costs Unbound Coins.
+# A power with no price here is never sold. Admins can stock and discount powers from /panel.
 # ------------------------------------------------------------------
 shop:
+  restock-minutes: 5
+  items-per-restock: 5       # random powers on sale each restock
+  stock-per-item: 3          # how many players can buy each power before it sells out
   prices:
     flame: 40
     feather: 40
@@ -371,10 +351,80 @@ shop:
     hunter: 60
     shadow: 70
     stealer: 80
+    ghost: 80
+    vampire: 100
     thor: 100
     tank: 100
     teleporter: 150
     void: 150
-  coin-prices:
-    ghost: 80
-    vampire: 100
+
+# ------------------------------------------------------------------
+# Halloween Shop (/halloweenshop). Everything here costs Halloween Coins.
+# reward: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT, or unlock:category:id (a Locker unlock)
+# limit: how many times one player can buy it (0 = unlimited)
+# ------------------------------------------------------------------
+halloween-shop:
+  timezone: "America/Toronto"
+  items:
+    golden-apples:
+      name: "4 Golden Apples"
+      icon: GOLDEN_APPLE
+      reward: "item:GOLDEN_APPLE:4"
+      price: 6
+    ender-pearls:
+      name: "4 Ender Pearls"
+      icon: ENDER_PEARL
+      reward: "item:ENDER_PEARL:4"
+      price: 8
+    xp-bottles:
+      name: "16 Bottles o' Enchanting"
+      icon: EXPERIENCE_BOTTLE
+      reward: "item:EXPERIENCE_BOTTLE:16"
+      price: 5
+    diamonds:
+      name: "3 Diamonds"
+      icon: DIAMOND
+      reward: "item:DIAMOND:3"
+      price: 12
+    netherite-scrap:
+      name: "2 Netherite Scrap"
+      icon: NETHERITE_SCRAP
+      reward: "item:NETHERITE_SCRAP:2"
+      price: 35
+    totem:
+      name: "Totem of Undying"
+      icon: TOTEM_OF_UNDYING
+      reward: "item:TOTEM_OF_UNDYING:1"
+      price: 30
+    reroll:
+      name: "Reroll Token"
+      icon: AMETHYST_SHARD
+      reward: "reroll:1"
+      price: 40
+  limited:                    # only sold until this date and time, then they disappear
+    until: "2026-11-02 00:00"
+    items:
+      ghost-power:
+        name: "Ghost Power"
+        icon: NETHER_STAR
+        reward: "power:GHOST"
+        price: 60
+        limit: 1
+      vampire-power:
+        name: "Vampire Power"
+        icon: NETHER_STAR
+        reward: "power:VAMPIRE"
+        price: 80
+        limit: 1
+      soul-trail:
+        name: "Soul Trail (cosmetic)"
+        icon: SOUL_LANTERN
+        reward: "unlock:trail:soul"
+        price: 25
+        limit: 1
+      spooky-xp:
+        name: "32 Spooky XP Bottles"
+        icon: EXPERIENCE_BOTTLE
+        reward: "item:EXPERIENCE_BOTTLE:32"
+        price: 15
+        limit: 3

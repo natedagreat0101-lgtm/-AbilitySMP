@@ -113,9 +113,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Locker locker;
     Menus menus;
     PowerMenus powerMenus;
-    Haunted haunted;
     Horseman horseman;
     Duel duel;
+    Shops shops;
     private NamespacedKey activatorKey;
     private final Set<UUID> needsActivator = new HashSet<>();
 
@@ -142,9 +142,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         locker = new Locker(this);
         menus = new Menus();
         powerMenus = new PowerMenus(this);
-        haunted = new Haunted(this);
         horseman = new Horseman(this);
         duel = new Duel(this);
+        shops = new Shops(this);
         tutorial = new Tutorial(this);
         admin = new Admin(this);
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -155,7 +155,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(ranks, this);
         Bukkit.getPluginManager().registerEvents(locker, this);
         Bukkit.getPluginManager().registerEvents(menus, this);
-        Bukkit.getPluginManager().registerEvents(haunted, this);
+        Bukkit.getPluginManager().registerEvents(shops, this);
         Bukkit.getPluginManager().registerEvents(horseman, this);
         Bukkit.getPluginManager().registerEvents(duel, this);
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
@@ -167,7 +167,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (admin != null) admin.shutdown();
         if (horseman != null) horseman.shutdown();
         if (duel != null) duel.shutdown();
-        if (haunted != null) haunted.shutdown();
+        if (shops != null) shops.save();
         if (tot != null) tot.stop(false);
         if (unbound != null) unbound.save();
         if (profile != null) profile.save();
@@ -204,6 +204,13 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             cfg.set("drops.jack-o-lantern", null);
             cfg.set("passives.jack-o-lantern-glow-radius", null);
             cfg.set("config-version", 6);
+        }
+        if (v < 7) {
+            cfg.set("haunted", null);                 // the Haunted Forest was removed
+            cfg.set("shop.coin-prices", null);        // powers now cost Unbound Coins
+            cfg.set("quests.haunted-hunter", null);
+            cfg.set("quests.haunted-survivor", null);
+            cfg.set("config-version", 7);
         }
         cfg.options().copyDefaults(true);
         saveConfig();
@@ -1136,6 +1143,13 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     void giveReward(Player p, String reward) {
         String[] parts = reward.split(":");
         if (parts.length < 2) return;
+        if (parts[0].equalsIgnoreCase("unlock")) { // unlock:category:id, e.g. unlock:trail:soul
+            String lockerKey = reward.substring(reward.indexOf(':') + 1);
+            if (profile.unlock(p.getUniqueId(), lockerKey)) {
+                p.sendMessage(Component.text("Unlocked in your /locker!", NamedTextColor.GOLD));
+            }
+            return;
+        }
         if (parts[0].equalsIgnoreCase("reroll")) {
             ItemStack token = rerollItem();
             token.setAmount(Math.max(1, Math.min(64, parseInt(parts[1], 1))));
@@ -1321,8 +1335,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             horseman.command(sender, args);
             return true;
         }
-        if (name.equals("halloween")) {
-            haunted.command(sender, args);
+        if (name.equals("halloweenshop")) {
+            if (sender instanceof Player hp) shops.openHalloweenShop(hp);
+            return true;
+        }
+        if (name.equals("shopkeeper")) {
+            shops.keeperCommand(sender, args);
             return true;
         }
         if (name.equals("points") || name.equals("station") || name.equals("upgrade")) {
@@ -1372,6 +1390,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 t.sendMessage(Component.text("Your power was removed.", NamedTextColor.GRAY));
                 sender.sendMessage("Removed power from " + t.getName() + ".");
             }
+            case "stock" -> {
+                Power sp = args.length > 1 ? Power.parse(args[1]) : null;
+                if (sp == null) { sender.sendMessage("Usage: /power stock <power> [discount percent]"); return true; }
+                shops.stockPower(sender, sp, args.length > 2 ? parseInt(args[2], 0) : 0);
+            }
             case "token" -> {
                 if (args.length < 2) { sender.sendMessage(usage); return true; }
                 Player t = Bukkit.getPlayerExact(args[1]);
@@ -1384,7 +1407,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 Player t = Bukkit.getPlayerExact(args[1]);
                 if (t == null) { sender.sendMessage("Player not online."); return true; }
                 unbound.addPoints(t, parseInt(args[2], 0), "admin");
-                sender.sendMessage("Gave Unbound points to " + t.getName() + ".");
+                sender.sendMessage("Gave Unbound Coins to " + t.getName() + ".");
             }
             default -> sender.sendMessage(usage);
         }

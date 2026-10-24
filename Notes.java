@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "6.0";
+    static final String VERSION = "7.0";
 
     private Notes() {
     }
@@ -28,33 +28,29 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v6.0 (Halloween Part 2) =====");
-        l(s, "Haunted Forest (Halloween dimension)");
-        how(s, "build a portal frame out of jack-o'-lanterns (at least 2 wide, 3 tall inside) and light it with "
-                + "flint and steel. Every mob you defeat there drops 5 Halloween Coins. Look for trick-or-treat huts "
-                + "and loot chests.");
-        l(s, "Duels: /duel <player>");
-        how(s, "the other player runs /duel accept. You fight in an arena, nobody dies and nobody loses items. "
-                + "The winner earns Unbound points.");
-        l(s, "Boss: /boss fight Headless Horseman");
-        how(s, "3 phases: gravestones, then slashes and pumpkin heads, then raging with fireballs, zombies and double "
-                + "damage. Win for 50 Unbound points and 30 Halloween Coins.");
-        l(s, "Ranks");
-        how(s, "your rank rises with playtime and Halloween ranks come from the Haunted Forest. They are permanent. "
-                + "Pick which one to show in /locker.");
-        l(s, "/locker");
-        how(s, "your permanent collection: equip ranks and trails, and see how to unlock the rest.");
-        l(s, "Menus: /powers, /shop, /quests");
-        how(s, "scrollable menus. /powers: left-click a power to equip it. /shop: buy powers with Unbound points, or "
-                + "Halloween Coins for Ghost and Vampire. /quests: your quest progress.");
-        l(s, "Fixes");
-        how(s, "powers no longer swap back by themselves, and quest kills now count even from wither, fire and powers.");
-        l(s, "Jack O' Lantern power removed");
-        how(s, "only Ghost and Vampire are Halloween powers now. Anyone who had it now has Ghost.");
+        h(s, "===== Unbound SMP Patch Notes: v7.0 =====");
+        l(s, "Power Shop restocks every 5 minutes: /shop");
+        how(s, "a new selection of powers appears, paid for with Unbound Coins. Each power has limited stock for the "
+                + "whole server, so be quick. Admins can pin a power and put it on sale, and everyone sees it at the "
+                + "top of the screen.");
+        l(s, "Halloween Shop: /halloweenshop");
+        how(s, "spend Halloween Coins on items. Limited-time Halloween items, like the Ghost and Vampire powers and "
+                + "the Soul Trail, are only sold until the date shown in the shop.");
+        l(s, "Shopkeepers");
+        how(s, "right-click a Shopkeeper villager to open the Power Shop, or a Halloween Shopkeeper to open the "
+                + "Halloween Shop. Admins get the spawn eggs with /give.");
+        l(s, "Haunted Forest removed");
+        how(s, "the dimension is gone. Ranks and progress you already earned are kept forever. Halloween Coins now "
+                + "come from Trick or Treat Night and the Headless Horseman.");
+        l(s, "Unbound Coins");
+        how(s, "the currency from quests and playtime is now called Unbound Coins everywhere.");
+        l(s, "Still here: /duel, /boss fight Headless Horseman, /locker, /powers, /quests");
 
         if (all) {
+            h(s, "===== v6.0 =====");
+            l(s, "Duels, the Headless Horseman boss, permanent ranks, /locker, scrollable menus, the power menu and quest menu.");
             h(s, "===== v5.0 =====");
-            l(s, "Power Activator sword, Speed starter power, Unbound points, quests, upgrade stations, Void, attached Vampire, Trick or Treat Night.");
+            l(s, "Power Activator sword, Speed starter power, Unbound Coins, quests, upgrade stations, Void, attached Vampire, Trick or Treat Night.");
             h(s, "===== v4.0 =====");
             l(s, "Mobs are enemies: powers and glow effects hit hostile mobs too.");
             l(s, "Reroll Token: 8 diamonds around a gold block. Right-click to roll a new power.");

@@ -96,7 +96,7 @@ final class Locker implements Listener {
             public Material icon() { return Material.BLAZE_POWDER; }
             public List<Entry> entries() {
                 List<Entry> out = new ArrayList<>();
-                out.add(rankTrail("soul", "Soul Trail", Material.SOUL_LANTERN, "hw-starter", "Halloween Starter"));
+                out.add(rankTrail("soul", "Soul Trail", Material.SOUL_LANTERN, "hw-power-king", "Halloween Power King"));
                 out.add(rankTrail("flame", "Flame Trail", Material.BLAZE_POWDER, "unbound-pro", "Unbound Pro"));
                 out.add(rankTrail("end-rod", "Star Trail", Material.END_ROD, "unbound-expert", "Unbound Expert"));
                 out.add(rankTrail("heart", "Heart Trail", Material.RED_DYE, "unbound-king", "Unbound King"));

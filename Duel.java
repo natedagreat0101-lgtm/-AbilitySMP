@@ -32,7 +32,7 @@ import java.util.UUID;
 
 /**
  * /duel <player>: a friendly one-on-one fight in an arena. Nobody dies and nobody loses items:
- * a killing blow ends the duel instead. The winner earns Unbound points, the loser gets nothing.
+ * a killing blow ends the duel instead. The winner earns Unbound Coins, the loser gets nothing.
  */
 final class Duel implements Listener {
 
@@ -269,7 +269,7 @@ final class Duel implements Listener {
         plugin.profile.of(winner).duelWins++;
         plugin.profile.touch();
         plugin.unbound.addProgress(winner, "DUEL_WIN", 1);
-        winner.sendMessage(Component.text("+" + points + " Unbound points!", NamedTextColor.AQUA));
+        winner.sendMessage(Component.text("+" + points + " Unbound Coins!", NamedTextColor.AQUA));
     }
 
     // ------------------------------------------------------------ events

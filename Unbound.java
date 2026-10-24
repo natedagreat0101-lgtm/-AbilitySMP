@@ -49,7 +49,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Unbound points: earned from quests (they reset by themselves when you finish them) and from playtime.
+ * Unbound Coins: earned from quests (they reset by themselves when you finish them) and from playtime.
  * Spent at an upgrade station to level up your power (shorter cooldown, stronger range and damage).
  */
 final class Unbound implements Listener {
@@ -147,7 +147,7 @@ final class Unbound implements Listener {
         d.points = Math.max(0, d.points + amount);
         dirty = true;
         if (amount > 0) {
-            p.sendActionBar(Component.text("+" + amount + " Unbound points (" + reason + ")", NamedTextColor.AQUA));
+            p.sendActionBar(Component.text("+" + amount + " Unbound Coins (" + reason + ")", NamedTextColor.AQUA));
         }
     }
 
@@ -165,7 +165,7 @@ final class Unbound implements Listener {
                 d.minutes = 0;
                 addPoints(p, reward, "playtime");
                 p.sendMessage(Component.text("You played for " + need + " minutes: +" + reward
-                        + " Unbound points!", NamedTextColor.AQUA));
+                        + " Unbound Coins!", NamedTextColor.AQUA));
                 p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.4f);
             }
         }
@@ -282,10 +282,10 @@ final class Unbound implements Listener {
                 addPoints(p, reward, "quest");
                 p.showTitle(Title.title(
                         Component.text("Quest complete!", NamedTextColor.GREEN),
-                        Component.text(q.getString("name", id) + "  +" + reward + " Unbound points", NamedTextColor.AQUA),
+                        Component.text(q.getString("name", id) + "  +" + reward + " Unbound Coins", NamedTextColor.AQUA),
                         Title.Times.times(Duration.ofMillis(200), Duration.ofSeconds(3), Duration.ofMillis(500))));
                 p.sendMessage(Component.text("Quest complete: " + q.getString("name", id) + " (+" + reward
-                        + " Unbound points). It has reset, so you can do it again!", NamedTextColor.GREEN));
+                        + " Unbound Coins). It has reset, so you can do it again!", NamedTextColor.GREEN));
                 p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
                 save(); // quest progress and rewards are saved the moment a quest is finished
             }
@@ -405,7 +405,7 @@ final class Unbound implements Listener {
         }
         int cost = costFor(lvl);
         if (!spend(p, cost)) {
-            p.sendMessage(Component.text("Not enough Unbound points: you need " + cost + ".", NamedTextColor.RED));
+            p.sendMessage(Component.text("Not enough Unbound Coins: you need " + cost + ".", NamedTextColor.RED));
             return false;
         }
         pd(p).levels.put(pw.name(), lvl + 1);
@@ -426,7 +426,7 @@ final class Unbound implements Listener {
         switch (name) {
             case "points" -> {
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }
-                p.sendMessage(Component.text("You have " + points(p) + " Unbound points. Your power is level "
+                p.sendMessage(Component.text("You have " + points(p) + " Unbound Coins. Your power is level "
                         + level(p) + "/" + maxLevel() + ".", NamedTextColor.AQUA));
             }
             case "quests" -> {

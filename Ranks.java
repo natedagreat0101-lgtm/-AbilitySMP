@@ -92,22 +92,21 @@ final class Ranks implements Listener {
 
         final int vet = plugin.getConfig().getInt("ranks.halloween.veteran-kills", 50);
         final int exp = plugin.getConfig().getInt("ranks.halloween.expert-kills", 150);
-        final int surviveSeconds = plugin.getConfig().getInt("haunted.survive-minutes", 20) * 60;
+        final int surviveSeconds = 20 * 60;
 
-        ranks.add(new Rank("hw-starter", "Halloween Starter", true, "Enter the Haunted Forest",
+        ranks.add(new Rank("hw-starter", "Halloween Starter", true, "Retired: needed the Haunted Forest (ranks you already earned stay)",
                 NamedTextColor.GOLD, p -> plugin.profile.of(p).hauntedVisits >= 1));
-        ranks.add(new Rank("hw-veteran", "Halloween Veteran", true, "Kill " + vet + " mobs in the Haunted Forest",
+        ranks.add(new Rank("hw-veteran", "Halloween Veteran", true, "Retired: needed the Haunted Forest (ranks you already earned stay)",
                 NamedTextColor.RED, p -> plugin.profile.of(p).hauntedKills >= vet));
-        ranks.add(new Rank("hw-expert", "Halloween Expert", true, "Kill " + exp + " mobs in the Haunted Forest",
+        ranks.add(new Rank("hw-expert", "Halloween Expert", true, "Retired: needed the Haunted Forest (ranks you already earned stay)",
                 NamedTextColor.DARK_RED, p -> plugin.profile.of(p).hauntedKills >= exp));
         ranks.add(new Rank("hw-power-king", "Halloween Power King", true, "Obtain every Halloween power (Ghost and Vampire)",
                 NamedTextColor.LIGHT_PURPLE, this::hasAllHalloweenPowers));
         ranks.add(new Rank("hw-survivor", "Halloween Survivor", true,
-                "Survive " + (surviveSeconds / 60) + " minutes in the Haunted Forest",
+                "Retired: needed the Haunted Forest (ranks you already earned stay)",
                 NamedTextColor.GREEN, p -> plugin.profile.of(p).survivalSeconds >= surviveSeconds));
         ranks.add(new Rank("hw-king", "Halloween King", true,
-                "Defeat the Headless Horseman, survive " + (surviveSeconds / 60)
-                        + " minutes in the Haunted Forest and obtain every Halloween power",
+                "Retired: needed the Haunted Forest (ranks you already earned stay)",
                 NamedTextColor.YELLOW, p -> plugin.profile.of(p).horsemanDefeated
                 && plugin.profile.isUnlocked(p.getUniqueId(), "rank:hw-survivor")
                 && hasAllHalloweenPowers(p)));

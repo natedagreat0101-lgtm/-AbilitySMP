@@ -169,6 +169,10 @@ final class Admin implements Listener {
         inv.setItem(41, item(Material.CARVED_PUMPKIN, "Full Halloween Night", NamedTextColor.GOLD,
                 "Orange sky + lanterns + music + curse"));
         inv.setItem(43, item(Material.REDSTONE_BLOCK, "Stop all events", NamedTextColor.RED));
+        inv.setItem(28, item(Material.EMERALD_BLOCK, "Power Shop manager", NamedTextColor.GREEN,
+                "Stock a power and discount it.", "Everyone sees it at the top of the screen."));
+        inv.setItem(30, item(Material.CLOCK, "Restock the power shop now", NamedTextColor.AQUA,
+                "It also restocks by itself every few minutes."));
     }
 
     private void openMusic(Player p) {
@@ -240,6 +244,11 @@ final class Admin implements Listener {
             case 40 -> toggleTrickOrTreat();
             case 41 -> fullHalloween();
             case 43 -> stopAllEvents();
+            case 28 -> {
+                plugin.shops.openStockManager(p);
+                return false;
+            }
+            case 30 -> plugin.shops.restock(true);
             default -> {
                 return false;
             }

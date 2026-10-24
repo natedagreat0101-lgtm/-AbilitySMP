@@ -37,6 +37,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -179,7 +180,7 @@ final class Horseman implements Listener {
     // =====================================================================
 
     private void start(Player p) {
-        if (!plugin.haunted.enabled()) {
+        if (!plugin.getConfig().getBoolean("halloween.enabled", true)) {
             p.sendMessage(Component.text("The Halloween content is closed right now.", NamedTextColor.GRAY));
             return;
         }
@@ -228,9 +229,9 @@ final class Horseman implements Listener {
             boss.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
             boss.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, PotionEffect.INFINITE_DURATION, 0, false, false, false));
             EntityEquipment eq = boss.getEquipment();
-            eq.setChestplate(Haunted.leather(Material.LEATHER_CHESTPLATE, Color.fromRGB(45, 15, 55)));
-            eq.setLeggings(Haunted.leather(Material.LEATHER_LEGGINGS, Color.fromRGB(20, 12, 25)));
-            eq.setBoots(Haunted.leather(Material.LEATHER_BOOTS, Color.fromRGB(35, 20, 10)));
+            eq.setChestplate(leather(Material.LEATHER_CHESTPLATE, Color.fromRGB(45, 15, 55)));
+            eq.setLeggings(leather(Material.LEATHER_LEGGINGS, Color.fromRGB(20, 12, 25)));
+            eq.setBoots(leather(Material.LEATHER_BOOTS, Color.fromRGB(35, 20, 10)));
             ItemStack axe = new ItemStack(Material.NETHERITE_AXE);
             ItemMeta am = axe.getItemMeta();
             am.setEnchantmentGlintOverride(true);
@@ -370,10 +371,37 @@ final class Horseman implements Listener {
     }
 
     private void spawnMinion(Fight f, Location loc, String type) {
-        LivingEntity m = plugin.haunted.spawnCustom(loc, type);
+        LivingEntity m = minion(loc, type);
         m.setRemoveWhenFarAway(false);
         if (m instanceof Mob mob) mob.setTarget(f.player);
         f.minions.add(m);
+    }
+
+    private static ItemStack leather(Material m, Color c) {
+        ItemStack it = new ItemStack(m);
+        LeatherArmorMeta lm = (LeatherArmorMeta) it.getItemMeta();
+        lm.setColor(c);
+        it.setItemMeta(lm);
+        return it;
+    }
+
+    /** The zombies and Jack O' Lantern mobs summoned in phase 3. */
+    private LivingEntity minion(Location loc, String type) {
+        Zombie z = loc.getWorld().spawn(loc, Zombie.class);
+        boolean jack = type.equals("jack");
+        z.customName(Component.text(jack ? "Jack O' Lantern" : "Rotten Zombie", NamedTextColor.GOLD));
+        z.setCustomNameVisible(true);
+        z.setCanPickupItems(false);
+        EntityEquipment eq = z.getEquipment();
+        eq.setChestplate(leather(Material.LEATHER_CHESTPLATE, Color.ORANGE));
+        eq.setLeggings(leather(Material.LEATHER_LEGGINGS, Color.ORANGE));
+        eq.setBoots(leather(Material.LEATHER_BOOTS, Color.ORANGE));
+        if (jack) eq.setHelmet(new ItemStack(Material.JACK_O_LANTERN));
+        eq.setHelmetDropChance(0f);
+        eq.setChestplateDropChance(0f);
+        eq.setLeggingsDropChance(0f);
+        eq.setBootsDropChance(0f);
+        return z;
     }
 
     // ---- attacks
@@ -506,7 +534,7 @@ final class Horseman implements Listener {
         plugin.unbound.addProgress(p, "BOSS_KILL", 1);
         plugin.ranks.evaluate(p);
         p.showTitle(Title.title(Component.text("VICTORY!", NamedTextColor.GREEN),
-                Component.text("+" + points + " Unbound points, +" + coins + " Halloween Coins", NamedTextColor.YELLOW),
+                Component.text("+" + points + " Unbound Coins, +" + coins + " Halloween Coins", NamedTextColor.YELLOW),
                 Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(5), Duration.ofMillis(800))));
         Bukkit.broadcast(Component.text(p.getName() + " defeated the Headless Horseman!", NamedTextColor.GOLD));
         end(f, true, false);
