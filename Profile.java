@@ -29,6 +29,7 @@ final class Profile {
         int survivalSeconds;
         int duelWins;
         int bossKills;
+        int halloweenCoins;
         boolean horsemanDefeated;
         final Set<String> unlocked = new LinkedHashSet<>();
         final Set<String> owned = new LinkedHashSet<>();
@@ -117,6 +118,7 @@ final class Profile {
                 d.hauntedKills = sec.getInt(b + "halloween.kills");
                 d.survivalSeconds = sec.getInt(b + "halloween.survival-seconds");
                 d.bossKills = sec.getInt(b + "halloween.boss-kills");
+                d.halloweenCoins = sec.getInt(b + "halloween.coins");
                 d.horsemanDefeated = sec.getBoolean(b + "halloween.horseman-defeated");
                 d.unlocked.addAll(sec.getStringList(b + "unlocked"));
                 d.owned.addAll(sec.getStringList(b + "owned"));
@@ -139,6 +141,7 @@ final class Profile {
             yaml.set(b + "halloween.kills", d.hauntedKills);
             yaml.set(b + "halloween.survival-seconds", d.survivalSeconds);
             yaml.set(b + "halloween.boss-kills", d.bossKills);
+            yaml.set(b + "halloween.coins", d.halloweenCoins);
             yaml.set(b + "halloween.horseman-defeated", d.horsemanDefeated);
             yaml.set(b + "unlocked", new ArrayList<>(d.unlocked));
             yaml.set(b + "owned", new ArrayList<>(d.owned));

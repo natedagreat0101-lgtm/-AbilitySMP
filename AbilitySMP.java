@@ -571,6 +571,19 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.addRecipe(r);
     }
 
+    /** A random enabled power the player does not own yet, or null if they own them all. */
+    Power randomUnowned(Player p) {
+        return roll(p.getUniqueId(), null);
+    }
+
+    /** Unlocks a power for good and equips it (used when you buy a random power). */
+    void unlockAndEquip(Player p, Power pw) {
+        setPower(p, pw);
+        p.sendMessage(Component.text("You got the " + pretty(pw.key()) + " power!", colorFor(pw)));
+        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 0.7f);
+        puff(p.getLocation().add(0, 1, 0), Particle.END_ROD, 30);
+    }
+
     private void useRerollToken(Player p, ItemStack hand) {
         Power old = powerOf(p);
         Power next = roll(p.getUniqueId(), old);
@@ -1314,14 +1327,13 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
             return true;
         }
-        if (name.equals("powers") || name.equals("shop") || name.equals("quests") || name.equals("locker")) {
+        if (name.equals("powers") || name.equals("quests") || name.equals("locker")) {
             if (!(sender instanceof Player mp)) {
                 sender.sendMessage("Players only.");
                 return true;
             }
             switch (name) {
                 case "powers" -> powerMenus.openPowers(mp, false);
-                case "shop" -> powerMenus.openShop(mp);
                 case "quests" -> powerMenus.openQuests(mp);
                 default -> locker.open(mp);
             }
@@ -1348,10 +1360,18 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             return true;
         }
 
-        String usage = "Usage: /power give <power> <player> | item <power> <player> | take <player> | list | "
-                + "token <player> | points <player> <amount> | set <power> <player> | reload";
-        if (args.length == 0) {
-            sender.sendMessage(usage);
+        String usage = "Usage: /power shop | give <power> <player> | item <power> <player> | take <player> | list | "
+                + "token <player> | points <player> <amount> | coins <player> <amount> | stock <power> [percent] | "
+                + "set <power> <player> | reload";
+        boolean admin0 = sender.hasPermission("abilitysmp.admin");
+        if (args.length == 0 || args[0].equalsIgnoreCase("shop")) {
+            // /power shop is for everyone: buy a reroll, a random power or the stocked power
+            if (sender instanceof Player sp0) shops.openPowerShop(sp0);
+            else sender.sendMessage(usage);
+            return true;
+        }
+        if (!admin0) {
+            sender.sendMessage(Component.text("Use /power shop to get a reroll or a power.", NamedTextColor.GRAY));
             return true;
         }
 
@@ -1389,6 +1409,13 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 setPower(t, null);
                 t.sendMessage(Component.text("Your power was removed.", NamedTextColor.GRAY));
                 sender.sendMessage("Removed power from " + t.getName() + ".");
+            }
+            case "coins" -> {
+                if (args.length < 3) { sender.sendMessage(usage); return true; }
+                Player ct = Bukkit.getPlayerExact(args[1]);
+                if (ct == null) { sender.sendMessage("Player not online."); return true; }
+                tot.giveCoins(ct, parseInt(args[2], 0));
+                sender.sendMessage("Gave Halloween Coins to " + ct.getName() + ".");
             }
             case "stock" -> {
                 Power sp = args.length > 1 ? Power.parse(args[1]) : null;

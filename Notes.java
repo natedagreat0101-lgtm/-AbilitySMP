@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "7.0";
+    static final String VERSION = "8.0";
 
     private Notes() {
     }
@@ -28,25 +28,23 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v7.0 =====");
-        l(s, "Power Shop restocks every 5 minutes: /shop");
-        how(s, "a new selection of powers appears, paid for with Unbound Coins. Each power has limited stock for the "
-                + "whole server, so be quick. Admins can pin a power and put it on sale, and everyone sees it at the "
-                + "top of the screen.");
-        l(s, "Halloween Shop: /halloweenshop");
-        how(s, "spend Halloween Coins on items. Limited-time Halloween items, like the Ghost and Vampire powers and "
-                + "the Soul Trail, are only sold until the date shown in the shop.");
-        l(s, "Shopkeepers");
-        how(s, "right-click a Shopkeeper villager to open the Power Shop, or a Halloween Shopkeeper to open the "
-                + "Halloween Shop. Admins get the spawn eggs with /give.");
-        l(s, "Haunted Forest removed");
-        how(s, "the dimension is gone. Ranks and progress you already earned are kept forever. Halloween Coins now "
-                + "come from Trick or Treat Night and the Headless Horseman.");
-        l(s, "Unbound Coins");
-        how(s, "the currency from quests and playtime is now called Unbound Coins everywhere.");
-        l(s, "Still here: /duel, /boss fight Headless Horseman, /locker, /powers, /quests");
+        h(s, "===== Unbound SMP Patch Notes: v8.0 =====");
+        l(s, "New way to get powers: /power shop");
+        how(s, "buy a Reroll Token or a random power with Unbound Coins. Every 5 minutes ONE power is stocked; the "
+                + "better the power, the more it costs. Rerolls are how you get new powers.");
+        l(s, "Halloween Coins are now a balance, not an item");
+        how(s, "check them with /points. Earn them from Trick or Treat Night and the Headless Horseman.");
+        l(s, "/halloweenshop");
+        how(s, "spend Halloween Coins. The Ghost and Vampire powers are rare there: each restock has only a small "
+                + "chance to stock one. Limited-time items end on the date shown in the shop.");
+        l(s, "Admins");
+        how(s, "stock and discount any power from /panel or /power stock <power> [percent]. Everyone sees it at the top "
+                + "of the screen. /power coins <player> <amount> gives Halloween Coins.");
+        l(s, "The old /shop is gone. Shopkeeper villagers open /power shop and /halloweenshop.");
 
         if (all) {
+            h(s, "===== v7.0 =====");
+            l(s, "Haunted Forest removed, Unbound Coins, shopkeeper eggs.");
             h(s, "===== v6.0 =====");
             l(s, "Duels, the Headless Horseman boss, permanent ranks, /locker, scrollable menus, the power menu and quest menu.");
             h(s, "===== v5.0 =====");

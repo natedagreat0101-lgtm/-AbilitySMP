@@ -1,4 +1,4 @@
-config-version: 7
+config-version: 8
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -336,14 +336,14 @@ ranks:
     expert-kills: 150
 
 # ------------------------------------------------------------------
-# Power Shop (/shop). Restocks on a timer. Every power costs Unbound Coins.
-# A power with no price here is never sold. Admins can stock and discount powers from /panel.
+# /power shop. Costs Unbound Coins. Every restock ONE power is stocked; the better the power, the
+# higher its price and the rarer it is. Admins can stock and discount powers from /panel.
 # ------------------------------------------------------------------
 shop:
   restock-minutes: 5
-  items-per-restock: 5       # random powers on sale each restock
-  stock-per-item: 3          # how many players can buy each power before it sells out
-  prices:
+  reroll-price: 60           # buys a Reroll Token (right-click it for a random power you don't own)
+  random-power-price: 90     # buys a random power you don't own right away
+  prices:                    # price of the stocked power
     flame: 40
     feather: 40
     aqua: 50
@@ -351,20 +351,23 @@ shop:
     hunter: 60
     shadow: 70
     stealer: 80
-    ghost: 80
-    vampire: 100
     thor: 100
     tank: 100
     teleporter: 150
     void: 150
 
 # ------------------------------------------------------------------
-# Halloween Shop (/halloweenshop). Everything here costs Halloween Coins.
+# /halloweenshop. Costs Halloween Coins (a balance, like Unbound Coins; see /points).
+# Halloween powers are rare: each restock has this chance to put one in the shop.
 # reward: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT, or unlock:category:id (a Locker unlock)
 # limit: how many times one player can buy it (0 = unlimited)
 # ------------------------------------------------------------------
 halloween-shop:
   timezone: "America/Toronto"
+  power-chance: 0.10         # 10% per restock (about once an hour)
+  power-prices:
+    ghost: 80
+    vampire: 100
   items:
     golden-apples:
       name: "4 Golden Apples"
@@ -401,21 +404,9 @@ halloween-shop:
       icon: AMETHYST_SHARD
       reward: "reroll:1"
       price: 40
-  limited:                    # only sold until this date and time, then they disappear
+  limited:                   # only sold until this date and time, then they disappear
     until: "2026-11-02 00:00"
     items:
-      ghost-power:
-        name: "Ghost Power"
-        icon: NETHER_STAR
-        reward: "power:GHOST"
-        price: 60
-        limit: 1
-      vampire-power:
-        name: "Vampire Power"
-        icon: NETHER_STAR
-        reward: "power:VAMPIRE"
-        price: 80
-        limit: 1
       soul-trail:
         name: "Soul Trail (cosmetic)"
         icon: SOUL_LANTERN
@@ -428,3 +419,9 @@ halloween-shop:
         reward: "item:EXPERIENCE_BOTTLE:32"
         price: 15
         limit: 3
+      spooky-reroll:
+        name: "Spooky Reroll Token"
+        icon: AMETHYST_SHARD
+        reward: "reroll:1"
+        price: 30
+        limit: 2

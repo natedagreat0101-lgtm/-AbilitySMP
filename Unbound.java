@@ -426,8 +426,8 @@ final class Unbound implements Listener {
         switch (name) {
             case "points" -> {
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }
-                p.sendMessage(Component.text("You have " + points(p) + " Unbound Coins. Your power is level "
-                        + level(p) + "/" + maxLevel() + ".", NamedTextColor.AQUA));
+                p.sendMessage(Component.text("Unbound Coins: " + points(p) + "   Halloween Coins: " + plugin.tot.countCoins(p)
+                        + "   Power level: " + level(p) + "/" + maxLevel(), NamedTextColor.AQUA));
             }
             case "quests" -> {
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }

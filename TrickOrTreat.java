@@ -22,6 +22,7 @@ import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -296,33 +297,41 @@ final class TrickOrTreat implements Listener {
                 && it.getItemMeta().getPersistentDataContainer().has(coinKey, PersistentDataType.STRING);
     }
 
+    /** Halloween Coins are a saved balance (like Unbound Coins), not an item. */
     void giveCoins(Player p, int amount) {
-        while (amount > 0) {
-            int n = Math.min(amount, 64);
-            ItemStack c = coin();
-            c.setAmount(n);
-            plugin.give(p, c);
-            amount -= n;
-        }
+        if (amount <= 0) return;
+        plugin.profile.of(p).halloweenCoins += amount;
+        plugin.profile.touch();
+        p.sendActionBar(Component.text("+" + amount + " Halloween Coins (you have " + countCoins(p) + ")", NamedTextColor.YELLOW));
     }
 
     int countCoins(Player p) {
-        int total = 0;
-        for (ItemStack it : p.getInventory().getContents()) {
-            if (isCoin(it)) total += it.getAmount();
-        }
-        return total;
+        return plugin.profile.of(p).halloweenCoins;
     }
 
-    void removeCoins(Player p, int amount) {
-        ItemStack[] contents = p.getInventory().getContents();
-        for (int i = 0; i < contents.length && amount > 0; i++) {
-            ItemStack it = contents[i];
-            if (!isCoin(it)) continue;
-            int take = Math.min(amount, it.getAmount());
-            it.setAmount(it.getAmount() - take);
-            amount -= take;
+    boolean removeCoins(Player p, int amount) {
+        Profile.Data d = plugin.profile.of(p);
+        if (d.halloweenCoins < amount) return false;
+        d.halloweenCoins -= amount;
+        plugin.profile.save();
+        return true;
+    }
+
+    /** Coin items from earlier versions are turned into balance when you join. */
+    private void convertLegacy(Player p) {
+        int total = 0;
+        for (ItemStack it : p.getInventory().getContents()) {
+            if (isCoin(it)) {
+                total += it.getAmount();
+                it.setAmount(0);
+            }
         }
+        if (total > 0) giveCoins(p, total);
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent e) {
+        convertLegacy(e.getPlayer());
     }
 
     /** A trick-or-treater. Persistent ones (Haunted Forest huts) stay; event ones vanish on restart. */
@@ -402,9 +411,7 @@ final class TrickOrTreat implements Listener {
             it.setAmount(it.getAmount() - take);
             toRemove -= take;
         }
-        ItemStack c = coin();
-        c.setAmount(coins);
-        plugin.give(p, c);
+        giveCoins(p, coins);
         p.sendMessage(Component.text("Traded " + (coins * perCoin) + " candy for " + coins + " Halloween Coin"
                 + (coins == 1 ? "" : "s") + "!", NamedTextColor.YELLOW));
         p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_YES, 1f, 1.2f);
