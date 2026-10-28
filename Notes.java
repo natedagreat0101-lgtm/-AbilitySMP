@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "8.0";
+    static final String VERSION = "9.0";
 
     private Notes() {
     }
@@ -28,7 +28,45 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v8.0 - Halloween Boss Update =====");
+        h(s, "===== Unbound SMP Patch Notes: v9.0 - The Galactic Update Eve =====");
+        l(s, "🌌 THE GALACTIC UPDATE lands Sunday Nov 1 at 1:00 PM! Type /galactic for the live countdown.");
+        l(s, "POWER CRATES - /crate");
+        how(s, "powers come from crates now (the shop still exists too). Right-click a Power Crate with a "
+                + "Power Crate Key in your inventory and spin the wheel. Powers have RARITIES now: Common, "
+                + "Rare, Epic, Legendary and Mythic - and the crate odds match. Get crates and keys from "
+                + "boss fights, the Halloween Shop and rebirths.");
+        l(s, "RANKED DUELS - /ranked");
+        how(s, "queue up against a random player, or fight a practice bot matched to your rank: Bronze bots "
+                + "are easy, Master and Unbound King bots are monsters, and there is an IMPOSSIBLE bot if you "
+                + "are feeling brave. Climb Bronze, Silver, Gold, Platinum, Diamond, Master... and the best "
+                + "rank of all: UNBOUND KING. Nobody dies and nobody loses items.");
+        l(s, "TRADING - /trade <player>");
+        how(s, "trade items in a safe window. Both players have to press CONFIRM, and if anybody changes "
+                + "their offer, both confirmations reset. No scams possible.");
+        l(s, "REBIRTHS - /rebirth");
+        how(s, "reset your Unbound Coins and power levels (you keep your powers!) for a permanent +10% "
+                + "coin bonus per rebirth, a crate set and Halloween Coins. More rebirths = better rewards.");
+        l(s, "Power levels now go to 100!");
+        how(s, "upgrading goes all the way to level 100, and levels past 50 count double - a level 100 "
+                + "power is about 16x stronger. It costs a LOT of coins. Good luck.");
+        l(s, "30 NEW RANKS and TITLES that work");
+        how(s, "ranks for playtime, quests, boss hunting, duels, ranked, collecting and rebirths - equip "
+                + "them in /locker. Titles (Boss Slayer, Ghost Buster, Unbound King and more) now show after "
+                + "your name in chat. Halloween costumes in /locker actually go on your body now, and your "
+                + "real armor is kept safe while you wear one.");
+        l(s, "Boss cooldowns");
+        how(s, "after a boss fight starts, that boss rests: Horseman 5 minutes, Mimic 10, Ghost 3. "
+                + "Bosses also drop crate keys now (the Mimic ALWAYS drops one).");
+        l(s, "Better quests, better Halloween Shop, balanced economy");
+        how(s, "new quests for ranked, crates, trading and bosses; the Halloween Shop sells crates, keys, "
+                + "costumes, titles, an elytra and more (limited items now run until Nov 9); shop prices are "
+                + "set by rarity and coins come a little slower, so getting stacked takes real work now.");
+        l(s, "NEW EVENTS (admin /panel -> Server Events)");
+        how(s, "Blood Moon, Headless Horseman Moon, Disco Party, Raining Tacos, Raining Diamonds, Raining "
+                + "Gold, Raining Candy, custom note-block songs in the Music menu... and THE SNAP: a cutscene "
+                + "where Notazombiemc presses a button and EVERY event starts at once.");
+
+        h(s, "===== v8.0 - Halloween Boss Update =====");
         l(s, "NEW BOSS: The Mimic - /boss fight Mimic");
         how(s, "a giant chest monster with a long tongue that drags you in. At 75% health he starts chomping "
                 + "(4 hearts and poison) and weakening you. At 50% he makes a copy of YOU wearing your gear. "

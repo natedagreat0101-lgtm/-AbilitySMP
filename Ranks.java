@@ -34,15 +34,23 @@ final class Ranks implements Listener {
         final String requirement;
         final NamedTextColor color;
         final Predicate<Player> condition;
+        /** Playtime ranks auto-equip as you climb; achievement ranks (v9) never steal your equipped rank. */
+        final boolean autoEquip;
 
         Rank(String id, String name, boolean halloween, String requirement, NamedTextColor color,
              Predicate<Player> condition) {
+            this(id, name, halloween, requirement, color, condition, !halloween);
+        }
+
+        Rank(String id, String name, boolean halloween, String requirement, NamedTextColor color,
+             Predicate<Player> condition, boolean autoEquip) {
             this.id = id;
             this.name = name;
             this.halloween = halloween;
             this.requirement = requirement;
             this.color = color;
             this.condition = condition;
+            this.autoEquip = autoEquip;
         }
     }
 
@@ -54,6 +62,8 @@ final class Ranks implements Listener {
     private final List<Rank> ranks = new ArrayList<>();
     /** Chat is rendered off the main thread, so it reads prefixes from this thread-safe cache. */
     private final Map<UUID, Component> prefixCache = new ConcurrentHashMap<>();
+    /** Equipped locker title per player, shown after their name in chat and the tab list. */
+    private final Map<UUID, String> titleCache = new ConcurrentHashMap<>();
 
     Ranks(AbilitySMP plugin) {
         this.plugin = plugin;
@@ -110,6 +120,89 @@ final class Ranks implements Listener {
                 NamedTextColor.YELLOW, p -> plugin.profile.of(p).horsemanDefeated
                 && plugin.profile.isUnlocked(p.getUniqueId(), "rank:hw-survivor")
                 && hasAllHalloweenPowers(p)));
+
+        buildAchievementRanks();
+    }
+
+    /**
+     * v9: 30 achievement ranks - playtime, quests, boss hunting, duels, ranked, collecting and rebirths.
+     * They never auto-equip (your playtime rank stays on); equip them yourself in /locker.
+     */
+    private void buildAchievementRanks() {
+        // Playing (total playtime, in minutes)
+        playRank("settler", "Settler", 240, NamedTextColor.GREEN);
+        playRank("regular", "Server Regular", 480, NamedTextColor.AQUA);
+        playRank("grinder", "The Grinder", 960, NamedTextColor.BLUE);
+        playRank("no-life", "No Life", 1920, NamedTextColor.DARK_PURPLE);
+        playRank("time-lord", "Time Lord", 3840, NamedTextColor.LIGHT_PURPLE);
+        playRank("eternal", "The Eternal", 7680, NamedTextColor.GOLD);
+        // Quests (total quests completed)
+        questRank("quest-starter", "Quest Starter", 10, NamedTextColor.GREEN);
+        questRank("quest-ace", "Quest Ace", 30, NamedTextColor.AQUA);
+        questRank("quest-master", "Quest Master", 75, NamedTextColor.LIGHT_PURPLE);
+        questRank("quest-legend", "Quest Legend", 150, NamedTextColor.GOLD);
+        questRank("quest-mythic", "Quest Mythic", 300, NamedTextColor.DARK_RED);
+        // Boss hunter (total boss kills)
+        bossRank("boss-scout", "Boss Scout", 3, NamedTextColor.GREEN);
+        bossRank("boss-hunter", "Boss Hunter", 10, NamedTextColor.AQUA);
+        bossRank("boss-slayer", "Boss Slayer", 25, NamedTextColor.RED);
+        bossRank("boss-nightmare", "Boss Nightmare", 50, NamedTextColor.DARK_RED);
+        bossRank("boss-god", "Boss God", 100, NamedTextColor.GOLD);
+        // Specific bosses
+        ranks.add(ach("horseman-bane", "Horseman's Bane", "Defeat the Headless Horseman", NamedTextColor.GOLD,
+                p -> plugin.profile.of(p).horsemanDefeated));
+        ranks.add(ach("mimic-bane", "Chest Breaker", "Defeat the Mimic", NamedTextColor.DARK_RED,
+                p -> plugin.profile.of(p).mimicDefeated));
+        ranks.add(ach("ghost-bane", "Ghostbuster", "Defeat the Ghost", NamedTextColor.LIGHT_PURPLE,
+                p -> plugin.profile.of(p).ghostDefeated));
+        // Duels (friendly duel wins)
+        duelRank("duel-starter", "Duel Starter", 5, NamedTextColor.GREEN);
+        duelRank("duel-champion", "Duel Champion", 25, NamedTextColor.AQUA);
+        duelRank("duel-legend", "Duel Legend", 75, NamedTextColor.GOLD);
+        // Ranked (ranked rating)
+        ratedRank("ranked-riser", "Ranked Riser", 1200, NamedTextColor.GREEN);
+        ratedRank("ranked-star", "Ranked Star", 1500, NamedTextColor.AQUA);
+        ratedRank("ranked-master", "Ranked Master", 2000, NamedTextColor.LIGHT_PURPLE);
+        ratedRank("ranked-king", "King of Ranked", 2400, NamedTextColor.GOLD);
+        // Collecting powers
+        ranks.add(ach("collector", "Power Collector", "Own 10 different powers", NamedTextColor.AQUA,
+                p -> plugin.profile.of(p).owned.size() >= 10));
+        ranks.add(ach("hoarder", "Power Hoarder", "Own 18 different powers", NamedTextColor.LIGHT_PURPLE,
+                p -> plugin.profile.of(p).owned.size() >= 18));
+        ranks.add(ach("completionist", "Completionist", "Own every power", NamedTextColor.GOLD,
+                p -> plugin.profile.of(p).owned.size() >= AbilitySMP.Power.values().length));
+        // Rebirths
+        ranks.add(ach("reborn", "The Reborn", "Rebirth at least once (use /rebirth)", NamedTextColor.DARK_PURPLE,
+                p -> plugin.profile.of(p).rebirths >= 1));
+    }
+
+    private Rank ach(String id, String name, String req, NamedTextColor color, Predicate<Player> cond) {
+        return new Rank(id, name, false, req, color, cond, false);
+    }
+
+    private void playRank(String id, String name, int minutes, NamedTextColor color) {
+        ranks.add(ach(id, name, "Play for " + minutes + " minutes in total", color,
+                p -> plugin.profile.of(p).playMinutes >= minutes));
+    }
+
+    private void questRank(String id, String name, int count, NamedTextColor color) {
+        ranks.add(ach(id, name, "Complete " + count + " quests", color,
+                p -> plugin.unbound.completed(p) >= count));
+    }
+
+    private void bossRank(String id, String name, int kills, NamedTextColor color) {
+        ranks.add(ach(id, name, "Defeat " + kills + " bosses", color,
+                p -> plugin.profile.of(p).bossKills >= kills));
+    }
+
+    private void duelRank(String id, String name, int wins, NamedTextColor color) {
+        ranks.add(ach(id, name, "Win " + wins + " friendly duels", color,
+                p -> plugin.profile.of(p).duelWins >= wins));
+    }
+
+    private void ratedRank(String id, String name, int rating, NamedTextColor color) {
+        ranks.add(ach(id, name, "Reach " + rating + " ranked rating (/ranked)", color,
+                p -> plugin.profile.of(p).rankedRating >= rating));
     }
 
     private boolean hasAllHalloweenPowers(Player p) {
@@ -137,7 +230,7 @@ final class Ranks implements Listener {
             String key = "rank:" + r.id;
             if (plugin.profile.isUnlocked(id, key) || !r.condition.test(p)) continue;
             plugin.profile.unlock(id, key);
-            if (!r.halloween) {
+            if (!r.halloween && r.autoEquip) {
                 String cur = plugin.profile.equipped(id, "rank");
                 Rank curRank = cur == null ? null : get(cur);
                 if (curRank == null || !curRank.halloween) plugin.profile.setEquipped(id, "rank", r.id);
@@ -167,13 +260,23 @@ final class Ranks implements Listener {
         return prefixCache.getOrDefault(id, Component.empty());
     }
 
-    /** Updates the chat prefix and tab-list name from the equipped rank. */
+    String titleSuffix(UUID id) {
+        String t = titleCache.get(id);
+        return t == null || t.isEmpty() ? "" : " (" + t + ")";
+    }
+
+    /** Updates the chat prefix and tab-list name from the equipped rank and locker title. */
     void refresh(Player p) {
         String eq = plugin.profile.equipped(p.getUniqueId(), "rank");
         Rank r = eq == null ? null : get(eq);
         Component pre = r == null ? Component.empty() : Component.text("[" + r.name + "] ", r.color);
         prefixCache.put(p.getUniqueId(), pre);
-        p.playerListName(pre.append(Component.text(p.getName(), NamedTextColor.WHITE)));
+        String title = plugin.locker == null ? null : plugin.locker.titleName(p.getUniqueId());
+        if (title == null) titleCache.remove(p.getUniqueId());
+        else titleCache.put(p.getUniqueId(), title);
+        Component list = pre.append(Component.text(p.getName(), NamedTextColor.WHITE));
+        if (title != null) list = list.append(Component.text(" (" + title + ")", NamedTextColor.GRAY));
+        p.playerListName(list);
     }
 
     @EventHandler
@@ -184,6 +287,8 @@ final class Ranks implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onChat(AsyncChatEvent e) {
         e.renderer(ChatRenderer.viewerUnaware((source, name, message) ->
-                prefix(source.getUniqueId()).append(name).append(Component.text(": ", NamedTextColor.GRAY)).append(message)));
+                prefix(source.getUniqueId()).append(name)
+                        .append(Component.text(titleSuffix(source.getUniqueId()), NamedTextColor.GRAY))
+                        .append(Component.text(": ", NamedTextColor.GRAY)).append(message)));
     }
 }

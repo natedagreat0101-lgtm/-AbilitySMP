@@ -30,6 +30,11 @@ final class Profile {
         int duelWins;
         int bossKills;
         boolean horsemanDefeated;
+        boolean mimicDefeated;
+        boolean ghostDefeated;
+        int rebirths;
+        int rankedRating = 1000;
+        int rankedWins;
         final Set<String> unlocked = new LinkedHashSet<>();
         final Set<String> owned = new LinkedHashSet<>();
         final Map<String, String> equipped = new HashMap<>();
@@ -118,6 +123,11 @@ final class Profile {
                 d.survivalSeconds = sec.getInt(b + "halloween.survival-seconds");
                 d.bossKills = sec.getInt(b + "halloween.boss-kills");
                 d.horsemanDefeated = sec.getBoolean(b + "halloween.horseman-defeated");
+                d.mimicDefeated = sec.getBoolean(b + "halloween.mimic-defeated");
+                d.ghostDefeated = sec.getBoolean(b + "halloween.ghost-defeated");
+                d.rebirths = sec.getInt(b + "rebirths");
+                d.rankedRating = sec.getInt(b + "ranked-rating", 1000);
+                d.rankedWins = sec.getInt(b + "ranked-wins");
                 d.unlocked.addAll(sec.getStringList(b + "unlocked"));
                 d.owned.addAll(sec.getStringList(b + "owned"));
                 ConfigurationSection eq = sec.getConfigurationSection(b + "equipped");
@@ -140,6 +150,11 @@ final class Profile {
             yaml.set(b + "halloween.survival-seconds", d.survivalSeconds);
             yaml.set(b + "halloween.boss-kills", d.bossKills);
             yaml.set(b + "halloween.horseman-defeated", d.horsemanDefeated);
+            yaml.set(b + "halloween.mimic-defeated", d.mimicDefeated);
+            yaml.set(b + "halloween.ghost-defeated", d.ghostDefeated);
+            yaml.set(b + "rebirths", d.rebirths);
+            yaml.set(b + "ranked-rating", d.rankedRating);
+            yaml.set(b + "ranked-wins", d.rankedWins);
             yaml.set(b + "unlocked", new ArrayList<>(d.unlocked));
             yaml.set(b + "owned", new ArrayList<>(d.owned));
             for (Map.Entry<String, String> q : d.equipped.entrySet()) yaml.set(b + "equipped." + q.getKey(), q.getValue());

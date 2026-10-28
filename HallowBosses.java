@@ -232,17 +232,31 @@ final class HallowBosses implements Listener {
             host.sendMessage(Component.text("Finish your current fight first.", NamedTextColor.RED));
             return;
         }
+        if (plugin.ranked.isBusy(host) || plugin.trading.isBusy(host)) {
+            host.sendMessage(Component.text("Finish what you are doing first.", NamedTextColor.RED));
+            return;
+        }
+        String cdId = kind == Kind.MIMIC ? "mimic" : "ghost";
+        long cd = plugin.bossCooldownLeft(host, cdId);
+        if (cd > 0) {
+            host.sendMessage(Component.text((kind == Kind.MIMIC ? "The Mimic" : "The Ghost")
+                    + " is hiding! You can fight " + (kind == Kind.MIMIC ? "him" : "it") + " again in "
+                    + AbilitySMP.spanShort(cd) + ".", NamedTextColor.RED));
+            return;
+        }
         // your boss party friend comes with you; anyone busy with something else is left behind
         List<Player> fighters = new ArrayList<>();
         fighters.add(host);
         for (Player m : plugin.party.members(host)) {
             if (m.equals(host)) continue;
-            if (isBusy(m) || plugin.horseman.isBusy(m) || plugin.duel.isBusy(m)) {
+            if (isBusy(m) || plugin.horseman.isBusy(m) || plugin.duel.isBusy(m)
+                    || plugin.ranked.isBusy(m) || plugin.trading.isBusy(m)) {
                 host.sendMessage(Component.text(m.getName() + " is busy and can't join this fight.", NamedTextColor.GRAY));
                 continue;
             }
             fighters.add(m);
         }
+        for (Player p : fighters) plugin.startBossCooldown(p, cdId);
 
         Fight f = new Fight(kind);
         Set<Integer> slots = usedSlots.computeIfAbsent(kind, k -> new HashSet<>());
@@ -685,7 +699,10 @@ final class HallowBosses implements Listener {
             names.add(p.getName());
             if (points > 0) plugin.unbound.addPoints(p, points, bossName);
             if (coins > 0) plugin.tot.giveCoins(p, coins);
+            plugin.crates.rewardForBoss(p, f.kind == Kind.MIMIC ? "mimic" : "ghost");
             Profile.Data d = plugin.profile.of(p);
+            if (f.kind == Kind.MIMIC) d.mimicDefeated = true;
+            else d.ghostDefeated = true;
             d.bossKills++;
             plugin.profile.save();
             plugin.unbound.addProgress(p, "BOSS_KILL", 1);

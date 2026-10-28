@@ -143,12 +143,29 @@ final class Unbound implements Listener {
     }
 
     void addPoints(Player p, int amount, String reason) {
+        // Rebirths pay off forever: every rebirth adds a permanent bonus to all coins earned.
+        if (amount > 0) {
+            int reb = plugin.profile.of(p).rebirths;
+            if (reb > 0) {
+                double mult = 1.0 + plugin.getConfig().getDouble("rebirth.coin-bonus-percent", 10) * reb / 100.0;
+                amount = Math.max(1, (int) Math.round(amount * mult));
+            }
+        }
         PlayerData d = pd(p);
         d.points = Math.max(0, d.points + amount);
         dirty = true;
         if (amount > 0) {
             p.sendActionBar(Component.text("+" + amount + " Unbound Coins (" + reason + ")", NamedTextColor.AQUA));
         }
+    }
+
+    /** Rebirth reset: all Unbound Coins and all power levels are wiped. Powers owned are kept. */
+    void resetCurrencyAndLevels(Player p) {
+        PlayerData d = pd(p);
+        d.points = 0;
+        d.levels.clear();
+        dirty = true;
+        save();
     }
 
     private void minuteTick() {
@@ -176,7 +193,7 @@ final class Unbound implements Listener {
     // =====================================================================
 
     int maxLevel() {
-        return Math.max(1, plugin.getConfig().getInt("upgrade.max-level", 5));
+        return Math.max(1, plugin.getConfig().getInt("upgrade.max-level", 100));
     }
 
     int level(Player p, AbilitySMP.Power pw) {
@@ -188,21 +205,32 @@ final class Unbound implements Listener {
         return level(p, plugin.powerOf(p));
     }
 
-    /** Range, damage and duration multiplier from the current power's level. */
+    /**
+     * Range, damage and duration multiplier from the current power's level.
+     * Levels past 50 count double, so a level 100 power is WAY stronger (about 16x).
+     */
     double powerMult(Player p) {
-        return 1.0 + plugin.getConfig().getDouble("upgrade.power-per-level", 0.10) * (level(p) - 1);
+        int lvl = level(p);
+        double per = plugin.getConfig().getDouble("upgrade.power-per-level", 0.10);
+        double m = 1.0 + per * (lvl - 1);
+        if (lvl > 50) m += per * (lvl - 50); // the last 50 levels kick twice as hard
+        return m;
     }
 
     /** Cooldown multiplier from the current power's level (lower is faster). */
     double cooldownMult(Player p) {
-        return Math.max(0.3, 1.0 - plugin.getConfig().getDouble("upgrade.cooldown-per-level", 0.10) * (level(p) - 1));
+        double floor = plugin.getConfig().getDouble("upgrade.min-cooldown-mult", 0.25);
+        return Math.max(floor, 1.0 - plugin.getConfig().getDouble("upgrade.cooldown-per-level", 0.01) * (level(p) - 1));
     }
 
     int costFor(int currentLevel) {
         List<Integer> costs = plugin.getConfig().getIntegerList("upgrade.costs");
         if (costs.isEmpty()) return 50 * currentLevel;
         if (currentLevel - 1 < costs.size()) return costs.get(currentLevel - 1);
-        return costs.get(costs.size() - 1) * 2;
+        // past the listed prices the cost keeps growing, so level 100 is a real endgame goal
+        int over = currentLevel - costs.size();
+        double c = costs.get(costs.size() - 1) * Math.pow(1.6, over);
+        return (int) Math.min(10_000_000L, Math.round(c / 5.0) * 5L);
     }
 
     // =====================================================================
@@ -222,6 +250,10 @@ final class Unbound implements Listener {
             defaultQuest(m, "lumberjack", "Lumberjack", "Chop logs", "BREAK_LOGS", 32, 10);
             defaultQuest(m, "deep-miner", "Deep Miner", "Mine ores", "MINE_ORES", 24, 20);
             defaultQuest(m, "power-user", "Power User", "Use your power", "USE_POWER", 15, 10);
+            defaultQuest(m, "ranked-warrior", "Ranked Warrior", "Win ranked duels", "RANKED_WIN", 3, 30);
+            defaultQuest(m, "crate-opener", "Crate Opener", "Open Power Crates", "OPEN_CRATE", 3, 20);
+            defaultQuest(m, "master-trader", "Master Trader", "Complete trades with players", "TRADE", 3, 20);
+            defaultQuest(m, "boss-hunter", "Boss Hunter", "Defeat bosses", "BOSS_KILL", 5, 40);
             fallbackQuests = m;
         }
         return fallbackQuests;

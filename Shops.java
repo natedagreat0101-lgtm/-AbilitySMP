@@ -257,16 +257,19 @@ final class Shops implements Listener {
                     String name = AbilitySMP.pretty(s.power.key());
                     if (plugin.profile.owns(pl, s.power)) {
                         out.add(new Menus.Entry(Menus.icon(Material.NETHER_STAR, name + "  [OWNED]", true,
-                                PowerMenus.describe(s.power), "Equip it in /powers"), null));
+                                PowerMenus.describe(s.power), "Rarity: " + s.power.rarity().display.toUpperCase(),
+                                "Equip it in /powers"), null));
                     } else if (s.stock <= 0) {
                         out.add(new Menus.Entry(Menus.icon(Material.BARRIER, name + "  [SOLD OUT]", false,
-                                PowerMenus.describe(s.power), "Back at the next restock"), null));
+                                PowerMenus.describe(s.power), "Rarity: " + s.power.rarity().display.toUpperCase(),
+                                "Back at the next restock"), null));
                     } else {
                         String price = s.discount > 0
                                 ? "Price: " + finalPrice(s) + " Unbound Coins (was " + basePrice(s.power) + ", " + s.discount + "% OFF)"
                                 : "Price: " + finalPrice(s) + " Unbound Coins";
                         out.add(new Menus.Entry(Menus.icon(Material.CHEST, name + (s.discount > 0 ? "  [SALE]" : ""), s.discount > 0,
-                                PowerMenus.describe(s.power), price, "In stock: " + s.stock, "Click to buy"),
+                                PowerMenus.describe(s.power), "Rarity: " + s.power.rarity().display.toUpperCase(),
+                                price, "In stock: " + s.stock, "Click to buy"),
                                 (pp, t) -> buy(pp, s)));
                     }
                 }
@@ -362,7 +365,7 @@ final class Shops implements Listener {
                 boolean limited = limitedActive();
                 ZonedDateTime until = limitedUntil();
                 out.add(new Menus.Entry(Menus.icon(Material.GOLD_NUGGET, "You have " + plugin.tot.countCoins(pl) + " Halloween Coins",
-                        true, "Earn coins from Trick or Treat Night and the Headless Horseman.",
+                        true, "Earn coins from Trick or Treat Night and boss fights (Horseman, Mimic, Ghost).",
                         limited && until != null ? "Limited-time items end in "
                                 + span(Duration.between(ZonedDateTime.now(until.getZone()), until).getSeconds()) : "No limited-time items right now"),
                         null));

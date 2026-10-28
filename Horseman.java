@@ -255,17 +255,29 @@ final class Horseman implements Listener {
             host.sendMessage(Component.text("Finish your duel first.", NamedTextColor.RED));
             return;
         }
+        if (plugin.ranked.isBusy(host) || plugin.trading.isBusy(host)) {
+            host.sendMessage(Component.text("Finish what you are doing first.", NamedTextColor.RED));
+            return;
+        }
+        long cd = plugin.bossCooldownLeft(host, "horseman");
+        if (cd > 0) {
+            host.sendMessage(Component.text("The Headless Horseman needs to rest! You can fight him again in "
+                    + AbilitySMP.spanShort(cd) + ".", NamedTextColor.RED));
+            return;
+        }
         // a friend in your boss party joins you in the same arena; busy friends are left behind
         List<Player> fighters = new ArrayList<>();
         fighters.add(host);
         for (Player m : plugin.party.members(host)) {
             if (m.equals(host)) continue;
-            if (isBusy(m) || plugin.hallow.isBusy(m) || plugin.duel.isBusy(m)) {
+            if (isBusy(m) || plugin.hallow.isBusy(m) || plugin.duel.isBusy(m)
+                    || plugin.ranked.isBusy(m) || plugin.trading.isBusy(m)) {
                 host.sendMessage(Component.text(m.getName() + " is busy and can't join this fight.", NamedTextColor.GRAY));
                 continue;
             }
             fighters.add(m);
         }
+        for (Player p : fighters) plugin.startBossCooldown(p, "horseman");
 
         final Fight f = new Fight();
         int slot = 0;
@@ -658,6 +670,7 @@ final class Horseman implements Listener {
             names.add(p.getName());
             plugin.unbound.addPoints(p, points, "Headless Horseman");
             plugin.tot.giveCoins(p, coins);
+            plugin.crates.rewardForBoss(p, "horseman");
             Profile.Data d = plugin.profile.of(p);
             d.horsemanDefeated = true;
             d.bossKills++;

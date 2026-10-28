@@ -1,4 +1,4 @@
-# AbilitySMP (Unbound SMP) — v8.0 Halloween Boss Update
+# AbilitySMP (Unbound SMP) — v9.0 The Galactic Update Eve
 
 A Paper 1.21 plugin: powers, Power Activator, quests, upgrades, duels, Trick or Treat Night,
 and Halloween bosses.
@@ -19,6 +19,42 @@ mvn package
 ```
 
 The jar appears in `target/AbilitySMP.jar`.
+
+## What's new in v9.0
+
+- **Power Crates (`/crate`) and rarities.** Powers now have rarities — Common, Rare, Epic,
+  Legendary, Mythic — shown in `/powers` and `/shop` and priced by rarity in the shop. The new
+  way to get powers is the **Power Crate**: right-click a crate with a Power Crate Key in your
+  inventory and spin the roulette (odds follow the rarities). Crates and keys drop from boss
+  fights (the Mimic always drops a key), and are sold in the Halloween Shop, given on rebirths.
+- **Ranked duels (`/ranked`).** Queue against a random player or fight a practice bot matched
+  to your rank — Bronze bots are easy; Master / Unbound King bots are monsters; the IMPOSSIBLE
+  bot is 200 HP of netherite pain (no rating, just glory). Ladder: Bronze → Silver → Gold →
+  Platinum → Diamond → Master → **Unbound King** (2600). Fight Totem rules: nobody dies,
+  nobody loses items. Rating starts at 1000; players use elo-style changes, bots are +15/−10.
+- **Trading (`/trade <player>`).** A shared trade window: your side / their side, nothing moves
+  until BOTH confirm, and changing an offer un-confirms both. Soulbound items can't be traded.
+- **Rebirths (`/rebirth`).** Reset your Unbound Coins and power levels (powers are kept) for
+  +10% coins forever per rebirth, a crate set and Halloween Coins. Cost grows quadratically
+  and needs boss kills — more rebirths, better rewards.
+- **Power levels to 100.** Levels past 50 count double, so a level 100 power is ~16x stronger.
+  Upgrade costs grow steeply past the listed prices — a true endgame grind.
+- **30 new ranks** (playtime, quests, boss hunter, duels, ranked, collecting, rebirths) plus
+  **titles that display** in chat and the tab list, and **Halloween costumes that actually
+  equip** from `/locker` (your real armor is saved and restored). New trails too.
+- **Boss cooldowns.** Horseman 5 min, Mimic 10 min, Ghost 3 min (`boss.cooldown-seconds`).
+- **Economy rebalance.** Slower playtime coins, higher quest targets, shop restocks every
+  8 minutes with 2 stock, rarity-based prices, lower boss/duel coin payouts.
+- **Better Halloween Shop.** Crates, keys, elytra, netherite, costumes and titles; the
+  limited-time items now run until **Nov 9**.
+- **New `/panel` events.** Blood Moon, Headless Horseman Moon, Disco Party, Raining Tacos /
+  Diamonds / Gold / Candy, custom note-block songs (Music menu), and **THE SNAP** — a cutscene
+  where Notazombiemc presses a button and every event starts at once. A plugin can't add real
+  custom music files; for that, put your audio in a resource pack and add its sound key under
+  `music.tracks` in `config.yml`.
+- **Galactic Update countdown (`/galactic`).** Default: **Sunday Nov 1 2026, 1:00 PM**
+  (America/Toronto). Change it in `config.yml` (`galactic.release`) or in game with
+  `/galactic set 2026-11-01 13:00`.
 
 ## What's new in v8.0
 
@@ -50,13 +86,18 @@ The jar appears in `target/AbilitySMP.jar`.
 
 | Command | What it does |
 |---|---|
-| `/boss fight Headless Horseman` | Fight the Headless Horseman (50 Unbound, 30 Halloween Coins) |
+| `/boss fight Headless Horseman` | Fight the Headless Horseman (40 Unbound, 30 Halloween Coins) |
 | `/boss fight Mimic` | Fight the Mimic (100 Halloween Coins) |
 | `/boss fight Ghost` | Fight the Ghost (10 Halloween, 5 Unbound Coins) |
 | `/boss invite <player>` / `/boss accept` / `/boss deny` | Boss party: bring one friend into your boss fights |
 | `/boss leave` | Leave your current boss fight |
 | `/boss leaveparty` | Leave your boss party |
 | `/duel <player>` | Friendly duel (Fight Totems, nobody dies) |
+| `/ranked` | Ranked duels: random player queue, rank-matched bots, IMPOSSIBLE bot |
+| `/crate` | Your Power Crates and keys (right-click a crate to open it) |
+| `/trade <player>` | Safe item trading (both players confirm) |
+| `/rebirth` | Rebirth: reset coins + power levels for permanent bonuses |
+| `/galactic` | Countdown to the Galactic Update (Sunday Nov 1, 1:00 PM) |
 | `/powers`, `/shop`, `/quests`, `/locker`, `/halloweenshop`, `/notes` | Menus, shops and patch notes |
 
 Boss numbers (health, damage, rewards, arena spots) all live in `config.yml` under

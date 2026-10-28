@@ -112,7 +112,9 @@ final class Duel implements Listener {
             return;
         }
         if (isBusy(p) || isBusy(t) || plugin.horseman.isBusy(p) || plugin.horseman.isBusy(t)
-                || plugin.hallow.isBusy(p) || plugin.hallow.isBusy(t)) {
+                || plugin.hallow.isBusy(p) || plugin.hallow.isBusy(t)
+                || plugin.ranked.isBusy(p) || plugin.ranked.isBusy(t)
+                || plugin.trading.isBusy(p) || plugin.trading.isBusy(t)) {
             p.sendMessage(Component.text("One of you is already in a duel or a boss fight.", NamedTextColor.RED));
             return;
         }
@@ -145,7 +147,9 @@ final class Duel implements Listener {
             return;
         }
         if (isBusy(p) || isBusy(r) || plugin.horseman.isBusy(p) || plugin.horseman.isBusy(r)
-                || plugin.hallow.isBusy(p) || plugin.hallow.isBusy(r)) {
+                || plugin.hallow.isBusy(p) || plugin.hallow.isBusy(r)
+                || plugin.ranked.isBusy(p) || plugin.ranked.isBusy(r)
+                || plugin.trading.isBusy(p) || plugin.trading.isBusy(r)) {
             p.sendMessage(Component.text("Someone is already busy.", NamedTextColor.RED));
             return;
         }

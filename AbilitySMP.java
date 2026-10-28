@@ -65,6 +65,23 @@ import java.util.*;
  */
 public class AbilitySMP extends JavaPlugin implements Listener {
 
+    /** Power rarities (v9), weakest to strongest. */
+    enum Rarity {
+        COMMON("Common", NamedTextColor.GRAY),
+        RARE("Rare", NamedTextColor.AQUA),
+        EPIC("Epic", NamedTextColor.LIGHT_PURPLE),
+        LEGENDARY("Legendary", NamedTextColor.GOLD),
+        MYTHIC("Mythic", NamedTextColor.DARK_RED);
+
+        final String display;
+        final NamedTextColor color;
+
+        Rarity(String display, NamedTextColor color) {
+            this.display = display;
+            this.color = color;
+        }
+    }
+
     enum Power {
         FLAME, SPEED, TANK, THOR, SHADOW, HEALER, FEATHER, STEALER, AQUA, HUNTER,
         GHOST, VAMPIRE, TELEPORTER, VOID,
@@ -77,6 +94,17 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 case GHOST, VAMPIRE, PUMPKIN, WITCH, SKELETON, SPIDER, SCARECROW, REAPER, CANDY,
                      PHANTOM, WEREWOLF, CURSE -> true;
                 default -> false;
+            };
+        }
+
+        /** Rarity (v9): shown in menus and shops, and it drives the Power Crate odds and shop prices. */
+        Rarity rarity() {
+            return switch (this) {
+                case SPEED, FLAME, FEATHER, AQUA, CANDY -> Rarity.COMMON;
+                case HUNTER, HEALER, SHADOW, THOR, SKELETON, SPIDER, PUMPKIN -> Rarity.RARE;
+                case STEALER, TANK, WITCH, SCARECROW, PHANTOM, WEREWOLF -> Rarity.EPIC;
+                case TELEPORTER, VOID, REAPER, CURSE -> Rarity.LEGENDARY;
+                case GHOST, VAMPIRE -> Rarity.MYTHIC;
             };
         }
 
@@ -127,6 +155,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     BossParty party;
     Duel duel;
     Shops shops;
+    Crates crates;
+    Trading trading;
+    Ranked ranked;
+    Rebirths rebirths;
     private NamespacedKey activatorKey;
     private final Set<UUID> needsActivator = new HashSet<>();
 
@@ -158,6 +190,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         horseman = new Horseman(this);
         hallow = new HallowBosses(this);
         duel = new Duel(this);
+        crates = new Crates(this);
+        trading = new Trading(this);
+        ranked = new Ranked(this);
+        rebirths = new Rebirths(this);
         shops = new Shops(this);
         tutorial = new Tutorial(this);
         admin = new Admin(this);
@@ -174,6 +210,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(hallow, this);
         Bukkit.getPluginManager().registerEvents(fightTotem, this);
         Bukkit.getPluginManager().registerEvents(duel, this);
+        Bukkit.getPluginManager().registerEvents(crates, this);
+        Bukkit.getPluginManager().registerEvents(trading, this);
+        Bukkit.getPluginManager().registerEvents(ranked, this);
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
         for (Player p : Bukkit.getOnlinePlayers()) setupPlayer(p);
     }
@@ -184,6 +223,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (horseman != null) horseman.shutdown();
         if (hallow != null) hallow.shutdown();
         if (duel != null) duel.shutdown();
+        if (ranked != null) ranked.shutdown();
+        if (trading != null) trading.shutdown();
         if (fightTotem != null) fightTotem.shutdown();
         if (shops != null) shops.save();
         if (tot != null) tot.stop(false);
@@ -238,6 +279,21 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
             cfg.set("powers.enabled", en8);
             cfg.set("config-version", 8);
+        }
+        if (v < 9) {
+            // v9 "Galactic Update Eve": power levels go to 100 and the economy is rebalanced,
+            // so the numbers that shape both are refreshed on old configs. New sections
+            // (crates, ranked, rebirth, galactic, boss cooldowns) arrive via copyDefaults.
+            cfg.set("upgrade.max-level", 100);
+            cfg.set("upgrade.costs", java.util.List.of(25, 50, 100, 200, 400, 800, 1500, 3000, 6000, 12000));
+            cfg.set("upgrade.cooldown-per-level", 0.01);
+            cfg.set("points.play-minutes", 25);
+            cfg.set("points.play-reward", 8);
+            cfg.set("shop.restock-minutes", 8);
+            cfg.set("shop.stock-per-item", 2);
+            cfg.set("horseman.reward-points", 40);
+            cfg.set("duel.win-points", 12);
+            cfg.set("config-version", 9);
         }
         cfg.options().copyDefaults(true);
         saveConfig();
@@ -1341,6 +1397,40 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     // =====================================================================
+    // Boss fight cooldowns (v9): after starting a boss you must wait before
+    // fighting that same boss again. Stored per player in players.yml.
+    // =====================================================================
+
+    /** Cooldown length in seconds for one boss id ("horseman", "mimic", "ghost"). */
+    long bossCooldownSeconds(String bossId) {
+        long def = getConfig().getLong("boss.cooldown-seconds.default", 300L);
+        return Math.max(0L, getConfig().getLong("boss.cooldown-seconds." + bossId, def));
+    }
+
+    /** Seconds left on this player's cooldown for that boss (0 = ready to fight). */
+    long bossCooldownLeft(Player p, String bossId) {
+        long until = data.getLong("players." + p.getUniqueId() + ".boss-cd-" + bossId, 0L);
+        long left = (until - System.currentTimeMillis() + 999L) / 1000L;
+        return Math.max(0L, left);
+    }
+
+    /** Starts the cooldown now (called when a boss fight begins). */
+    void startBossCooldown(Player p, String bossId) {
+        long secs = bossCooldownSeconds(bossId);
+        if (secs <= 0) return;
+        data.set("players." + p.getUniqueId() + ".boss-cd-" + bossId, System.currentTimeMillis() + secs * 1000L);
+        saveData();
+    }
+
+    static String spanShort(long secs) {
+        if (secs < 60) return secs + "s";
+        long m = secs / 60, s = secs % 60;
+        if (m < 60) return s == 0 ? m + "m" : m + "m " + s + "s";
+        long h = m / 60;
+        return h + "h " + (m % 60) + "m";
+    }
+
+    // =====================================================================
     // Rewards used by the tutorial: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT
     // =====================================================================
 
@@ -1366,6 +1456,14 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             ItemStack token = rerollItem();
             token.setAmount(Math.max(1, Math.min(64, parseInt(parts[1], 1))));
             give(p, token);
+            return;
+        }
+        if (parts[0].equalsIgnoreCase("crate")) { // crate:N = N Power Crates AND N keys
+            if (crates != null) crates.giveSet(p, Math.max(1, Math.min(64, parseInt(parts[1], 1))));
+            return;
+        }
+        if (parts[0].equalsIgnoreCase("cratekey")) { // cratekey:N = N Power Crate Keys only
+            if (crates != null) crates.giveKeys(p, Math.max(1, Math.min(64, parseInt(parts[1], 1))));
             return;
         }
         if (parts[0].equalsIgnoreCase("power")) {
@@ -1453,6 +1551,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         setupPlayer(e.getPlayer());
+        Galactic.joinHint(this, e.getPlayer());
     }
 
     @EventHandler
@@ -1560,6 +1659,26 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
         if (name.equals("points") || name.equals("station") || name.equals("upgrade")) {
             unbound.command(sender, name, args);
+            return true;
+        }
+        if (name.equals("crate")) {
+            crates.command(sender, args);
+            return true;
+        }
+        if (name.equals("trade")) {
+            trading.command(sender, args);
+            return true;
+        }
+        if (name.equals("ranked")) {
+            ranked.command(sender, args);
+            return true;
+        }
+        if (name.equals("rebirth")) {
+            rebirths.command(sender, args);
+            return true;
+        }
+        if (name.equals("galactic")) {
+            Galactic.command(this, sender, args);
             return true;
         }
 

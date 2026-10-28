@@ -1,8 +1,8 @@
 name: AbilitySMP
-version: 8.0
+version: 9.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
-description: Unbound SMP - powers, Power Activator, quests, upgrades, tutorial, admin panel and Halloween events
+description: Unbound SMP - powers, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and events
 commands:
   power:
     description: Give or remove a power (admin)
@@ -47,6 +47,21 @@ commands:
   shop:
     description: Buy powers (the stock restocks every few minutes)
     usage: /shop
+  crate:
+    description: Power Crates - see your crates and keys, or (admin) give them
+    usage: /crate [give|key <player> [amount]]
+  trade:
+    description: Trade items safely with another player (both players confirm)
+    usage: /trade <player|accept|deny|cancel>
+  ranked:
+    description: Ranked duels - fight a random player or a bot matched to your rank and climb to Unbound King
+    usage: /ranked [queue|bot|impossible|leave]
+  rebirth:
+    description: Rebirth - reset your coins and power levels for permanent bonuses
+    usage: /rebirth [confirm]
+  galactic:
+    description: Countdown timer for the Galactic Update (admins can move the date)
+    usage: /galactic [set 2026-11-01 13:00]
   locker:
     description: Your permanent collection - ranks, trails and more
     usage: /locker

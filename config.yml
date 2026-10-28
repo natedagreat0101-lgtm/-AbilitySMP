@@ -1,4 +1,4 @@
-config-version: 8
+config-version: 9
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -259,6 +259,16 @@ music:
     pigstep: "minecraft:music_disc.pigstep"
     otherside: "minecraft:music_disc.otherside"
     disc-5: "minecraft:music_disc.5"
+    blocks: "minecraft:music_disc.blocks"
+    chirp: "minecraft:music_disc.chirp"
+    far: "minecraft:music_disc.far"
+    mall: "minecraft:music_disc.mall"
+    mellohi: "minecraft:music_disc.mellohi"
+    strad: "minecraft:music_disc.strad"
+    wait: "minecraft:music_disc.wait"
+    ward: "minecraft:music_disc.ward"
+    creator: "minecraft:music_disc.creator"
+    relic: "minecraft:music_disc.relic"
     cave-ambience: "minecraft:ambient.cave"
 
 halloween:
@@ -282,31 +292,32 @@ activator:
 # (an admin sets a station with /station add while looking at a block)
 # ------------------------------------------------------------------
 points:
-  play-minutes: 20          # every 20 minutes online...
-  play-reward: 10           # ...gives this many points
+  play-minutes: 25          # every 25 minutes online...
+  play-reward: 8            # ...gives this many points
 
 upgrade:
-  max-level: 5
-  costs: [25, 50, 100, 200] # price of level 2, 3, 4, 5
-  power-per-level: 0.10     # +10% range, damage and duration per level
-  cooldown-per-level: 0.10  # -10% cooldown per level
+  max-level: 100
+  costs: [25, 50, 100, 200, 400, 800, 1500, 3000, 6000, 12000] # price of levels 2-11; past that the price keeps growing on its own
+  power-per-level: 0.10     # +10% range, damage and duration per level; levels past 50 count DOUBLE (level 100 is about 16x)
+  cooldown-per-level: 0.01  # -1% cooldown per level
+  min-cooldown-mult: 0.25   # cooldowns never go below 25% of the base
 
 # Quest types: KILL_MOBS, KILL_PLAYERS, BREAK_LOGS, MINE_ORES, USE_POWER, COLLECT_CANDY,
-#              DUEL_WIN, BOSS_KILL
+#              DUEL_WIN, BOSS_KILL, RANKED_WIN, OPEN_CRATE, TRADE, REBIRTH
 # A finished quest gives its points and starts over by itself.
 quests:
   mob-slayer:
     name: "Mob Slayer"
     description: "Kill hostile mobs"
     type: KILL_MOBS
-    target: 20
-    reward: 15
+    target: 30
+    reward: 12
   player-hunter:
     name: "Player Hunter"
     description: "Kill other players"
     type: KILL_PLAYERS
     target: 3
-    reward: 25
+    reward: 20
   lumberjack:
     name: "Lumberjack"
     description: "Chop logs"
@@ -317,14 +328,26 @@ quests:
     name: "Deep Miner"
     description: "Mine ores"
     type: MINE_ORES
-    target: 24
-    reward: 20
+    target: 32
+    reward: 18
   power-user:
     name: "Power User"
     description: "Use your power"
     type: USE_POWER
-    target: 15
+    target: 25
     reward: 10
+  power-master:
+    name: "Power Master"
+    description: "Use your power a LOT"
+    type: USE_POWER
+    target: 100
+    reward: 35
+  horde-slayer:
+    name: "Horde Slayer"
+    description: "Kill a whole horde of hostile mobs"
+    type: KILL_MOBS
+    target: 150
+    reward: 50
   candy-collector:
     name: "Candy Collector"
     description: "Collect candy on Trick or Treat Night"
@@ -336,14 +359,44 @@ quests:
     name: "Duelist"
     description: "Win friendly duels"
     type: DUEL_WIN
-    target: 2
+    target: 3
     reward: 15
   horseman-slayer:
     name: "Horseman Slayer"
-    description: "Defeat the Headless Horseman"
+    description: "Defeat a boss (any boss counts)"
     type: BOSS_KILL
     target: 1
+    reward: 25
+  boss-hunter:
+    name: "Boss Hunter"
+    description: "Defeat bosses"
+    type: BOSS_KILL
+    target: 5
+    reward: 40
+  ranked-warrior:
+    name: "Ranked Warrior"
+    description: "Win ranked duels (/ranked)"
+    type: RANKED_WIN
+    target: 3
     reward: 30
+  crate-opener:
+    name: "Crate Opener"
+    description: "Open Power Crates (/crate)"
+    type: OPEN_CRATE
+    target: 3
+    reward: 20
+  master-trader:
+    name: "Master Trader"
+    description: "Complete trades with other players (/trade)"
+    type: TRADE
+    target: 3
+    reward: 20
+  reborn-again:
+    name: "Born Again"
+    description: "Rebirth (/rebirth)"
+    type: REBIRTH
+    target: 1
+    reward: 50
 
 # ------------------------------------------------------------------
 # Trick or Treat Night (admin panel button)
@@ -365,7 +418,7 @@ horseman:
   arena-x: 0
   arena-y: 200
   arena-z: -4000
-  reward-points: 50
+  reward-points: 40
   reward-coins: 30
   gravestone-damage: 6
   pumpkin-damage: 8
@@ -379,6 +432,11 @@ horseman:
 # ------------------------------------------------------------------
 boss:
   arena-slot-spacing: 100
+  cooldown-seconds:       # v9: after a boss fight starts, that boss is on cooldown for you
+    default: 300          # 5 minutes
+    horseman: 300
+    mimic: 600            # 10 minutes - he pays out the most
+    ghost: 180            # 3 minutes - he is the easy boss
 
 # ------------------------------------------------------------------
 # Mimic boss: /boss fight Mimic. A giant chest monster.
@@ -423,11 +481,11 @@ duel:
   arena-x: 0
   arena-y: 220
   arena-z: 4000
-  win-points: 15
+  win-points: 12
   countdown-seconds: 5
   max-minutes: 3
   allow-powers: false        # false = fair fights without powers
-  reward-cooldown-minutes: 10  # no reward for beating the same player again too soon
+  reward-cooldown-minutes: 15  # no reward for beating the same player again too soon
   request-seconds: 60
 
 # ------------------------------------------------------------------
@@ -463,37 +521,38 @@ ranks:
 # A power with no price here is never sold. Admins can stock and discount powers from /panel.
 # ------------------------------------------------------------------
 shop:
-  restock-minutes: 5
+  restock-minutes: 8
   items-per-restock: 5       # random powers on sale each restock
-  stock-per-item: 3          # how many players can buy each power before it sells out
-  prices:
-    flame: 40
-    feather: 40
-    aqua: 50
-    healer: 60
-    hunter: 60
-    shadow: 70
-    stealer: 80
-    ghost: 80
-    vampire: 100
-    thor: 100
-    tank: 100
-    teleporter: 150
-    void: 150
-    pumpkin: 60
-    candy: 50
-    skeleton: 70
-    spider: 70
-    scarecrow: 80
-    witch: 90
-    phantom: 90
-    werewolf: 100
-    curse: 110
-    reaper: 120
+  stock-per-item: 2          # how many players can buy each power before it sells out
+  prices:                    # priced by rarity now: Common ~50, Rare ~90, Epic ~155, Legendary ~255, Mythic ~425
+    flame: 55
+    feather: 50
+    aqua: 55
+    candy: 55
+    healer: 80
+    hunter: 85
+    skeleton: 85
+    spider: 85
+    shadow: 95
+    pumpkin: 95
+    thor: 110
+    witch: 150
+    stealer: 150
+    phantom: 150
+    scarecrow: 155
+    tank: 160
+    werewolf: 165
+    curse: 240
+    teleporter: 250
+    reaper: 260
+    void: 275
+    ghost: 400
+    vampire: 450
 
 # ------------------------------------------------------------------
 # Halloween Shop (/halloweenshop). Everything here costs Halloween Coins.
-# reward: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT, or unlock:category:id (a Locker unlock)
+# reward: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT, crate:AMOUNT (crate + key),
+#         cratekey:AMOUNT, or unlock:category:id (a Locker unlock)
 # limit: how many times one player can buy it (0 = unlimited)
 # ------------------------------------------------------------------
 halloween-shop:
@@ -534,8 +593,34 @@ halloween-shop:
       icon: AMETHYST_SHARD
       reward: "reroll:1"
       price: 40
+    power-crate:
+      name: "Power Crate + Key"
+      icon: CHEST
+      reward: "crate:1"
+      price: 50
+    crate-key:
+      name: "Power Crate Key"
+      icon: TRIPWIRE_HOOK
+      reward: "cratekey:1"
+      price: 20
+    netherite-ingot:
+      name: "Netherite Ingot"
+      icon: NETHERITE_INGOT
+      reward: "item:NETHERITE_INGOT:1"
+      price: 70
+    enchanted-apple:
+      name: "Enchanted Golden Apple"
+      icon: ENCHANTED_GOLDEN_APPLE
+      reward: "item:ENCHANTED_GOLDEN_APPLE:1"
+      price: 45
+    elytra:
+      name: "Elytra"
+      icon: ELYTRA
+      reward: "item:ELYTRA:1"
+      price: 220
+      limit: 1
   limited:                    # only sold until this date and time, then they disappear
-    until: "2026-11-02 00:00"
+    until: "2026-11-09 00:00"
     items:
       ghost-power:
         name: "Ghost Power"
@@ -573,3 +658,115 @@ halloween-shop:
         reward: "item:EXPERIENCE_BOTTLE:32"
         price: 15
         limit: 3
+      double-crate:
+        name: "2 Power Crates + 2 Keys"
+        icon: CHEST
+        reward: "crate:2"
+        price: 90
+        limit: 2
+      pumpkin-costume:
+        name: "Pumpkin Costume (cosmetic)"
+        icon: CARVED_PUMPKIN
+        reward: "unlock:cosmetic:pumpkin-head"
+        price: 30
+        limit: 1
+      ghost-costume:
+        name: "Ghost Costume (cosmetic)"
+        icon: WHITE_WOOL
+        reward: "unlock:cosmetic:ghost-sheet"
+        price: 35
+        limit: 1
+      witch-costume:
+        name: "Witch Costume (cosmetic)"
+        icon: LEATHER_HELMET
+        reward: "unlock:cosmetic:witch-hat"
+        price: 40
+        limit: 1
+      title-boss-slayer:
+        name: "Title: Boss Slayer"
+        icon: OAK_SIGN
+        reward: "unlock:title:boss-slayer"
+        price: 20
+        limit: 1
+      title-unbound-king:
+        name: "Title: Unbound King"
+        icon: NETHER_STAR
+        reward: "unlock:title:unbound-king"
+        price: 250
+        limit: 1
+
+# ------------------------------------------------------------------
+# Power Crates (v9): /crate. Right-click a crate with a key in your
+# inventory to spin for a random power you do not own yet.
+# weights: the rarity odds. boss-drops: your chance of a key (or a
+# whole crate) when you beat each boss.
+# ------------------------------------------------------------------
+crates:
+  weights:
+    common: 50
+    rare: 30
+    epic: 13
+    legendary: 5
+    mythic: 2
+  boss-drops:
+    horseman-key-chance: 0.35
+    horseman-crate-chance: 0.10
+    mimic-key-chance: 1.0
+    mimic-crate-chance: 0.50
+    ghost-key-chance: 0.15
+    ghost-crate-chance: 0.0
+
+# ------------------------------------------------------------------
+# Trading (v9): /trade <player>. Both players must confirm, and any
+# change to an offer un-confirms both sides.
+# ------------------------------------------------------------------
+trading:
+  request-seconds: 60
+  timeout-seconds: 120
+
+# ------------------------------------------------------------------
+# Ranked duels (v9): /ranked. Queue for a random player, or fight a
+# practice bot matched to your rank. Ladder: Bronze, Silver, Gold,
+# Platinum, Diamond, Master, and the best rank: Unbound King (2600).
+# You start at 1000 rating. Nobody dies and nobody loses items.
+# ------------------------------------------------------------------
+ranked:
+  arena-x: 0
+  arena-y: 230
+  arena-z: 12000
+  countdown-seconds: 3
+  max-minutes: 5
+  win-points: 10            # Unbound Coins for beating a real player
+  bot-win-points: 5         # Unbound Coins for beating your practice bot
+
+# ------------------------------------------------------------------
+# Rebirths (v9): /rebirth. Resets your Unbound Coins and power levels;
+# you keep your powers. Cost of rebirth N is base-cost x N x N, and you
+# also need boss kills. Every rebirth pays you back forever.
+# ------------------------------------------------------------------
+rebirth:
+  base-cost: 250
+  boss-kills-per-rebirth: 3   # rebirth N needs 3 x N total boss kills
+  coin-bonus-percent: 10      # +10% to ALL coins earned, per rebirth, forever
+  halloween-coins-per-rebirth: 20   # times your new rebirth number
+
+# ------------------------------------------------------------------
+# Server events (v9): item rain amounts (per player, per drop).
+# The events themselves live in /panel -> Server Events.
+# ------------------------------------------------------------------
+events:
+  rain:
+    tacos-per-drop: 3
+    diamonds-per-drop: 1
+    gold-per-drop: 2
+    candy-per-drop: 3
+
+# ------------------------------------------------------------------
+# The GALACTIC UPDATE countdown (v9): /galactic.
+# Change the date here, or in game: /galactic set 2026-11-01 13:00
+# (times use the timezone below)
+# ------------------------------------------------------------------
+galactic:
+  name: "Galactic Update"
+  release: "2026-11-01 13:00"   # Sunday Nov 1 2026, 1:00 PM
+  timezone: "America/Toronto"

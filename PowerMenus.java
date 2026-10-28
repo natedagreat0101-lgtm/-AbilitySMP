@@ -84,6 +84,7 @@ final class PowerMenus {
                     if (owned) {
                         List<String> lore = new ArrayList<>();
                         lore.add(describe(pw));
+                        lore.add("Rarity: " + pw.rarity().display.toUpperCase());
                         lore.add("Level " + lvl + " / " + max);
                         lore.add(equipped ? "Currently equipped" : "Left-click to equip");
                         if (atStation) {
@@ -101,8 +102,10 @@ final class PowerMenus {
                                     }
                                 }));
                     } else {
-                        out.add(new Menus.Entry(Menus.icon(Material.BARRIER, name, false, describe(pw), "LOCKED",
-                                priceText(pw), "Click to open the shop"), (pp, type) -> openShop(pp)));
+                        out.add(new Menus.Entry(Menus.icon(Material.BARRIER, name, false, describe(pw),
+                                "Rarity: " + pw.rarity().display.toUpperCase(), "LOCKED",
+                                priceText(pw), "Or win it from a Power Crate - /crate", "Click to open the shop"),
+                                (pp, type) -> openShop(pp)));
                     }
                 }
                 return out;
@@ -124,6 +127,10 @@ final class PowerMenus {
             case "HAUNTED_MINUTES" -> Material.CLOCK;
             case "DUEL_WIN" -> Material.GOLDEN_SWORD;
             case "BOSS_KILL" -> Material.WITHER_SKELETON_SKULL;
+            case "RANKED_WIN" -> Material.NETHERITE_SWORD;
+            case "OPEN_CRATE" -> Material.CHEST;
+            case "TRADE" -> Material.EMERALD;
+            case "REBIRTH" -> Material.BEACON;
             default -> Material.BOOK;
         };
     }
