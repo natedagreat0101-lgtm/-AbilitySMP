@@ -1,18 +1,32 @@
-name: Build
+name: Build AbilitySMP
+
+# The GitHub build method: push this project to GitHub and the plugin jar
+# builds itself. Download it from the Actions tab -> latest run -> Artifacts.
+
 on:
   push:
+  pull_request:
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-      - run: mvn -B package
-      - uses: actions/upload-artifact@v4
+          cache: maven
+
+      - name: Build the plugin
+        run: mvn -B package
+
+      - name: Upload the plugin jar
+        uses: actions/upload-artifact@v4
         with:
-          name: AbilitySMP-jar
+          name: AbilitySMP
           path: target/AbilitySMP.jar

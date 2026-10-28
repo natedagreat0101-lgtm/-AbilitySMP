@@ -1,12 +1,13 @@
 name: AbilitySMP
-version: 10.0
+version: 8.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
 description: Unbound SMP - powers, Power Activator, quests, upgrades, tutorial, admin panel and Halloween events
 commands:
   power:
-    description: /power shop to buy a reroll or a power (admins have more options)
-    usage: /power shop
+    description: Give or remove a power (admin)
+    usage: /power <give|set|take|list|token|points|reload> ...
+    permission: abilitysmp.admin
   panel:
     description: Open the admin panel
     usage: /panel
@@ -43,21 +44,20 @@ commands:
   powers:
     description: Open the power menu to equip your powers
     usage: /powers
+  shop:
+    description: Buy powers (the stock restocks every few minutes)
+    usage: /shop
   locker:
     description: Your permanent collection - ranks, trails and more
     usage: /locker
-  rank:
-    description: Give or take special ranks (admin)
-    usage: "/rank give <player> <rank>"
-    permission: abilitysmp.admin
   duel:
     description: Challenge a player to a friendly duel
     usage: /duel <player|accept|deny>
   boss:
-    description: Fight a boss
-    usage: "/boss fight Headless Horseman (admins: /boss reset [player])"
+    description: Fight a boss, or invite a friend to join your boss fights
+    usage: /boss fight <Headless Horseman|Mimic|Ghost> | /boss invite <player> | /boss accept | /boss leave
   halloweenshop:
-    description: Spend Halloween Coins (rare Halloween powers and limited-time items)
+    description: Spend Halloween Coins (limited-time items inside)
     usage: /halloweenshop
     aliases: [hshop]
   shopkeeper:

@@ -1,4 +1,4 @@
-config-version: 9
+config-version: 8
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -88,6 +88,63 @@ teleporter:
   damage-hearts: 4
 
 # ------------------------------------------------------------------
+# Halloween powers (v8): Pumpkin, Witch, Skeleton, Spider, Scarecrow,
+# Reaper, Candy, Phantom, Werewolf, Curse
+# ------------------------------------------------------------------
+pumpkin:
+  cooldown: 18
+  fireball-yield: 3.5
+
+witch:
+  cooldown: 25
+  range: 10
+  poison-seconds: 6
+
+skeleton:
+  cooldown: 16
+  range: 30
+  arrows: 8
+  arrow-damage: 4.0         # 2 hearts per arrow
+
+spider:
+  cooldown: 20
+  range: 20
+  poison-seconds: 5
+  web-seconds: 5
+
+scarecrow:
+  cooldown: 22
+  range: 9
+  fear-seconds: 6
+
+reaper:
+  cooldown: 20
+  range: 25
+  damage-hearts: 5
+  heal-hearts: 2.5
+
+candy:
+  cooldown: 24
+  buff-seconds: 10
+  heal-hearts: 4
+
+phantom:
+  cooldown: 18
+  dash-strength: 1.8
+  range: 7
+  damage-hearts: 2
+
+werewolf:
+  cooldown: 26
+  buff-seconds: 12
+  range: 10
+
+curse:
+  cooldown: 24
+  range: 22
+  curse-seconds: 8
+
+# ------------------------------------------------------------------
 # Chance weights used when someone rerolls their power:
 # ------------------------------------------------------------------
 drops:
@@ -106,6 +163,16 @@ drops:
   vampire: 0.06
   teleporter: 0.04
   void: 0.05
+  pumpkin: 0.07
+  witch: 0.06
+  skeleton: 0.07
+  spider: 0.07
+  scarecrow: 0.06
+  reaper: 0.04
+  candy: 0.08
+  phantom: 0.06
+  werewolf: 0.05
+  curse: 0.05
 
 # Reroll if the first power isn't the wanted one:
 rerolling:
@@ -122,6 +189,7 @@ passives:
   ghost-speed-level: 1
   teleporter-speed-level: 3
   void-strength-level: 3
+  werewolf-speed-level: 1
   tank-extra-hearts: 4
   hunter-glow-radius: 30
   particles-enabled: true
@@ -143,6 +211,16 @@ powers:
     - vampire
     - teleporter
     - void
+    - pumpkin
+    - witch
+    - skeleton
+    - spider
+    - scarecrow
+    - reaper
+    - candy
+    - phantom
+    - werewolf
+    - curse
 
 # ------------------------------------------------------------------
 # Who counts as an enemy for powers (targeting, glow, stun)
@@ -187,8 +265,6 @@ halloween:
   enabled: true      # false = portal, Haunted Forest mobs, boss and events are off. Ranks and progress stay.
   music: "minecraft:music_disc.13"
   music-length-seconds: 178
-  music-mode: composed       # composed = an eerie music-box tune made of note-block sounds. disc = loops the disc above.
-  music-volume: 0.8
   curse-seconds: 60
   max-lanterns: 120
   lantern-interval-seconds: 5
@@ -294,7 +370,51 @@ horseman:
   gravestone-damage: 6
   pumpkin-damage: 8
   slash-damage: 6            # phase 3 doubles all of these
-  cooldown-minutes: 20       # per player, starts when a fight ends. You are told when it resets.
+
+# ------------------------------------------------------------------
+# All boss fights: every fight gets its OWN arena copy, spaced this many
+# blocks apart along X, so nobody ever waits for an arena. Fighters hold a
+# Fight Totem: if it pops they lose the fight, but they never die.
+# A friend joins with /boss invite <player> + /boss accept.
+# ------------------------------------------------------------------
+boss:
+  arena-slot-spacing: 100
+
+# ------------------------------------------------------------------
+# Mimic boss: /boss fight Mimic. A giant chest monster.
+# Phases: 100-75% tongue pull, 75-50% chomp (4 hearts + poison) and weaken,
+# 50-25% spawns a copy of you, 25-0% ULTRA: 2 giant copies of you.
+# ------------------------------------------------------------------
+mimic:
+  health: 300
+  arena-x: 0
+  arena-y: 200
+  arena-z: -8000
+  reward-coins: 100           # Halloween Coins
+  reward-points: 0            # Unbound Coins
+  bite-hearts: 3              # normal melee
+  tongue-bite-hearts: 2       # bite after the tongue drags you in
+  chomp-hearts: 4             # phase 2+ bite
+  poison-seconds: 5
+  weaken-seconds: 5
+  giant-damage-hearts: 6      # the giant copies of you hit this hard (but die in 2 hits)
+
+# ------------------------------------------------------------------
+# Ghost boss: /boss fight Ghost. An easy boss: 20 hearts (40 HP).
+# Visible for 5 seconds, invisible for 3 seconds (he sneaks behind you
+# and hits you), then visible again, over and over.
+# NOTE: this is the BOSS. The "ghost:" section higher up is the Ghost power.
+# ------------------------------------------------------------------
+ghost-boss:
+  health: 40
+  arena-x: 0
+  arena-y: 200
+  arena-z: 8000
+  reward-coins: 10            # Halloween Coins
+  reward-points: 5            # Unbound Coins
+  damage-hearts: 2.5
+  visible-seconds: 5
+  invisible-seconds: 3
 
 # ------------------------------------------------------------------
 # Duels: /duel <player>, then the other player runs /duel accept
@@ -334,20 +454,19 @@ ranks:
     unbound-king:
       name: "Unbound King"
       minutes: 160
-  halloween:               # kills with Halloween powers (Ghost or Vampire)
-    starter-kills: 1
-    veteran-kills: 25
-    expert-kills: 100
+  halloween:
+    veteran-kills: 50
+    expert-kills: 150
 
 # ------------------------------------------------------------------
-# /power shop. Costs Unbound Coins. Every restock ONE power is stocked; the better the power, the
-# higher its price and the rarer it is. Admins can stock and discount powers from /panel.
+# Power Shop (/shop). Restocks on a timer. Every power costs Unbound Coins.
+# A power with no price here is never sold. Admins can stock and discount powers from /panel.
 # ------------------------------------------------------------------
 shop:
   restock-minutes: 5
-  reroll-price: 60           # buys a Reroll Token (right-click it for a random power you don't own)
-  random-power-price: 90     # buys a random power you don't own right away
-  prices:                    # price of the stocked power
+  items-per-restock: 5       # random powers on sale each restock
+  stock-per-item: 3          # how many players can buy each power before it sells out
+  prices:
     flame: 40
     feather: 40
     aqua: 50
@@ -355,23 +474,30 @@ shop:
     hunter: 60
     shadow: 70
     stealer: 80
+    ghost: 80
+    vampire: 100
     thor: 100
     tank: 100
     teleporter: 150
     void: 150
+    pumpkin: 60
+    candy: 50
+    skeleton: 70
+    spider: 70
+    scarecrow: 80
+    witch: 90
+    phantom: 90
+    werewolf: 100
+    curse: 110
+    reaper: 120
 
 # ------------------------------------------------------------------
-# /halloweenshop. Costs Halloween Coins (a balance, like Unbound Coins; see /points).
-# Halloween powers are rare: each restock has this chance to put one in the shop.
+# Halloween Shop (/halloweenshop). Everything here costs Halloween Coins.
 # reward: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT, or unlock:category:id (a Locker unlock)
 # limit: how many times one player can buy it (0 = unlimited)
 # ------------------------------------------------------------------
 halloween-shop:
   timezone: "America/Toronto"
-  power-chance: 0.10         # 10% per restock (about once an hour)
-  power-prices:
-    ghost: 80
-    vampire: 100
   items:
     golden-apples:
       name: "4 Golden Apples"
@@ -408,9 +534,33 @@ halloween-shop:
       icon: AMETHYST_SHARD
       reward: "reroll:1"
       price: 40
-  limited:                   # only sold until this date and time, then they disappear
+  limited:                    # only sold until this date and time, then they disappear
     until: "2026-11-02 00:00"
     items:
+      ghost-power:
+        name: "Ghost Power"
+        icon: NETHER_STAR
+        reward: "power:GHOST"
+        price: 60
+        limit: 1
+      vampire-power:
+        name: "Vampire Power"
+        icon: NETHER_STAR
+        reward: "power:VAMPIRE"
+        price: 80
+        limit: 1
+      pumpkin-power:
+        name: "Pumpkin Power"
+        icon: NETHER_STAR
+        reward: "power:PUMPKIN"
+        price: 50
+        limit: 1
+      reaper-power:
+        name: "Reaper Power"
+        icon: NETHER_STAR
+        reward: "power:REAPER"
+        price: 120
+        limit: 1
       soul-trail:
         name: "Soul Trail (cosmetic)"
         icon: SOUL_LANTERN
@@ -423,9 +573,3 @@ halloween-shop:
         reward: "item:EXPERIENCE_BOTTLE:32"
         price: 15
         limit: 3
-      spooky-reroll:
-        name: "Spooky Reroll Token"
-        icon: AMETHYST_SHARD
-        reward: "reroll:1"
-        price: 30
-        limit: 2

@@ -19,7 +19,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fireball;
@@ -65,11 +67,17 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     enum Power {
         FLAME, SPEED, TANK, THOR, SHADOW, HEALER, FEATHER, STEALER, AQUA, HUNTER,
-        GHOST, VAMPIRE, TELEPORTER, VOID;
+        GHOST, VAMPIRE, TELEPORTER, VOID,
+        // Halloween update (v8): ten new Halloween powers
+        PUMPKIN, WITCH, SKELETON, SPIDER, SCARECROW, REAPER, CANDY, PHANTOM, WEREWOLF, CURSE;
 
-        /** Halloween powers: only Ghost and Vampire. */
+        /** Halloween powers: Ghost, Vampire and the ten v8 Halloween powers. */
         boolean isHalloween() {
-            return this == GHOST || this == VAMPIRE;
+            return switch (this) {
+                case GHOST, VAMPIRE, PUMPKIN, WITCH, SKELETON, SPIDER, SCARECROW, REAPER, CANDY,
+                     PHANTOM, WEREWOLF, CURSE -> true;
+                default -> false;
+            };
         }
 
         /** Name used in config.yml, e.g. jack-o-lantern */
@@ -114,6 +122,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Menus menus;
     PowerMenus powerMenus;
     Horseman horseman;
+    HallowBosses hallow;
+    FightTotem fightTotem;
+    BossParty party;
     Duel duel;
     Shops shops;
     private NamespacedKey activatorKey;
@@ -135,6 +146,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         dataFile = new File(getDataFolder(), "players.yml");
         loadData();
 
+        fightTotem = new FightTotem(this);
+        party = new BossParty();
         profile = new Profile(this);
         unbound = new Unbound(this);
         tot = new TrickOrTreat(this);
@@ -143,6 +156,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         menus = new Menus();
         powerMenus = new PowerMenus(this);
         horseman = new Horseman(this);
+        hallow = new HallowBosses(this);
         duel = new Duel(this);
         shops = new Shops(this);
         tutorial = new Tutorial(this);
@@ -157,6 +171,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(menus, this);
         Bukkit.getPluginManager().registerEvents(shops, this);
         Bukkit.getPluginManager().registerEvents(horseman, this);
+        Bukkit.getPluginManager().registerEvents(hallow, this);
+        Bukkit.getPluginManager().registerEvents(fightTotem, this);
         Bukkit.getPluginManager().registerEvents(duel, this);
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
         for (Player p : Bukkit.getOnlinePlayers()) setupPlayer(p);
@@ -166,7 +182,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     public void onDisable() {
         if (admin != null) admin.shutdown();
         if (horseman != null) horseman.shutdown();
+        if (hallow != null) hallow.shutdown();
         if (duel != null) duel.shutdown();
+        if (fightTotem != null) fightTotem.shutdown();
         if (shops != null) shops.save();
         if (tot != null) tot.stop(false);
         if (unbound != null) unbound.save();
@@ -212,11 +230,14 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             cfg.set("quests.haunted-survivor", null);
             cfg.set("config-version", 7);
         }
-        if (v < 9) {
-            cfg.set("ranks.halloween.starter-kills", 1);   // Halloween ranks now come from kills with Halloween powers
-            cfg.set("ranks.halloween.veteran-kills", 25);
-            cfg.set("ranks.halloween.expert-kills", 100);
-            cfg.set("config-version", 9);
+        if (v < 8) {
+            List<String> en8 = new ArrayList<>(cfg.getStringList("powers.enabled"));
+            for (String s : new String[]{"pumpkin", "witch", "skeleton", "spider", "scarecrow",
+                    "reaper", "candy", "phantom", "werewolf", "curse"}) {
+                if (!en8.contains(s)) en8.add(s);
+            }
+            cfg.set("powers.enabled", en8);
+            cfg.set("config-version", 8);
         }
         cfg.options().copyDefaults(true);
         saveConfig();
@@ -481,6 +502,16 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case VAMPIRE -> NamedTextColor.DARK_RED;
             case TELEPORTER -> NamedTextColor.DARK_BLUE;
             case VOID -> NamedTextColor.DARK_PURPLE;
+            case PUMPKIN -> NamedTextColor.GOLD;
+            case WITCH -> NamedTextColor.DARK_PURPLE;
+            case SKELETON -> NamedTextColor.WHITE;
+            case SPIDER -> NamedTextColor.DARK_GRAY;
+            case SCARECROW -> NamedTextColor.YELLOW;
+            case REAPER -> NamedTextColor.DARK_RED;
+            case CANDY -> NamedTextColor.LIGHT_PURPLE;
+            case PHANTOM -> NamedTextColor.AQUA;
+            case WEREWOLF -> NamedTextColor.GRAY;
+            case CURSE -> NamedTextColor.DARK_PURPLE;
         };
     }
 
@@ -577,19 +608,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.addRecipe(r);
     }
 
-    /** A random enabled power the player does not own yet, or null if they own them all. */
-    Power randomUnowned(Player p) {
-        return roll(p.getUniqueId(), null);
-    }
-
-    /** Unlocks a power for good and equips it (used when you buy a random power). */
-    void unlockAndEquip(Player p, Power pw) {
-        setPower(p, pw);
-        p.sendMessage(Component.text("You got the " + pretty(pw.key()) + " power!", colorFor(pw)));
-        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 0.7f);
-        puff(p.getLocation().add(0, 1, 0), Particle.END_ROD, 30);
-    }
-
     private void useRerollToken(Player p, ItemStack hand) {
         Power old = powerOf(p);
         Power next = roll(p.getUniqueId(), old);
@@ -631,6 +649,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 }
                 case TELEPORTER -> effect(p, PotionEffectType.SPEED, i("passives.teleporter-speed-level", 3));
                 case VOID -> effect(p, PotionEffectType.STRENGTH, i("passives.void-strength-level", 3));
+                case WEREWOLF -> {
+                    effect(p, PotionEffectType.SPEED, i("passives.werewolf-speed-level", 1));
+                    effect(p, PotionEffectType.NIGHT_VISION, 1);
+                }
+                case WITCH -> effect(p, PotionEffectType.NIGHT_VISION, 1);
                 default -> { } // TANK (hearts) and FEATHER (fall damage) are handled elsewhere
             }
 
@@ -655,6 +678,16 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case VAMPIRE -> Particle.CRIMSON_SPORE;
             case TELEPORTER -> Particle.PORTAL;
             case VOID -> Particle.REVERSE_PORTAL;
+            case PUMPKIN -> Particle.FLAME;
+            case WITCH -> Particle.WITCH;
+            case SKELETON -> Particle.ASH;
+            case SPIDER -> Particle.SQUID_INK;
+            case SCARECROW -> Particle.SMOKE;
+            case REAPER -> Particle.SOUL;
+            case CANDY -> Particle.HAPPY_VILLAGER;
+            case PHANTOM -> Particle.CLOUD;
+            case WEREWOLF -> Particle.CRIT;
+            case CURSE -> Particle.ENCHANT;
         };
     }
 
@@ -859,6 +892,166 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case TELEPORTER -> teleporter(p);
 
             case VOID -> voidStrike(p);
+
+            // ------------------------------------------------ Halloween powers (v8)
+
+            case PUMPKIN -> { // Pumpkin King: a huge exploding pumpkin bomb
+                startCooldown(p, power);
+                Vector dir = p.getEyeLocation().getDirection();
+                Fireball fb = p.launchProjectile(Fireball.class, dir.clone().multiply(1.1));
+                fb.setDirection(dir);
+                fb.setYield((float) d("pumpkin.fireball-yield", 3.5));
+                fb.setShooter(p);
+                puff(p.getLocation().add(0, 1, 0), Particle.FLAME, 25);
+                p.playSound(p.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1f, 0.7f);
+            }
+
+            case WITCH -> { // Witch: poison and slow every enemy around you, heal yourself a little
+                startCooldown(p, power);
+                double radius = d("witch.range", 10) * um(p);
+                int secs = i("witch.poison-seconds", 6);
+                for (LivingEntity t : enemiesNear(p, radius)) {
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.POISON, secs * 20, 1));
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, secs * 20, 0));
+                    puff(t.getLocation().add(0, 1, 0), Particle.WITCH, 18);
+                    if (t instanceof Player tp) bar(tp, "The witch cursed you with poison!", NamedTextColor.DARK_PURPLE);
+                }
+                p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 6 * 20, 1));
+                p.playSound(p.getLocation(), Sound.ENTITY_WITCH_THROW, 1f, 0.8f);
+            }
+
+            case SKELETON -> { // Skeleton: a volley of arrows at the nearest enemy (or straight ahead)
+                LivingEntity t = nearestEnemy(p, d("skeleton.range", 30) * um(p));
+                startCooldown(p, power);
+                Location eye = p.getEyeLocation();
+                Vector dir = t != null
+                        ? t.getLocation().add(0, 1, 0).toVector().subtract(eye.toVector()).normalize()
+                        : eye.getDirection();
+                int arrows = i("skeleton.arrows", 8);
+                for (int n = 0; n < arrows; n++) {
+                    Arrow a = p.getWorld().spawnArrow(eye.clone().add(dir.clone().multiply(1.2)), dir, 2.4f, 7f);
+                    a.setShooter(p);
+                    a.setDamage(d("skeleton.arrow-damage", 4.0));
+                    a.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);
+                }
+                p.playSound(p.getLocation(), Sound.ENTITY_SKELETON_SHOOT, 1f, 0.8f);
+            }
+
+            case SPIDER -> { // Spider: trap the nearest enemy in webs and poison them
+                LivingEntity t = nearestEnemy(p, d("spider.range", 20) * um(p));
+                if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
+                startCooldown(p, power);
+                t.addPotionEffect(new PotionEffect(PotionEffectType.POISON, i("spider.poison-seconds", 5) * 20, 1));
+                Map<Location, org.bukkit.block.data.BlockData> old = new HashMap<>();
+                for (int dy = 0; dy <= 1; dy++) {
+                    org.bukkit.block.Block b = t.getLocation().clone().add(0, dy, 0).getBlock();
+                    if (b.getType() == Material.AIR || b.getType() == Material.COBWEB) {
+                        old.putIfAbsent(b.getLocation(), b.getBlockData());
+                        b.setType(Material.COBWEB, false);
+                    }
+                }
+                int webTicks = i("spider.web-seconds", 5) * 20;
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    for (Map.Entry<Location, org.bukkit.block.data.BlockData> en : old.entrySet()) {
+                        if (en.getKey().getBlock().getType() == Material.COBWEB) {
+                            en.getKey().getBlock().setBlockData(en.getValue(), false);
+                        }
+                    }
+                }, webTicks);
+                if (t instanceof Player tp) bar(tp, "You are stuck in a spider web!", NamedTextColor.DARK_GRAY);
+                p.playSound(p.getLocation(), Sound.ENTITY_SPIDER_AMBIENT, 1f, 0.8f);
+            }
+
+            case SCARECROW -> { // Scarecrow: terrify everyone around you - nausea, weakness, thrown back
+                startCooldown(p, power);
+                double radius = d("scarecrow.range", 9) * um(p);
+                int secs = i("scarecrow.fear-seconds", 6);
+                for (LivingEntity t : enemiesNear(p, radius)) {
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, secs * 20, 0));
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, secs * 20, 0));
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, secs * 20, 0));
+                    Vector away = t.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
+                    if (away.lengthSquared() > 1.0E-6) t.setVelocity(away.normalize().multiply(1.1).setY(0.35));
+                    if (t instanceof Player tp) bar(tp, "The scarecrow terrifies you!", NamedTextColor.YELLOW);
+                }
+                puff(p.getLocation().add(0, 1, 0), Particle.SMOKE, 35);
+                p.playSound(p.getLocation(), Sound.ENTITY_PHANTOM_AMBIENT, 1.2f, 0.6f);
+            }
+
+            case REAPER -> { // Reaper: blink to the nearest enemy, strike them and take their strength
+                LivingEntity t = nearestEnemy(p, d("reaper.range", 25) * um(p));
+                if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
+                startCooldown(p, power);
+                Location tl = t.getLocation();
+                Location dest = tl.clone().subtract(flat(tl).multiply(1.5));
+                dest.setDirection(tl.toVector().subtract(dest.toVector()));
+                puff(p.getLocation().add(0, 1, 0), Particle.SOUL, 25);
+                p.teleport(dest);
+                puff(dest.clone().add(0, 1, 0), Particle.SOUL, 25);
+                t.damage(d("reaper.damage-hearts", 5) * 2.0 * um(p), p);
+                AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
+                double cap = max != null ? max.getValue() : 20.0;
+                p.setHealth(Math.min(cap, p.getHealth() + d("reaper.heal-hearts", 2.5) * 2.0));
+                if (t instanceof Player tp) bar(tp, "The reaper struck you!", NamedTextColor.DARK_RED);
+                p.playSound(dest, Sound.ENTITY_WITHER_SHOOT, 0.9f, 0.8f);
+            }
+
+            case CANDY -> { // Candy Rush: sugar makes you fast and strong, and mends you a little
+                startCooldown(p, power);
+                int ticks = i("candy.buff-seconds", 10) * 20;
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, ticks, 1));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, ticks, 0));
+                AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
+                double cap = max != null ? max.getValue() : 20.0;
+                p.setHealth(Math.min(cap, p.getHealth() + d("candy.heal-hearts", 4) * 2.0));
+                ItemStack sweets = new ItemStack(Material.COOKIE, 3);
+                give(p, sweets); // trick-or-treat candy
+                puff(p.getLocation().add(0, 1, 0), Particle.HAPPY_VILLAGER, 25);
+                p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EAT, 1f, 1.2f);
+            }
+
+            case PHANTOM -> { // Phantom: dive through the air; your screech hurts and blinds nearby enemies
+                startCooldown(p, power);
+                Vector dash = p.getEyeLocation().getDirection().multiply(d("phantom.dash-strength", 1.8));
+                dash.setY(Math.max(0.45, dash.getY()));
+                p.setVelocity(dash);
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 80, 0));
+                double radius = d("phantom.range", 7) * um(p);
+                for (LivingEntity t : enemiesNear(p, radius)) {
+                    t.damage(d("phantom.damage-hearts", 2) * 2.0 * um(p), p);
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0));
+                    if (t instanceof Player tp) bar(tp, "A phantom screeches at you!", NamedTextColor.AQUA);
+                }
+                puff(p.getLocation().add(0, 1, 0), Particle.CLOUD, 25);
+                p.playSound(p.getLocation(), Sound.ENTITY_PHANTOM_SWOOP, 1.2f, 0.9f);
+            }
+
+            case WEREWOLF -> { // Werewolf: the howl - a burst of speed and strength, enemies cower
+                startCooldown(p, power);
+                int ticks = i("werewolf.buff-seconds", 12) * 20;
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, ticks, 1));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, ticks, 1));
+                for (LivingEntity t : enemiesNear(p, d("werewolf.range", 10) * um(p))) {
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 80, 0));
+                    if (t instanceof Player tp) bar(tp, "The werewolf howls!", NamedTextColor.GRAY);
+                }
+                puff(p.getLocation().add(0, 1, 0), Particle.CRIT, 25);
+                p.playSound(p.getLocation(), Sound.ENTITY_WOLF_GROWL, 1.4f, 0.6f);
+            }
+
+            case CURSE -> { // Curse: doom the nearest enemy - wither, weak and slow - and shield yourself
+                LivingEntity t = nearestEnemy(p, d("curse.range", 22) * um(p));
+                if (t == null) { bar(p, "No one in range to curse.", NamedTextColor.GRAY); return; }
+                startCooldown(p, power);
+                int ticks = i("curse.curse-seconds", 8) * 20;
+                t.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, ticks, 1));
+                t.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, ticks, 0));
+                t.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, ticks, 0));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, ticks, 1));
+                puff(t.getLocation().add(0, 1, 0), Particle.ENCHANT, 35);
+                if (t instanceof Player tp) bar(tp, "You have been cursed!", NamedTextColor.DARK_PURPLE);
+                p.playSound(p.getLocation(), Sound.ENTITY_EVOKER_CAST_SPELL, 1f, 0.6f);
+            }
         }
     }
 
@@ -1266,6 +1459,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     public void onQuit(PlayerQuitEvent e) {
         Player p = e.getPlayer();
         UUID id = p.getUniqueId();
+        if (party != null) party.onQuit(p);
         clearHeartSteals(p);
         drained.remove(id);
         for (Set<UUID> s : drained.values()) s.remove(id);
@@ -1333,20 +1527,17 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
             return true;
         }
-        if (name.equals("powers") || name.equals("quests") || name.equals("locker")) {
+        if (name.equals("powers") || name.equals("shop") || name.equals("quests") || name.equals("locker")) {
             if (!(sender instanceof Player mp)) {
                 sender.sendMessage("Players only.");
                 return true;
             }
             switch (name) {
                 case "powers" -> powerMenus.openPowers(mp, false);
+                case "shop" -> powerMenus.openShop(mp);
                 case "quests" -> powerMenus.openQuests(mp);
                 default -> locker.open(mp);
             }
-            return true;
-        }
-        if (name.equals("rank")) {
-            ranks.command(sender, args);
             return true;
         }
         if (name.equals("duel")) {
@@ -1354,7 +1545,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             return true;
         }
         if (name.equals("boss")) {
-            horseman.command(sender, args);
+            String joined = String.join(" ", args).toLowerCase(Locale.ROOT);
+            if (joined.contains("mimic") || joined.contains("ghost")) hallow.command(sender, args);
+            else horseman.command(sender, args);
             return true;
         }
         if (name.equals("halloweenshop")) {
@@ -1370,18 +1563,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             return true;
         }
 
-        String usage = "Usage: /power shop | give <power> <player> | item <power> <player> | take <player> | list | "
-                + "token <player> | points <player> <amount> | coins <player> <amount> | stock <power> [percent] | "
-                + "set <power> <player> | reload";
-        boolean admin0 = sender.hasPermission("abilitysmp.admin");
-        if (args.length == 0 || args[0].equalsIgnoreCase("shop")) {
-            // /power shop is for everyone: buy a reroll, a random power or the stocked power
-            if (sender instanceof Player sp0) shops.openPowerShop(sp0);
-            else sender.sendMessage(usage);
-            return true;
-        }
-        if (!admin0) {
-            sender.sendMessage(Component.text("Use /power shop to get a reroll or a power.", NamedTextColor.GRAY));
+        String usage = "Usage: /power give <power> <player> | item <power> <player> | take <player> | list | "
+                + "token <player> | points <player> <amount> | set <power> <player> | reload";
+        if (args.length == 0) {
+            sender.sendMessage(usage);
             return true;
         }
 
@@ -1419,13 +1604,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 setPower(t, null);
                 t.sendMessage(Component.text("Your power was removed.", NamedTextColor.GRAY));
                 sender.sendMessage("Removed power from " + t.getName() + ".");
-            }
-            case "coins" -> {
-                if (args.length < 3) { sender.sendMessage(usage); return true; }
-                Player ct = Bukkit.getPlayerExact(args[1]);
-                if (ct == null) { sender.sendMessage("Player not online."); return true; }
-                tot.giveCoins(ct, parseInt(args[2], 0));
-                sender.sendMessage("Gave Halloween Coins to " + ct.getName() + ".");
             }
             case "stock" -> {
                 Power sp = args.length > 1 ? Power.parse(args[1]) : null;

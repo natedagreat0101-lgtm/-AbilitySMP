@@ -297,12 +297,6 @@ final class Unbound implements Listener {
         LivingEntity dead = e.getEntity();
         Player killer = killerOf(dead);
         if (killer == null || killer.equals(dead)) return;
-        AbilitySMP.Power held = plugin.powerOf(killer);
-        if ((dead instanceof Player || dead instanceof Enemy) && held != null && held.isHalloween()) {
-            plugin.profile.of(killer).hwPowerKills++; // counts toward the Halloween ranks
-            plugin.profile.touch();
-            plugin.ranks.evaluate(killer);
-        }
         if (dead instanceof Player) addProgress(killer, "KILL_PLAYERS", 1);
         else if (dead instanceof Enemy) addProgress(killer, "KILL_MOBS", 1);
     }
@@ -432,8 +426,8 @@ final class Unbound implements Listener {
         switch (name) {
             case "points" -> {
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }
-                p.sendMessage(Component.text("Unbound Coins: " + points(p) + "   Halloween Coins: " + plugin.tot.countCoins(p)
-                        + "   Power level: " + level(p) + "/" + maxLevel(), NamedTextColor.AQUA));
+                p.sendMessage(Component.text("You have " + points(p) + " Unbound Coins. Your power is level "
+                        + level(p) + "/" + maxLevel() + ".", NamedTextColor.AQUA));
             }
             case "quests" -> {
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }

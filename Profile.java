@@ -29,9 +29,6 @@ final class Profile {
         int survivalSeconds;
         int duelWins;
         int bossKills;
-        int halloweenCoins;
-        int hwPowerKills;
-        long bossReadyAt;
         boolean horsemanDefeated;
         final Set<String> unlocked = new LinkedHashSet<>();
         final Set<String> owned = new LinkedHashSet<>();
@@ -91,14 +88,6 @@ final class Profile {
         return true;
     }
 
-    /** Takes an unlock away again (only used for admin-given ranks). */
-    boolean revoke(UUID id, String key) {
-        if (!of(id).unlocked.remove(key)) return false;
-        dirty = true;
-        save();
-        return true;
-    }
-
     String equipped(UUID id, String category) {
         return of(id).equipped.get(category);
     }
@@ -128,9 +117,6 @@ final class Profile {
                 d.hauntedKills = sec.getInt(b + "halloween.kills");
                 d.survivalSeconds = sec.getInt(b + "halloween.survival-seconds");
                 d.bossKills = sec.getInt(b + "halloween.boss-kills");
-                d.halloweenCoins = sec.getInt(b + "halloween.coins");
-                d.hwPowerKills = sec.getInt(b + "halloween.power-kills");
-                d.bossReadyAt = sec.getLong(b + "halloween.boss-ready-at");
                 d.horsemanDefeated = sec.getBoolean(b + "halloween.horseman-defeated");
                 d.unlocked.addAll(sec.getStringList(b + "unlocked"));
                 d.owned.addAll(sec.getStringList(b + "owned"));
@@ -153,9 +139,6 @@ final class Profile {
             yaml.set(b + "halloween.kills", d.hauntedKills);
             yaml.set(b + "halloween.survival-seconds", d.survivalSeconds);
             yaml.set(b + "halloween.boss-kills", d.bossKills);
-            yaml.set(b + "halloween.coins", d.halloweenCoins);
-            yaml.set(b + "halloween.power-kills", d.hwPowerKills);
-            yaml.set(b + "halloween.boss-ready-at", d.bossReadyAt);
             yaml.set(b + "halloween.horseman-defeated", d.horsemanDefeated);
             yaml.set(b + "unlocked", new ArrayList<>(d.unlocked));
             yaml.set(b + "owned", new ArrayList<>(d.owned));

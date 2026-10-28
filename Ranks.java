@@ -6,7 +6,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
-import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -32,7 +31,6 @@ final class Ranks implements Listener {
         final String id;
         final String name;
         final boolean halloween;
-        boolean special; // given by the owner, never earned automatically
         final String requirement;
         final NamedTextColor color;
         final Predicate<Player> condition;
@@ -92,96 +90,26 @@ final class Ranks implements Listener {
             }
         }
 
-        final int first = plugin.getConfig().getInt("ranks.halloween.starter-kills", 1);
-        final int vet = plugin.getConfig().getInt("ranks.halloween.veteran-kills", 25);
-        final int exp = plugin.getConfig().getInt("ranks.halloween.expert-kills", 100);
-        final String how = " kill(s) with a Halloween power (Ghost or Vampire)";
+        final int vet = plugin.getConfig().getInt("ranks.halloween.veteran-kills", 50);
+        final int exp = plugin.getConfig().getInt("ranks.halloween.expert-kills", 150);
+        final int surviveSeconds = 20 * 60;
 
-        ranks.add(new Rank("hw-starter", "Halloween Starter", true, "Get " + first + how,
-                NamedTextColor.GOLD, p -> plugin.profile.of(p).hwPowerKills >= first));
-        ranks.add(new Rank("hw-veteran", "Halloween Veteran", true, "Get " + vet + how,
-                NamedTextColor.RED, p -> plugin.profile.of(p).hwPowerKills >= vet));
-        ranks.add(new Rank("hw-expert", "Halloween Expert", true, "Get " + exp + how,
-                NamedTextColor.DARK_RED, p -> plugin.profile.of(p).hwPowerKills >= exp));
+        ranks.add(new Rank("hw-starter", "Halloween Starter", true, "Retired: needed the Haunted Forest (ranks you already earned stay)",
+                NamedTextColor.GOLD, p -> plugin.profile.of(p).hauntedVisits >= 1));
+        ranks.add(new Rank("hw-veteran", "Halloween Veteran", true, "Retired: needed the Haunted Forest (ranks you already earned stay)",
+                NamedTextColor.RED, p -> plugin.profile.of(p).hauntedKills >= vet));
+        ranks.add(new Rank("hw-expert", "Halloween Expert", true, "Retired: needed the Haunted Forest (ranks you already earned stay)",
+                NamedTextColor.DARK_RED, p -> plugin.profile.of(p).hauntedKills >= exp));
         ranks.add(new Rank("hw-power-king", "Halloween Power King", true, "Obtain every Halloween power (Ghost and Vampire)",
                 NamedTextColor.LIGHT_PURPLE, this::hasAllHalloweenPowers));
-        ranks.add(new Rank("hw-survivor", "Halloween Survivor", true, "Defeat the Headless Horseman",
-                NamedTextColor.GREEN, p -> plugin.profile.of(p).horsemanDefeated));
+        ranks.add(new Rank("hw-survivor", "Halloween Survivor", true,
+                "Retired: needed the Haunted Forest (ranks you already earned stay)",
+                NamedTextColor.GREEN, p -> plugin.profile.of(p).survivalSeconds >= surviveSeconds));
         ranks.add(new Rank("hw-king", "Halloween King", true,
-                "Defeat the Headless Horseman, own every Halloween power and earn Halloween Expert",
+                "Retired: needed the Haunted Forest (ranks you already earned stay)",
                 NamedTextColor.YELLOW, p -> plugin.profile.of(p).horsemanDefeated
-                && plugin.profile.isUnlocked(p.getUniqueId(), "rank:hw-expert")
+                && plugin.profile.isUnlocked(p.getUniqueId(), "rank:hw-survivor")
                 && hasAllHalloweenPowers(p)));
-
-        // special ranks: only the owner can give these (/rank give <player> <rank>)
-        addSpecial("unbound-tester", "Unbound Tester", NamedTextColor.GREEN);
-        addSpecial("unbound-mob", "Unbound Mob", NamedTextColor.DARK_AQUA);
-        addSpecial("unbound-co-owner", "Unbound Co-Owner", NamedTextColor.RED);
-        addSpecial("unbound-owner", "Unbound Owner", NamedTextColor.DARK_RED);
-    }
-
-    private void addSpecial(String id, String name, NamedTextColor color) {
-        Rank r = new Rank(id, name, false, "Given by the server owner", color, p -> false);
-        r.special = true;
-        ranks.add(r);
-    }
-
-    private Rank find(String input) {
-        String k = input.toLowerCase().replace(' ', '-').replace('_', '-');
-        for (Rank r : ranks) {
-            if (r.id.equals(k) || r.id.equals("unbound-" + k) || r.name.equalsIgnoreCase(input)) return r;
-        }
-        return null;
-    }
-
-    /** /rank list, /rank give <player> <rank>, /rank take <player> <rank> (admin). */
-    void command(CommandSender s, String[] args) {
-        if (!s.hasPermission("abilitysmp.admin")) {
-            s.sendMessage("Only admins can do that.");
-            return;
-        }
-        if (args.length == 0 || args[0].equalsIgnoreCase("list")) {
-            StringBuilder sb = new StringBuilder("Ranks: ");
-            for (Rank r : ranks) sb.append(r.id).append(' ');
-            s.sendMessage(sb.toString().trim());
-            s.sendMessage("Usage: /rank give <player> <rank>   /rank take <player> <rank>   (for example: /rank give Steve owner)");
-            return;
-        }
-        if (args.length < 3) {
-            s.sendMessage("Usage: /rank give|take <player> <rank>");
-            return;
-        }
-        Player t = Bukkit.getPlayerExact(args[1]);
-        Rank r = find(args[2]);
-        if (t == null) {
-            s.sendMessage("Player not online.");
-            return;
-        }
-        if (r == null) {
-            s.sendMessage("Unknown rank. Use /rank list");
-            return;
-        }
-        UUID id = t.getUniqueId();
-        if (args[0].equalsIgnoreCase("give")) {
-            plugin.profile.unlock(id, "rank:" + r.id);
-            plugin.profile.setEquipped(id, "rank", r.id);
-            refresh(t);
-            t.showTitle(Title.title(Component.text("New rank!", NamedTextColor.GOLD), Component.text(r.name, r.color),
-                    Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(3), Duration.ofMillis(500))));
-            t.sendMessage(Component.text("You were given the " + r.name + " rank. Change it any time in /locker.", r.color));
-            s.sendMessage("Gave " + r.name + " to " + t.getName() + " (equipped). It is permanent.");
-        } else if (args[0].equalsIgnoreCase("take")) {
-            if (!r.special) {
-                s.sendMessage("Only the special ranks can be taken away. The others are earned and stay.");
-                return;
-            }
-            plugin.profile.revoke(id, "rank:" + r.id);
-            if (r.id.equals(plugin.profile.equipped(id, "rank"))) plugin.profile.setEquipped(id, "rank", null);
-            evaluate(t);
-            s.sendMessage("Took " + r.name + " from " + t.getName() + ".");
-        } else {
-            s.sendMessage("Usage: /rank give|take <player> <rank>");
-        }
     }
 
     private boolean hasAllHalloweenPowers(Player p) {
@@ -212,7 +140,7 @@ final class Ranks implements Listener {
             if (!r.halloween) {
                 String cur = plugin.profile.equipped(id, "rank");
                 Rank curRank = cur == null ? null : get(cur);
-                if (curRank == null || (!curRank.halloween && !curRank.special)) plugin.profile.setEquipped(id, "rank", r.id);
+                if (curRank == null || !curRank.halloween) plugin.profile.setEquipped(id, "rank", r.id);
             }
             if (r.id.equals("new-here") && plugin.profile.of(p).playMinutes == 0) {
                 continue; // quiet start rank

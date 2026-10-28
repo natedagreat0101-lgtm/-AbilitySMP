@@ -32,7 +32,8 @@ import java.util.UUID;
 
 /**
  * /duel <player>: a friendly one-on-one fight in an arena. Nobody dies and nobody loses items:
- * a killing blow ends the duel instead. The winner earns Unbound Coins, the loser gets nothing.
+ * both fighters hold a Fight Totem (see FightTotem) - a killing blow pops the loser's totem and
+ * ends the duel instead of killing them. The winner earns Unbound Coins, the loser gets nothing.
  */
 final class Duel implements Listener {
 
@@ -110,7 +111,8 @@ final class Duel implements Listener {
             p.sendMessage(Component.text("Pick another player who is online.", NamedTextColor.RED));
             return;
         }
-        if (isBusy(p) || isBusy(t) || plugin.horseman.isBusy(p) || plugin.horseman.isBusy(t)) {
+        if (isBusy(p) || isBusy(t) || plugin.horseman.isBusy(p) || plugin.horseman.isBusy(t)
+                || plugin.hallow.isBusy(p) || plugin.hallow.isBusy(t)) {
             p.sendMessage(Component.text("One of you is already in a duel or a boss fight.", NamedTextColor.RED));
             return;
         }
@@ -142,7 +144,8 @@ final class Duel implements Listener {
             p.sendMessage(Component.text("You have no (valid) duel request.", NamedTextColor.GRAY));
             return;
         }
-        if (isBusy(p) || isBusy(r) || plugin.horseman.isBusy(p) || plugin.horseman.isBusy(r)) {
+        if (isBusy(p) || isBusy(r) || plugin.horseman.isBusy(p) || plugin.horseman.isBusy(r)
+                || plugin.hallow.isBusy(p) || plugin.hallow.isBusy(r)) {
             p.sendMessage(Component.text("Someone is already busy.", NamedTextColor.RED));
             return;
         }
@@ -181,6 +184,12 @@ final class Duel implements Listener {
         }
         a.teleport(new Location(c.getWorld(), c.getX(), c.getY() + 1, c.getZ() - 9, 0f, 0f));
         b.teleport(new Location(c.getWorld(), c.getX(), c.getY() + 1, c.getZ() + 9, 180f, 0f));
+        plugin.fightTotem.protect(a, "Duel", popped -> {
+            if (!m.over) finish(m, m.other(popped), popped);
+        });
+        plugin.fightTotem.protect(b, "Duel", popped -> {
+            if (!m.over) finish(m, m.other(popped), popped);
+        });
         a.sendMessage(Component.text("Friendly duel vs " + b.getName() + ". Nobody dies and nobody loses items.",
                 NamedTextColor.GOLD));
         b.sendMessage(Component.text("Friendly duel vs " + a.getName() + ". Nobody dies and nobody loses items.",
@@ -225,6 +234,7 @@ final class Duel implements Listener {
         m.over = true;
         if (m.task != null) m.task.cancel();
         for (Player p : new Player[]{m.a, m.b}) {
+            plugin.fightTotem.cleanup(p); // win or lose, the Fight Totem disappears at the end
             if (!p.isOnline()) continue;
             p.removePotionEffect(PotionEffectType.SLOWNESS);
             p.removePotionEffect(PotionEffectType.JUMP_BOOST);
@@ -296,10 +306,8 @@ final class Duel implements Listener {
                 return;
             }
         }
-        if (e.getFinalDamage() >= victim.getHealth()) {
-            e.setCancelled(true); // nobody dies in a duel
-            finish(m, m.other(victim), victim);
-        }
+        // A lethal hit is NOT handled here: the loser's Fight Totem pops instead (FightTotem runs
+        // at HIGHEST priority) and its handler finishes the duel. Nobody dies in a duel.
     }
 
     @EventHandler
@@ -317,6 +325,7 @@ final class Duel implements Listener {
             m.over = true;
             if (m.task != null) m.task.cancel();
             for (Player p : new Player[]{m.a, m.b}) {
+                plugin.fightTotem.cleanup(p);
                 if (!p.isOnline()) continue;
                 p.removePotionEffect(PotionEffectType.SLOWNESS);
                 p.removePotionEffect(PotionEffectType.JUMP_BOOST);

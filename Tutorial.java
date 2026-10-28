@@ -83,7 +83,7 @@ final class Tutorial implements Listener {
             case TIP_LIGHT -> "Place torches. Mobs spawn in the dark!";
             case TIP_BED -> "Craft a bed (3 wool + 3 planks), RIGHT CLICK it at night";
             case POWER -> "Hold the Power Activator sword and RIGHT CLICK to use your power!";
-            case COMMANDS -> "/powers  /power shop  /quests  /locker  /notes  - earn coins, get rerolls and powers";
+            case COMMANDS -> "/powers  /shop  /quests  /locker  /notes  - earn points, buy and upgrade powers";
             case DONE -> "Have fun on Unbound SMP!";
         };
     }

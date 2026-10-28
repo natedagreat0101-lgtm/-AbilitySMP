@@ -35,6 +35,16 @@ final class PowerMenus {
             case VAMPIRE -> "Halloween. Idle: night vision. Super: latch on, drain and wither.";
             case TELEPORTER -> "Idle: Speed III. Super: dash, freeze, fling for 4 hearts.";
             case VOID -> "Idle: Strength III. Super: wither and 7 hearts of damage.";
+            case PUMPKIN -> "Halloween. Super: launches a huge exploding pumpkin bomb.";
+            case WITCH -> "Halloween. Idle: night vision. Super: poison and slow all nearby enemies, heal yourself.";
+            case SKELETON -> "Halloween. Super: shoots a volley of 8 arrows at the nearest enemy.";
+            case SPIDER -> "Halloween. Super: traps the nearest enemy in webs and poisons them.";
+            case SCARECROW -> "Halloween. Super: terrify nearby enemies - nausea, weakness, knocked back.";
+            case REAPER -> "Halloween. Super: blink to the nearest enemy, strike for 5 hearts and heal.";
+            case CANDY -> "Halloween. Super: candy rush - speed, strength, healing and cookies.";
+            case PHANTOM -> "Halloween. Super: phantom dive; your screech hurts and blinds nearby enemies.";
+            case WEREWOLF -> "Halloween. Idle: Speed I and night vision. Super: howl - speed and strength burst.";
+            case CURSE -> "Halloween. Super: curse the nearest enemy with wither, weakness and slowness.";
         };
     }
 
