@@ -45,7 +45,8 @@ import java.util.Random;
 
 /**
  * The Power Shop (restocks on a timer, costs Unbound Coins, admins can stock and discount powers),
- * the Halloween Shop (costs Halloween Coins, with limited-time items) and the shopkeeper villagers.
+ * the Galaxy Shop (v10: costs Galaxy Coins, with limited-time items) and the shopkeeper villagers.
+ * Galaxy Coins are physical items, like the old Halloween Coins were: they live in your inventory.
  */
 final class Shops implements Listener {
 
@@ -69,6 +70,7 @@ final class Shops implements Listener {
     private final File file;
     private final NamespacedKey eggKey;
     private final NamespacedKey keeperKey;
+    private final NamespacedKey galaxyCoinKey;
     private final List<Slot> power = new ArrayList<>();
     private final Map<String, Integer> bought = new HashMap<>();
     private final Random random = new Random();
@@ -79,6 +81,7 @@ final class Shops implements Listener {
         this.file = new File(plugin.getDataFolder(), "shop.yml");
         this.eggKey = new NamespacedKey(plugin, "shopkeeper_egg");
         this.keeperKey = new NamespacedKey(plugin, "shopkeeper");
+        this.galaxyCoinKey = new NamespacedKey(plugin, "galaxy_coin");
         load();
         if (power.isEmpty() || System.currentTimeMillis() >= nextRestock) restock(false);
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
@@ -154,7 +157,12 @@ final class Shops implements Listener {
 
     private List<AbilitySMP.Power> sellable() {
         List<AbilitySMP.Power> out = new ArrayList<>();
-        for (AbilitySMP.Power p : AbilitySMP.Power.values()) if (plugin.isEnabled(p) && basePrice(p) > 0) out.add(p);
+        for (AbilitySMP.Power p : AbilitySMP.Power.values()) {
+            // v10: retired Halloween powers are no longer sold (owners keep theirs), and the
+            // one-of-a-kind Wind power is never sold - it only exists by admin command.
+            if (p.isHalloween() || p == AbilitySMP.Power.WIND) continue;
+            if (plugin.isEnabled(p) && basePrice(p) > 0) out.add(p);
+        }
         return out;
     }
 
@@ -335,13 +343,62 @@ final class Shops implements Listener {
     }
 
     // =====================================================================
-    // Halloween Shop (Halloween Coins, with limited-time items)
+    // Galaxy Coins (v10): a physical currency that lives in your inventory
+    // =====================================================================
+
+    ItemStack galaxyCoinItem(int amount) {
+        ItemStack it = new ItemStack(Material.PRISMARINE_CRYSTALS, Math.max(1, amount));
+        ItemMeta m = it.getItemMeta();
+        m.displayName(Component.text("Galaxy Coin", NamedTextColor.LIGHT_PURPLE)
+                .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+        m.lore(List.of(Component.text("Spend them in the Galaxy Shop: /gshop", NamedTextColor.GRAY)
+                .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)));
+        m.setEnchantmentGlintOverride(true);
+        m.getPersistentDataContainer().set(galaxyCoinKey, PersistentDataType.STRING, "1");
+        it.setItemMeta(m);
+        return it;
+    }
+
+    boolean isGalaxyCoin(ItemStack it) {
+        return it != null && it.getType() == Material.PRISMARINE_CRYSTALS && it.hasItemMeta()
+                && it.getItemMeta().getPersistentDataContainer().has(galaxyCoinKey, PersistentDataType.STRING);
+    }
+
+    int countGalaxyCoins(Player p) {
+        int total = 0;
+        for (ItemStack it : p.getInventory().getContents()) {
+            if (isGalaxyCoin(it)) total += it.getAmount();
+        }
+        return total;
+    }
+
+    void giveGalaxyCoins(Player p, int amount) {
+        while (amount > 0) {
+            int n = Math.min(amount, 64);
+            plugin.give(p, galaxyCoinItem(n));
+            amount -= n;
+        }
+    }
+
+    void removeGalaxyCoins(Player p, int amount) {
+        ItemStack[] contents = p.getInventory().getContents();
+        for (int i = 0; i < contents.length && amount > 0; i++) {
+            ItemStack it = contents[i];
+            if (!isGalaxyCoin(it)) continue;
+            int take = Math.min(amount, it.getAmount());
+            it.setAmount(it.getAmount() - take);
+            amount -= take;
+        }
+    }
+
+    // =====================================================================
+    // Galaxy Shop (Galaxy Coins, with limited-time items)
     // =====================================================================
 
     private ZonedDateTime limitedUntil() {
         try {
-            ZoneId zone = ZoneId.of(plugin.getConfig().getString("halloween-shop.timezone", "America/Toronto"));
-            return LocalDateTime.parse(plugin.getConfig().getString("halloween-shop.limited.until", "2026-11-02 00:00"), FMT)
+            ZoneId zone = ZoneId.of(plugin.getConfig().getString("galaxy-shop.timezone", "America/Toronto"));
+            return LocalDateTime.parse(plugin.getConfig().getString("galaxy-shop.limited.until", "2026-11-16 00:00"), FMT)
                     .atZone(zone);
         } catch (Exception ex) {
             return null;
@@ -357,20 +414,20 @@ final class Shops implements Listener {
         return bought.getOrDefault(p.getUniqueId() + ";" + id, 0);
     }
 
-    void openHalloweenShop(Player p) {
-        new Menus.Paged("Halloween Shop") {
+    void openGalaxyShop(Player p) {
+        new Menus.Paged("Galaxy Shop") {
             @Override
             List<Menus.Entry> entries(Player pl) {
                 List<Menus.Entry> out = new ArrayList<>();
                 boolean limited = limitedActive();
                 ZonedDateTime until = limitedUntil();
-                out.add(new Menus.Entry(Menus.icon(Material.GOLD_NUGGET, "You have " + plugin.tot.countCoins(pl) + " Halloween Coins",
-                        true, "Earn coins from Trick or Treat Night and boss fights (Horseman, Mimic, Ghost).",
+                out.add(new Menus.Entry(Menus.icon(Material.PRISMARINE_CRYSTALS, "You have " + countGalaxyCoins(pl) + " Galaxy Coins",
+                        true, "Earn them from boss fights (Horseman, Mimic, Ghost), quests, rebirths and events.",
                         limited && until != null ? "Limited-time items end in "
                                 + span(Duration.between(ZonedDateTime.now(until.getZone()), until).getSeconds()) : "No limited-time items right now"),
                         null));
-                if (limited) addItems(out, pl, "halloween-shop.limited.items", true);
-                addItems(out, pl, "halloween-shop.items", false);
+                if (limited) addItems(out, pl, "galaxy-shop.limited.items", true);
+                addItems(out, pl, "galaxy-shop.items", false);
                 return out;
             }
         }.open(p);
@@ -390,26 +447,26 @@ final class Shops implements Listener {
             String name = q.getString("name", id) + (limited ? "  [LIMITED TIME]" : "");
             boolean soldOut = limit > 0 && have >= limit;
             out.add(new Menus.Entry(Menus.icon(soldOut ? Material.BARRIER : icon, name, limited && !soldOut,
-                    "Price: " + price + " Halloween Coins",
+                    "Price: " + price + " Galaxy Coins",
                     limit > 0 ? "You can buy this " + limit + " time(s). Bought: " + have : "No purchase limit",
                     soldOut ? "You already bought the maximum" : "Click to buy"),
-                    soldOut ? null : (pp, t) -> buyHalloween(pp, id, q)));
+                    soldOut ? null : (pp, t) -> buyGalaxy(pp, id, q)));
         }
     }
 
-    private void buyHalloween(Player p, String id, ConfigurationSection q) {
+    private void buyGalaxy(Player p, String id, ConfigurationSection q) {
         int price = q.getInt("price", 10);
         int limit = q.getInt("limit", 0);
         if (limit > 0 && boughtCount(p, id) >= limit) {
             p.sendMessage(Component.text("You already bought the maximum of that.", NamedTextColor.GRAY));
             return;
         }
-        if (plugin.tot.countCoins(p) < price) {
-            p.sendMessage(Component.text("You need " + price + " Halloween Coins. You have " + plugin.tot.countCoins(p) + ".",
+        if (countGalaxyCoins(p) < price) {
+            p.sendMessage(Component.text("You need " + price + " Galaxy Coins. You have " + countGalaxyCoins(p) + ".",
                     NamedTextColor.RED));
             return;
         }
-        plugin.tot.removeCoins(p, price);
+        removeGalaxyCoins(p, price);
         plugin.giveReward(p, q.getString("reward", ""));
         bought.merge(p.getUniqueId() + ";" + id, 1, Integer::sum);
         save();
@@ -423,11 +480,11 @@ final class Shops implements Listener {
     // =====================================================================
 
     private ItemStack egg(String kind) {
-        boolean hw = kind.equals("halloween");
+        boolean gx = kind.equals("galaxy");
         ItemStack it = new ItemStack(Material.VILLAGER_SPAWN_EGG);
         ItemMeta m = it.getItemMeta();
-        m.displayName(Menus.white(hw ? "Halloween Shopkeeper Spawn Egg" : "Shopkeeper Spawn Egg"));
-        m.lore(List.of(Menus.white(hw ? "Places a villager that opens the Halloween Shop." : "Places a villager that opens the Power Shop."),
+        m.displayName(Menus.white(gx ? "Galaxy Shopkeeper Spawn Egg" : "Shopkeeper Spawn Egg"));
+        m.lore(List.of(Menus.white(gx ? "Places a villager that opens the Galaxy Shop." : "Places a villager that opens the Power Shop."),
                 Menus.white("Right-click the ground to place it.")));
         m.setEnchantmentGlintOverride(true);
         m.getPersistentDataContainer().set(eggKey, PersistentDataType.STRING, kind);
@@ -441,7 +498,7 @@ final class Shops implements Listener {
     }
 
     private void spawnKeeper(Location at, String kind, Location lookAt) {
-        boolean hw = kind.equals("halloween");
+        boolean gx = kind.equals("galaxy");
         Vector face = lookAt.toVector().subtract(at.toVector()).setY(0);
         if (face.lengthSquared() > 1.0E-6) at.setDirection(face);
         at.getWorld().spawn(at, Villager.class, v -> {
@@ -449,8 +506,8 @@ final class Shops implements Listener {
             v.setInvulnerable(true);
             v.setSilent(true);
             v.setPersistent(true);
-            v.setProfession(hw ? Villager.Profession.CLERIC : Villager.Profession.LIBRARIAN);
-            v.customName(Component.text(hw ? "Halloween Shopkeeper" : "Shopkeeper", hw ? NamedTextColor.GOLD : NamedTextColor.GREEN));
+            v.setProfession(gx ? Villager.Profession.CLERIC : Villager.Profession.LIBRARIAN);
+            v.customName(Component.text(gx ? "Galaxy Shopkeeper" : "Shopkeeper", gx ? NamedTextColor.LIGHT_PURPLE : NamedTextColor.GREEN));
             v.setCustomNameVisible(true);
             v.getPersistentDataContainer().set(keeperKey, PersistentDataType.STRING, kind);
         });
@@ -475,14 +532,14 @@ final class Shops implements Listener {
         if (kind == null) return;
         e.setCancelled(true); // no villager trading menu
         if (e.getHand() != EquipmentSlot.HAND) return;
-        if (kind.equals("halloween")) openHalloweenShop(e.getPlayer());
+        if (kind.equals("galaxy") || kind.equals("halloween")) openGalaxyShop(e.getPlayer()); // old Halloween keepers open the Galaxy Shop now
         else openPowerShop(e.getPlayer());
     }
 
-    /** /shopkeeper egg <power|halloween> [player] [amount]   and   /shopkeeper remove */
+    /** /shopkeeper egg <power|galaxy> [player] [amount]   and   /shopkeeper remove */
     void keeperCommand(CommandSender s, String[] args) {
         if (args.length >= 2 && args[0].equalsIgnoreCase("egg")) {
-            String kind = args[1].equalsIgnoreCase("halloween") ? "halloween" : "power";
+            String kind = args[1].equalsIgnoreCase("galaxy") ? "galaxy" : "power";
             Player target = args.length > 2 ? Bukkit.getPlayerExact(args[2]) : (s instanceof Player pl ? pl : null);
             if (target == null) {
                 s.sendMessage("Player not found.");
@@ -502,12 +559,12 @@ final class Shops implements Listener {
             }
             p.sendMessage("No shopkeeper within 6 blocks.");
         } else {
-            s.sendMessage("Usage: /shopkeeper egg <power|halloween> [player] [amount]   or   /shopkeeper remove");
+            s.sendMessage("Usage: /shopkeeper egg <power|galaxy> [player] [amount]   or   /shopkeeper remove");
         }
     }
 
     // =====================================================================
-    // /give shopkeeper_spawn_egg   and   /give halloween_shopkeeper_spawn_egg
+    // /give shopkeeper_spawn_egg   and   /give galaxy_shopkeeper_spawn_egg
     // =====================================================================
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -528,7 +585,7 @@ final class Shops implements Listener {
         if (!cmd.equals("give")) return false;
         String item = a[2].toLowerCase().replace("abilitysmp:", "").replace("minecraft:", "");
         String kind = item.equals("shopkeeper_spawn_egg") ? "power"
-                : item.equals("halloween_shopkeeper_spawn_egg") ? "halloween" : null;
+                : item.equals("galaxy_shopkeeper_spawn_egg") ? "galaxy" : null;
         if (kind == null || !sender.hasPermission("abilitysmp.admin")) return false;
 
         int count = Math.max(1, Math.min(64, a.length > 3 ? num(a[3]) : 1));

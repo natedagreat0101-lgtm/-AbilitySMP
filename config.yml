@@ -1,4 +1,4 @@
-config-version: 9
+config-version: 10
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -89,7 +89,8 @@ teleporter:
 
 # ------------------------------------------------------------------
 # Halloween powers (v8): Pumpkin, Witch, Skeleton, Spider, Scarecrow,
-# Reaper, Candy, Phantom, Werewolf, Curse
+# Reaper, Candy, Phantom, Werewolf, Curse. RETIRED in v10: players who
+# own them keep them forever, but they are no longer sold or rolled.
 # ------------------------------------------------------------------
 pumpkin:
   cooldown: 18
@@ -145,7 +146,130 @@ curse:
   curse-seconds: 8
 
 # ------------------------------------------------------------------
+# Galactic powers (v10): the four headliners
+# ------------------------------------------------------------------
+# Supernova: idle Fire Resistance. Super: 3 fireballs at the nearest enemy.
+supernova:
+  cooldown: 20
+  range: 40
+  fireballs: 3
+  fireball-yield: 1.8
+
+# Earth: idle Resistance II. Super: a stone box traps your enemy, you get
+# Strength III and minions hunt only them. Lasts 1 minute, cooldown 5 minutes.
+earth:
+  cooldown: 300
+  range: 30
+  duration-seconds: 60
+  minions: 4
+  box-material: STONE
+
+# Wind: ONLY ONE EXISTS and it only comes from admin commands (/power set wind).
+# Idle: no fall damage. Super: charge in the air 2s, then slam for 15 hearts in 15 blocks.
+wind:
+  cooldown: 60
+  radius: 15
+  damage-hearts: 15
+  limited: true
+
+# Frost: idle Frost Walker (water freezes under your feet). Super: freeze every
+# enemy in 30 blocks for 5s, then frost damage bites them for 20s.
+frost:
+  cooldown: 90
+  radius: 30
+  freeze-seconds: 5
+  damage-seconds: 20
+  damage-per-pulse: 1.0     # HP every 2 seconds while the frost bites (before upgrade multiplier)
+  walk-radius: 2
+
+# ------------------------------------------------------------------
+# Galactic powers (v10): fifteen more
+# ------------------------------------------------------------------
+starlight:
+  cooldown: 12
+  range: 35
+  damage-hearts: 3.5
+
+comet:
+  cooldown: 14
+  dash-strength: 2.4
+  damage-hearts: 2
+
+meteor:
+  cooldown: 25
+  range: 45
+  yield: 3.0
+
+lunar:
+  cooldown: 30
+  range: 12
+  duration-seconds: 15
+
+pulsar:
+  cooldown: 35
+  range: 9
+  damage-hearts: 1.5
+
+nebula:
+  cooldown: 40
+  range: 8
+  duration-seconds: 10
+
+solar-flare:
+  cooldown: 45
+  range: 15
+  blind-seconds: 5
+  damage-hearts: 2
+
+eclipse:
+  cooldown: 50
+  range: 20
+  duration-seconds: 10
+
+asteroid:
+  cooldown: 40
+  range: 35
+  damage-hearts: 6
+  impact-radius: 5
+  orbit-radius: 3.2
+  orbit-damage: 1.0         # HP per second to enemies standing too close
+
+zero-gravity:
+  cooldown: 55
+  range: 14
+  float-seconds: 6
+  slam-hearts: 3
+
+wormhole:
+  cooldown: 45
+  range: 40
+
+quasar:
+  cooldown: 60
+  range: 30
+  width: 2.2
+  damage-hearts: 8
+
+black-hole:
+  cooldown: 90
+  range: 30
+  duration-seconds: 6
+  pull-radius: 12
+  burst-hearts: 4
+
+antimatter:
+  cooldown: 120
+  radius: 12
+  damage-hearts: 10
+
+rocket:
+  cooldown: 18
+  launch-strength: 2.6
+  fall-seconds: 10
+
+# ------------------------------------------------------------------
 # Chance weights used when someone rerolls their power:
+# (retired Halloween powers and the Wind power never roll)
 # ------------------------------------------------------------------
 drops:
   enabled: true
@@ -173,6 +297,24 @@ drops:
   phantom: 0.06
   werewolf: 0.05
   curse: 0.05
+  supernova: 0.03
+  earth: 0.01
+  frost: 0.03
+  starlight: 0.14
+  comet: 0.09
+  meteor: 0.08
+  lunar: 0.09
+  pulsar: 0.05
+  nebula: 0.05
+  solar-flare: 0.05
+  eclipse: 0.04
+  asteroid: 0.03
+  zero-gravity: 0.03
+  wormhole: 0.03
+  quasar: 0.02
+  black-hole: 0.01
+  antimatter: 0.01
+  rocket: 0.13
 
 # Reroll if the first power isn't the wanted one:
 rerolling:
@@ -221,6 +363,25 @@ powers:
     - phantom
     - werewolf
     - curse
+    - supernova
+    - earth
+    - wind
+    - frost
+    - starlight
+    - comet
+    - meteor
+    - lunar
+    - pulsar
+    - nebula
+    - solar-flare
+    - eclipse
+    - asteroid
+    - zero-gravity
+    - wormhole
+    - quasar
+    - black-hole
+    - antimatter
+    - rocket
 
 # ------------------------------------------------------------------
 # Who counts as an enemy for powers (targeting, glow, stun)
@@ -244,10 +405,9 @@ tutorial:
   finish-reward: ["item:BREAD:8"]
 
 # ------------------------------------------------------------------
-# Admin panel (/panel): music tracks and Halloween events.
+# Admin panel (/panel): music tracks.
 # Tracks are sound keys. Vanilla discs work out of the box. To use your own audio,
-# add it to a resource pack (server.properties resource-pack=...) and put its sound key here,
-# for example:  my-theme: "unbound:halloween_theme"
+# add it to a resource pack (server.properties resource-pack=...) and put its sound key here.
 # Note: YouTube links can't be played by a server plugin.
 # ------------------------------------------------------------------
 music:
@@ -270,14 +430,6 @@ music:
     creator: "minecraft:music_disc.creator"
     relic: "minecraft:music_disc.relic"
     cave-ambience: "minecraft:ambient.cave"
-
-halloween:
-  enabled: true      # false = portal, Haunted Forest mobs, boss and events are off. Ranks and progress stay.
-  music: "minecraft:music_disc.13"
-  music-length-seconds: 178
-  curse-seconds: 60
-  max-lanterns: 120
-  lantern-interval-seconds: 5
 
 # ------------------------------------------------------------------
 # New players start with this power and a Power Activator sword
@@ -302,9 +454,10 @@ upgrade:
   cooldown-per-level: 0.01  # -1% cooldown per level
   min-cooldown-mult: 0.25   # cooldowns never go below 25% of the base
 
-# Quest types: KILL_MOBS, KILL_PLAYERS, BREAK_LOGS, MINE_ORES, USE_POWER, COLLECT_CANDY,
+# Quest types: KILL_MOBS, KILL_PLAYERS, BREAK_LOGS, MINE_ORES, USE_POWER,
 #              DUEL_WIN, BOSS_KILL, RANKED_WIN, OPEN_CRATE, TRADE, REBIRTH
-# A finished quest gives its points and starts over by itself.
+# A finished quest gives its points (and Galaxy Coins if reward-galaxy is set)
+# and starts over by itself.
 quests:
   mob-slayer:
     name: "Mob Slayer"
@@ -348,13 +501,6 @@ quests:
     type: KILL_MOBS
     target: 150
     reward: 50
-  candy-collector:
-    name: "Candy Collector"
-    description: "Collect candy on Trick or Treat Night"
-    type: COLLECT_CANDY
-    target: 20
-    reward: 15
-
   duelist:
     name: "Duelist"
     description: "Win friendly duels"
@@ -373,12 +519,21 @@ quests:
     type: BOSS_KILL
     target: 5
     reward: 40
+    reward-galaxy: 15
+  galaxy-guardian:
+    name: "Galaxy Guardian"
+    description: "Defeat bosses to guard the galaxy"
+    type: BOSS_KILL
+    target: 10
+    reward: 60
+    reward-galaxy: 30
   ranked-warrior:
     name: "Ranked Warrior"
     description: "Win ranked duels (/ranked)"
     type: RANKED_WIN
     target: 3
     reward: 30
+    reward-galaxy: 10
   crate-opener:
     name: "Crate Opener"
     description: "Open Power Crates (/crate)"
@@ -399,17 +554,6 @@ quests:
     reward: 50
 
 # ------------------------------------------------------------------
-# Trick or Treat Night (admin panel button)
-# ------------------------------------------------------------------
-trickortreat:
-  interval-seconds: 20
-  max-huts: 20
-  huts-per-player: 2
-  cooldown-seconds: 20
-  treat-chance: 0.7
-  candy-per-coin: 5
-
-# ------------------------------------------------------------------
 # Headless Horseman boss: /boss fight Headless Horseman
 # ------------------------------------------------------------------
 horseman:
@@ -419,7 +563,7 @@ horseman:
   arena-y: 200
   arena-z: -4000
   reward-points: 40
-  reward-coins: 30
+  reward-coins: 30           # Galaxy Coins (v10; these were Halloween Coins before)
   gravestone-damage: 6
   pumpkin-damage: 8
   slash-damage: 6            # phase 3 doubles all of these
@@ -448,7 +592,7 @@ mimic:
   arena-x: 0
   arena-y: 200
   arena-z: -8000
-  reward-coins: 100           # Halloween Coins
+  reward-coins: 100           # Galaxy Coins (v10; these were Halloween Coins before)
   reward-points: 0            # Unbound Coins
   bite-hearts: 3              # normal melee
   tongue-bite-hearts: 2       # bite after the tongue drags you in
@@ -468,7 +612,7 @@ ghost-boss:
   arena-x: 0
   arena-y: 200
   arena-z: 8000
-  reward-coins: 10            # Halloween Coins
+  reward-coins: 10            # Galaxy Coins (v10; these were Halloween Coins before)
   reward-points: 5            # Unbound Coins
   damage-hearts: 2.5
   visible-seconds: 5
@@ -491,6 +635,7 @@ duel:
 # ------------------------------------------------------------------
 # Ranks. Normal ranks upgrade by total playtime (minutes). Add more entries to continue upward.
 # Halloween ranks are built in and are permanent once unlocked.
+# Staff ranks (Mod, Tester, Co-Owner) are given by an OP with /staffrank.
 # ------------------------------------------------------------------
 ranks:
   normal:
@@ -519,43 +664,54 @@ ranks:
 # ------------------------------------------------------------------
 # Power Shop (/shop). Restocks on a timer. Every power costs Unbound Coins.
 # A power with no price here is never sold. Admins can stock and discount powers from /panel.
+# (Retired Halloween powers and the one-of-a-kind Wind are never sold.
+#  The four Galactic headliners cost a LOT of Unbound Coins, on purpose.)
 # ------------------------------------------------------------------
 shop:
   restock-minutes: 8
   items-per-restock: 5       # random powers on sale each restock
   stock-per-item: 2          # how many players can buy each power before it sells out
-  prices:                    # priced by rarity now: Common ~50, Rare ~90, Epic ~155, Legendary ~255, Mythic ~425
+  prices:                    # Common ~50, Rare ~90, Epic ~155, Legendary ~255, Mythic ~425 (old powers)
     flame: 55
     feather: 50
     aqua: 55
-    candy: 55
     healer: 80
     hunter: 85
-    skeleton: 85
-    spider: 85
     shadow: 95
-    pumpkin: 95
     thor: 110
-    witch: 150
     stealer: 150
-    phantom: 150
-    scarecrow: 155
     tank: 160
-    werewolf: 165
-    curse: 240
     teleporter: 250
-    reaper: 260
     void: 275
-    ghost: 400
-    vampire: 450
+    # Galactic powers (v10), priced by how strong they are:
+    starlight: 60
+    rocket: 70
+    comet: 120
+    lunar: 130
+    meteor: 150
+    pulsar: 300
+    nebula: 320
+    solar-flare: 350
+    eclipse: 380
+    asteroid: 600
+    zero-gravity: 650
+    wormhole: 700
+    quasar: 800
+    frost: 900
+    supernova: 1100
+    black-hole: 1600
+    antimatter: 2000
+    earth: 2500
 
 # ------------------------------------------------------------------
-# Halloween Shop (/halloweenshop). Everything here costs Halloween Coins.
+# Galaxy Shop (/gshop). Everything here costs Galaxy Coins.
+# Galaxy Coins are items in your inventory. Earn them from boss fights
+# (Horseman 30, Mimic 100, Ghost 10), quests, rebirths and events.
 # reward: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT, crate:AMOUNT (crate + key),
-#         cratekey:AMOUNT, or unlock:category:id (a Locker unlock)
+#         cratekey:AMOUNT, galaxy:AMOUNT, or unlock:category:id (a Locker unlock)
 # limit: how many times one player can buy it (0 = unlimited)
 # ------------------------------------------------------------------
-halloween-shop:
+galaxy-shop:
   timezone: "America/Toronto"
   items:
     golden-apples:
@@ -597,103 +753,79 @@ halloween-shop:
       name: "Power Crate + Key"
       icon: CHEST
       reward: "crate:1"
-      price: 50
+      price: 60
     crate-key:
       name: "Power Crate Key"
       icon: TRIPWIRE_HOOK
       reward: "cratekey:1"
-      price: 20
+      price: 25
     netherite-ingot:
       name: "Netherite Ingot"
       icon: NETHERITE_INGOT
       reward: "item:NETHERITE_INGOT:1"
-      price: 70
+      price: 80
     enchanted-apple:
       name: "Enchanted Golden Apple"
       icon: ENCHANTED_GOLDEN_APPLE
       reward: "item:ENCHANTED_GOLDEN_APPLE:1"
-      price: 45
+      price: 50
     elytra:
       name: "Elytra"
       icon: ELYTRA
       reward: "item:ELYTRA:1"
-      price: 220
+      price: 250
       limit: 1
   limited:                    # only sold until this date and time, then they disappear
-    until: "2026-11-09 00:00"
+    until: "2026-11-16 00:00"
     items:
-      ghost-power:
-        name: "Ghost Power"
+      supernova-power:
+        name: "Supernova Power"
         icon: NETHER_STAR
-        reward: "power:GHOST"
+        reward: "power:SUPERNOVA"
+        price: 150
+        limit: 1
+      frost-power:
+        name: "Frost Power"
+        icon: NETHER_STAR
+        reward: "power:FROST"
+        price: 130
+        limit: 1
+      blackhole-power:
+        name: "Black Hole Power"
+        icon: NETHER_STAR
+        reward: "power:BLACK_HOLE"
+        price: 220
+        limit: 1
+      astro-helmet:
+        name: "Space Helmet (cosmetic)"
+        icon: LEATHER_HELMET
+        reward: "unlock:cosmetic:astro-helmet"
+        price: 40
+        limit: 1
+      star-cloak:
+        name: "Star Cloak (cosmetic)"
+        icon: LEATHER_CHESTPLATE
+        reward: "unlock:cosmetic:star-cloak"
+        price: 45
+        limit: 1
+      title-galaxy-guardian:
+        name: "Title: Galaxy Guardian"
+        icon: OAK_SIGN
+        reward: "unlock:title:galaxy-guardian"
         price: 60
         limit: 1
-      vampire-power:
-        name: "Vampire Power"
-        icon: NETHER_STAR
-        reward: "power:VAMPIRE"
-        price: 80
-        limit: 1
-      pumpkin-power:
-        name: "Pumpkin Power"
-        icon: NETHER_STAR
-        reward: "power:PUMPKIN"
+      nebula-trail:
+        name: "Nebula Trail (cosmetic)"
+        icon: DRAGON_BREATH
+        reward: "unlock:trail:nebula"
         price: 50
         limit: 1
-      reaper-power:
-        name: "Reaper Power"
-        icon: NETHER_STAR
-        reward: "power:REAPER"
-        price: 120
-        limit: 1
-      soul-trail:
-        name: "Soul Trail (cosmetic)"
-        icon: SOUL_LANTERN
-        reward: "unlock:trail:soul"
-        price: 25
-        limit: 1
-      spooky-xp:
-        name: "32 Spooky XP Bottles"
-        icon: EXPERIENCE_BOTTLE
-        reward: "item:EXPERIENCE_BOTTLE:32"
-        price: 15
-        limit: 3
       double-crate:
         name: "2 Power Crates + 2 Keys"
         icon: CHEST
         reward: "crate:2"
-        price: 90
+        price: 100
         limit: 2
-      pumpkin-costume:
-        name: "Pumpkin Costume (cosmetic)"
-        icon: CARVED_PUMPKIN
-        reward: "unlock:cosmetic:pumpkin-head"
-        price: 30
-        limit: 1
-      ghost-costume:
-        name: "Ghost Costume (cosmetic)"
-        icon: WHITE_WOOL
-        reward: "unlock:cosmetic:ghost-sheet"
-        price: 35
-        limit: 1
-      witch-costume:
-        name: "Witch Costume (cosmetic)"
-        icon: LEATHER_HELMET
-        reward: "unlock:cosmetic:witch-hat"
-        price: 40
-        limit: 1
-      title-boss-slayer:
-        name: "Title: Boss Slayer"
-        icon: OAK_SIGN
-        reward: "unlock:title:boss-slayer"
-        price: 20
-        limit: 1
-      title-unbound-king:
-        name: "Title: Unbound King"
-        icon: NETHER_STAR
-        reward: "unlock:title:unbound-king"
-        price: 250
-        limit: 1
 
 # ------------------------------------------------------------------
 # Power Crates (v9): /crate. Right-click a crate with a key in your
@@ -748,23 +880,36 @@ rebirth:
   base-cost: 250
   boss-kills-per-rebirth: 3   # rebirth N needs 3 x N total boss kills
   coin-bonus-percent: 10      # +10% to ALL coins earned, per rebirth, forever
-  halloween-coins-per-rebirth: 20   # times your new rebirth number
+  galaxy-coins-per-rebirth: 20   # times your new rebirth number (was Halloween Coins before v10)
 
 # ------------------------------------------------------------------
-# Server events (v9): item rain amounts (per player, per drop).
-# The events themselves live in /panel -> Server Events.
+# Galaxy events (v10): /panel -> Server Events.
+# Supernova Spleef, Galaxy Rush, Verity, Meteor Shower, Moon Gravity, Star Rain.
 # ------------------------------------------------------------------
-events:
-  rain:
-    tacos-per-drop: 3
-    diamonds-per-drop: 1
-    gold-per-drop: 2
-    candy-per-drop: 3
+galaxy-events:
+  spleef:
+    x: 0
+    y: 240
+    z: 20000
+    seconds: 60             # the spleef ends after this, or when 1 player is standing
+    prize: 25               # Galaxy Coins for the winner
+  rush:
+    seconds: 120            # Galaxy Rush length (Speed III + galaxy night sky)
+  verity:
+    x: 0
+    y: 240
+    z: 24000
+    seconds: 150            # about the length of the song ("It's me, It's Verity" - Horror Skunx)
+    prize: 10               # Galaxy Coins for everyone still in when the song ends
+  meteor:
+    power: 2                # explosion size (it never breaks blocks)
+  moon:
+    seconds: 90             # Moon Gravity length
 
 # ------------------------------------------------------------------
-# The GALACTIC UPDATE countdown (v9): /galactic.
-# Change the date here, or in game: /galactic set 2026-11-01 13:00
-# (times use the timezone below)
+# The GALACTIC UPDATE (v10): /galactic.
+# The update is OUT - /galactic now celebrates it. The date can still be
+# changed in game with /galactic set 2026-11-01 13:00 for the next event.
 # ------------------------------------------------------------------
 galactic:
   name: "Galactic Update"

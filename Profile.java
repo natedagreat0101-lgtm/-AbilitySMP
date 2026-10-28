@@ -35,6 +35,8 @@ final class Profile {
         int rebirths;
         int rankedRating = 1000;
         int rankedWins;
+        /** Staff rank given by an OP (v10): "mod", "tester" or "co-owner", or null. Shown instead of the normal rank. */
+        String staffRank;
         final Set<String> unlocked = new LinkedHashSet<>();
         final Set<String> owned = new LinkedHashSet<>();
         final Map<String, String> equipped = new HashMap<>();
@@ -75,6 +77,14 @@ final class Profile {
 
     boolean owns(Player p, AbilitySMP.Power power) {
         return owns(p.getUniqueId(), power);
+    }
+
+    /** The one player who owns this power (for the one-of-a-kind Wind power), or null if nobody does. */
+    UUID ownerOf(AbilitySMP.Power power) {
+        for (Map.Entry<UUID, Data> e : map.entrySet()) {
+            if (e.getValue().owned.contains(power.name())) return e.getKey();
+        }
+        return null;
     }
 
     void addOwned(UUID id, AbilitySMP.Power power) {
@@ -128,6 +138,7 @@ final class Profile {
                 d.rebirths = sec.getInt(b + "rebirths");
                 d.rankedRating = sec.getInt(b + "ranked-rating", 1000);
                 d.rankedWins = sec.getInt(b + "ranked-wins");
+                d.staffRank = sec.getString(b + "staff-rank");
                 d.unlocked.addAll(sec.getStringList(b + "unlocked"));
                 d.owned.addAll(sec.getStringList(b + "owned"));
                 ConfigurationSection eq = sec.getConfigurationSection(b + "equipped");
@@ -155,6 +166,7 @@ final class Profile {
             yaml.set(b + "rebirths", d.rebirths);
             yaml.set(b + "ranked-rating", d.rankedRating);
             yaml.set(b + "ranked-wins", d.rankedWins);
+            yaml.set(b + "staff-rank", d.staffRank);
             yaml.set(b + "unlocked", new ArrayList<>(d.unlocked));
             yaml.set(b + "owned", new ArrayList<>(d.owned));
             for (Map.Entry<String, String> q : d.equipped.entrySet()) yaml.set(b + "equipped." + q.getKey(), q.getValue());

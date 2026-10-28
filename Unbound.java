@@ -310,14 +310,17 @@ final class Unbound implements Listener {
             dirty = true;
             if (done > 0) {
                 int reward = q.getInt("reward", 10) * done;
+                int galaxy = q.getInt("reward-galaxy", 0) * done; // v10: some quests also pay Galaxy Coins
                 d.completed += done;
                 addPoints(p, reward, "quest");
+                if (galaxy > 0 && plugin.shops != null) plugin.shops.giveGalaxyCoins(p, galaxy);
+                String rewardText = "+" + reward + " Unbound Coins" + (galaxy > 0 ? ", +" + galaxy + " Galaxy Coins" : "");
                 p.showTitle(Title.title(
                         Component.text("Quest complete!", NamedTextColor.GREEN),
-                        Component.text(q.getString("name", id) + "  +" + reward + " Unbound Coins", NamedTextColor.AQUA),
+                        Component.text(q.getString("name", id) + "  " + rewardText, NamedTextColor.AQUA),
                         Title.Times.times(Duration.ofMillis(200), Duration.ofSeconds(3), Duration.ofMillis(500))));
-                p.sendMessage(Component.text("Quest complete: " + q.getString("name", id) + " (+" + reward
-                        + " Unbound Coins). It has reset, so you can do it again!", NamedTextColor.GREEN));
+                p.sendMessage(Component.text("Quest complete: " + q.getString("name", id) + " (" + rewardText
+                        + "). It has reset, so you can do it again!", NamedTextColor.GREEN));
                 p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
                 save(); // quest progress and rewards are saved the moment a quest is finished
             }

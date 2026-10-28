@@ -669,7 +669,7 @@ final class Horseman implements Listener {
         for (Player p : f.active()) {
             names.add(p.getName());
             plugin.unbound.addPoints(p, points, "Headless Horseman");
-            plugin.tot.giveCoins(p, coins);
+            plugin.shops.giveGalaxyCoins(p, coins);
             plugin.crates.rewardForBoss(p, "horseman");
             Profile.Data d = plugin.profile.of(p);
             d.horsemanDefeated = true;
@@ -678,7 +678,7 @@ final class Horseman implements Listener {
             plugin.unbound.addProgress(p, "BOSS_KILL", 1);
             plugin.ranks.evaluate(p);
             p.showTitle(Title.title(Component.text("VICTORY!", NamedTextColor.GREEN),
-                    Component.text("+" + points + " Unbound Coins, +" + coins + " Halloween Coins", NamedTextColor.YELLOW),
+                    Component.text("+" + points + " Unbound Coins, +" + coins + " Galaxy Coins", NamedTextColor.YELLOW),
                     Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(5), Duration.ofMillis(800))));
         }
         Bukkit.broadcast(Component.text(String.join(" and ", names) + " defeated the Headless Horseman!", NamedTextColor.GOLD));

@@ -54,6 +54,27 @@ final class Ranks implements Listener {
         }
     }
 
+    // ------------------------------------------------------------ staff ranks (v10)
+
+    /** Staff ranks an OP can hand out with /staffrank. They replace the normal rank in chat and the tab list. */
+    static final Map<String, String[]> STAFF = Map.of(
+            "mod", new String[]{"Mod", "GREEN"},
+            "tester", new String[]{"Tester", "YELLOW"},
+            "co-owner", new String[]{"Co-Owner", "RED"});
+
+    static NamedTextColor staffColor(String id) {
+        return switch (id) {
+            case "mod" -> NamedTextColor.GREEN;
+            case "tester" -> NamedTextColor.YELLOW;
+            default -> NamedTextColor.RED;
+        };
+    }
+
+    static String staffName(String id) {
+        String[] s = STAFF.get(id);
+        return s == null ? null : s[0];
+    }
+
     private static final NamedTextColor[] NORMAL_COLORS = {
             NamedTextColor.GRAY, NamedTextColor.WHITE, NamedTextColor.GREEN, NamedTextColor.AQUA,
             NamedTextColor.LIGHT_PURPLE, NamedTextColor.GOLD, NamedTextColor.RED, NamedTextColor.YELLOW};
@@ -169,11 +190,17 @@ final class Ranks implements Listener {
                 p -> plugin.profile.of(p).owned.size() >= 10));
         ranks.add(ach("hoarder", "Power Hoarder", "Own 18 different powers", NamedTextColor.LIGHT_PURPLE,
                 p -> plugin.profile.of(p).owned.size() >= 18));
-        ranks.add(ach("completionist", "Completionist", "Own every power", NamedTextColor.GOLD,
-                p -> plugin.profile.of(p).owned.size() >= AbilitySMP.Power.values().length));
+        ranks.add(ach("completionist", "Completionist", "Own every power (except the one-of-a-kind Wind)", NamedTextColor.GOLD,
+                p -> ownableOwned(p) >= AbilitySMP.Power.values().length - 1));
         // Rebirths
         ranks.add(ach("reborn", "The Reborn", "Rebirth at least once (use /rebirth)", NamedTextColor.DARK_PURPLE,
                 p -> plugin.profile.of(p).rebirths >= 1));
+    }
+
+    /** How many powers this player owns, not counting the one-of-a-kind Wind power. */
+    private int ownableOwned(Player p) {
+        java.util.Set<String> owned = plugin.profile.of(p).owned;
+        return owned.size() - (owned.contains("WIND") ? 1 : 0);
     }
 
     private Rank ach(String id, String name, String req, NamedTextColor color, Predicate<Player> cond) {
@@ -267,9 +294,16 @@ final class Ranks implements Listener {
 
     /** Updates the chat prefix and tab-list name from the equipped rank and locker title. */
     void refresh(Player p) {
-        String eq = plugin.profile.equipped(p.getUniqueId(), "rank");
-        Rank r = eq == null ? null : get(eq);
-        Component pre = r == null ? Component.empty() : Component.text("[" + r.name + "] ", r.color);
+        String staff = plugin.profile.of(p).staffRank;
+        String staffLabel = staff == null ? null : staffName(staff);
+        Component pre;
+        if (staffLabel != null) {
+            pre = Component.text("[" + staffLabel + "] ", staffColor(staff)); // a staff rank replaces the normal one
+        } else {
+            String eq = plugin.profile.equipped(p.getUniqueId(), "rank");
+            Rank r = eq == null ? null : get(eq);
+            pre = r == null ? Component.empty() : Component.text("[" + r.name + "] ", r.color);
+        }
         prefixCache.put(p.getUniqueId(), pre);
         String title = plugin.locker == null ? null : plugin.locker.titleName(p.getUniqueId());
         if (title == null) titleCache.remove(p.getUniqueId());

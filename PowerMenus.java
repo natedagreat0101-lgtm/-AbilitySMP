@@ -45,6 +45,25 @@ final class PowerMenus {
             case PHANTOM -> "Halloween. Super: phantom dive; your screech hurts and blinds nearby enemies.";
             case WEREWOLF -> "Halloween. Idle: Speed I and night vision. Super: howl - speed and strength burst.";
             case CURSE -> "Halloween. Super: curse the nearest enemy with wither, weakness and slowness.";
+            case SUPERNOVA -> "Galactic. Idle: fire resistance. Super: shoots 3 fireballs at the nearest enemy.";
+            case EARTH -> "Galactic. Idle: Resistance II. Super: trap your enemy in a stone box, gain Strength III and send minions after them for 1 minute.";
+            case WIND -> "Galactic. ONE OF A KIND - commands only. Idle: no fall damage. Super: charge in the air for 2s, then slam down for 15 hearts to everyone within 15 blocks.";
+            case FROST -> "Galactic. Idle: Frost Walker - water freezes under your feet. Super: freeze every enemy within 30 blocks for 5s, then frost damage for 20s.";
+            case STARLIGHT -> "Galactic. Idle: night vision. Super: a beam of starlight hits the nearest enemy.";
+            case COMET -> "Galactic. Idle: Speed I. Super: a freezing dash that frostbites enemies you pass.";
+            case METEOR -> "Galactic. Super: a meteor falls out of the sky onto the nearest enemy.";
+            case LUNAR -> "Galactic. Idle: Jump Boost I. Super: moon gravity - you bounce high and enemies float.";
+            case PULSAR -> "Galactic. Super: three shockwave pulses that shove and hurt everyone close.";
+            case NEBULA -> "Galactic. Super: vanish into a star cloud that blinds nearby enemies.";
+            case SOLAR_FLARE -> "Galactic. Idle: Strength I. Super: blind and burn every enemy around you.";
+            case ECLIPSE -> "Galactic. Super: darkness and weakness for enemies, strength and speed for you.";
+            case ASTEROID -> "Galactic. Idle: rocks orbit you and hurt anything close. Super: a giant asteroid crashes onto the nearest enemy.";
+            case ZERO_GRAVITY -> "Galactic. Super: every enemy floats up... then crashes down.";
+            case WORMHOLE -> "Galactic. Super: swap places with the nearest enemy.";
+            case QUASAR -> "Galactic. Super: a huge beam of starlight in the direction you look.";
+            case BLACK_HOLE -> "Galactic. Super: a black hole drags every enemy in, then bursts.";
+            case ANTIMATTER -> "Galactic. Super: charge up, then a huge explosion centred on you (it never hurts you).";
+            case ROCKET -> "Galactic. Super: blast off into the sky!";
         };
     }
 
@@ -59,6 +78,8 @@ final class PowerMenus {
     }
 
     private String priceText(AbilitySMP.Power p) {
+        if (p == AbilitySMP.Power.WIND) return "One of a kind - only an admin command can give it";
+        if (p.isHalloween()) return "Retired: owners keep it, but it is not sold anymore";
         if (pointPrice(p) > 0) return "Price: " + pointPrice(p) + " Unbound Coins";
         return "Not sold in the shop";
     }
@@ -71,32 +92,37 @@ final class PowerMenus {
             List<Menus.Entry> entries(Player pl) {
                 List<Menus.Entry> out = new ArrayList<>();
                 AbilitySMP.Power cur = plugin.powerOf(pl);
+                AbilitySMP.Power st = plugin.standbyOf(pl);
                 out.add(new Menus.Entry(Menus.icon(Material.EMERALD, "Your Unbound Coins: " + plugin.unbound.points(pl),
                         false, "Earn them from quests and playtime.",
-                        atStation ? "Right-click a power to upgrade it." : "Upgrade powers at an upgrade station."), null));
+                        "QUICK SWITCH: equip TWO powers - slot 1 and slot 2.",
+                        "In game, press F or crouch + right-click to switch.",
+                        atStation ? "Right-click a power to upgrade it." : "Right-click a power to put it in slot 2."), null));
                 for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
                     if (!plugin.isEnabled(pw)) continue;
                     boolean owned = plugin.profile.owns(pl, pw);
                     boolean equipped = pw == cur;
+                    boolean inSlot2 = pw == st;
                     int lvl = plugin.unbound.level(pl, pw);
                     int max = plugin.unbound.maxLevel();
-                    String name = AbilitySMP.pretty(pw.key()) + (equipped ? "  [EQUIPPED]" : "");
+                    String name = AbilitySMP.pretty(pw.key()) + (equipped ? "  [SLOT 1]" : inSlot2 ? "  [SLOT 2]" : "");
                     if (owned) {
                         List<String> lore = new ArrayList<>();
                         lore.add(describe(pw));
                         lore.add("Rarity: " + pw.rarity().display.toUpperCase());
                         lore.add("Level " + lvl + " / " + max);
-                        lore.add(equipped ? "Currently equipped" : "Left-click to equip");
+                        lore.add(equipped ? "Currently in slot 1" : "Left-click to equip (slot 1)");
                         if (atStation) {
                             lore.add(lvl >= max ? "Max level" : "Right-click to upgrade: "
                                     + plugin.unbound.costFor(lvl) + " points");
+                        } else {
+                            lore.add(inSlot2 ? "Currently in slot 2" : "Right-click to put in slot 2");
                         }
-                        out.add(new Menus.Entry(Menus.icon(Material.NETHER_STAR, name, equipped, lore.toArray(new String[0])),
+                        out.add(new Menus.Entry(Menus.icon(Material.NETHER_STAR, name, equipped || inSlot2, lore.toArray(new String[0])),
                                 (pp, type) -> {
                                     if (type.isRightClick()) {
                                         if (atStation) plugin.unbound.upgrade(pp, pw);
-                                        else pp.sendMessage(Component.text("Upgrade powers at an upgrade station.",
-                                                NamedTextColor.GRAY));
+                                        else plugin.setStandby(pp, pw);
                                     } else {
                                         plugin.equipPower(pp, pw);
                                     }
@@ -155,9 +181,11 @@ final class PowerMenus {
                     ConfigurationSection q = qs.getConfigurationSection(id);
                     if (q == null) continue;
                     int target = Math.max(1, q.getInt("target", 10));
+                    String reward = "Reward: " + q.getInt("reward", 10) + " Unbound Coins";
+                    if (q.getInt("reward-galaxy", 0) > 0) reward += " + " + q.getInt("reward-galaxy") + " Galaxy Coins";
                     out.add(new Menus.Entry(Menus.icon(questIcon(q.getString("type", "")), q.getString("name", id), false,
                             q.getString("description", ""), bar(plugin.unbound.progress(pl, id), target),
-                            "Reward: " + q.getInt("reward", 10) + " Unbound Coins"), null));
+                            reward), null));
                 }
                 return out;
             }

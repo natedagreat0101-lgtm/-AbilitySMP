@@ -64,12 +64,12 @@ import java.util.UUID;
  *   50-25%   Mimicer: spawns a copy of you, wearing your gear, that hunts you.
  *   25-0%    ULTRA MIMIC: spawns 2 GIANT copies of you (6 hearts a hit, but any weapon kills
  *            them in 2 hits) and uses every attack at once.
- * Reward: 100 Halloween Coins, 0 Unbound Coins.
+ * Reward: 100 Galaxy Coins, 0 Unbound Coins.
  *
  * GHOST (the purple ghost from the picture: see-through, glowing purple eyes). In vanilla he is a
  * big glowing Vex. He is an easy boss with 20 hearts. He is visible for 5 seconds, then turns
  * invisible for 3 seconds, sneaks behind you and hits you, then appears again - over and over.
- * Reward: 10 Halloween Coins, 5 Unbound Coins.
+ * Reward: 10 Galaxy Coins, 5 Unbound Coins.
  */
 final class HallowBosses implements Listener {
 
@@ -698,7 +698,7 @@ final class HallowBosses implements Listener {
         for (Player p : f.active()) {
             names.add(p.getName());
             if (points > 0) plugin.unbound.addPoints(p, points, bossName);
-            if (coins > 0) plugin.tot.giveCoins(p, coins);
+            if (coins > 0) plugin.shops.giveGalaxyCoins(p, coins);
             plugin.crates.rewardForBoss(p, f.kind == Kind.MIMIC ? "mimic" : "ghost");
             Profile.Data d = plugin.profile.of(p);
             if (f.kind == Kind.MIMIC) d.mimicDefeated = true;
@@ -719,7 +719,7 @@ final class HallowBosses implements Listener {
     private static String rewardText(int points, int coins) {
         List<String> parts = new ArrayList<>();
         if (points > 0) parts.add("+" + points + " Unbound Coins");
-        if (coins > 0) parts.add("+" + coins + " Halloween Coins");
+        if (coins > 0) parts.add("+" + coins + " Galaxy Coins");
         return parts.isEmpty() ? "No coins - just glory" : String.join(", ", parts);
     }
 

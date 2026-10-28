@@ -14,7 +14,7 @@ import java.time.Duration;
 /**
  * Rebirths (v9): /rebirth. Trade everything for a fresh start and permanent power: your Unbound
  * Coins and power levels reset to zero, but you KEEP every power you own, and each rebirth adds
- * a permanent bonus to all coins you earn, plus a crate set and Halloween Coins. The more
+ * a permanent bonus to all coins you earn, plus a crate set and Galaxy Coins. The more
  * rebirths you have, the better it pays - and the more it costs to do it again.
  */
 final class Rebirths {
@@ -27,6 +27,12 @@ final class Rebirths {
 
     int count(Player p) {
         return plugin.profile.of(p).rebirths;
+    }
+
+    /** Galaxy Coins paid per rebirth number (the config key was renamed from the Halloween one in v10). */
+    private int galaxyPerRebirth() {
+        return plugin.getConfig().getInt("rebirth.galaxy-coins-per-rebirth",
+                plugin.getConfig().getInt("rebirth.halloween-coins-per-rebirth", 20));
     }
 
     /** Cost in Unbound Coins of the NEXT rebirth for this player. */
@@ -63,7 +69,7 @@ final class Rebirths {
         p.sendMessage(Component.text("You KEEP all your powers, ranks, titles, cosmetics and quests.", NamedTextColor.GREEN));
         p.sendMessage(Component.text("You GAIN: + " + plugin.getConfig().getInt("rebirth.coin-bonus-percent", 10)
                 + "% coins forever, 1 Power Crate + Key, and "
-                + plugin.getConfig().getInt("rebirth.halloween-coins-per-rebirth", 20) * (n + 1) + " Halloween Coins.",
+                + galaxyPerRebirth() * (n + 1) + " Galaxy Coins.",
                 NamedTextColor.GOLD));
         p.sendMessage(Component.text("Cost of rebirth #" + (n + 1) + ": " + cost(p) + " Unbound Coins (you have "
                 + plugin.unbound.points(p) + ") and " + bossKillsNeeded(p) + " total boss kills (you have "
@@ -95,8 +101,8 @@ final class Rebirths {
         d.rebirths++;
         plugin.profile.save();
         // the rewards
-        int hw = plugin.getConfig().getInt("rebirth.halloween-coins-per-rebirth", 20) * d.rebirths;
-        if (hw > 0) plugin.tot.giveCoins(p, hw);
+        int hw = galaxyPerRebirth() * d.rebirths;
+        if (hw > 0) plugin.shops.giveGalaxyCoins(p, hw);
         plugin.crates.giveSet(p, 1);
         plugin.unbound.addProgress(p, "REBIRTH", 1);
         plugin.ranks.evaluate(p);

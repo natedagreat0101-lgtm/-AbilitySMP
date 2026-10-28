@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "9.0";
+    static final String VERSION = "10.0";
 
     private Notes() {
     }
@@ -28,7 +28,47 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v9.0 - The Galactic Update Eve =====");
+        h(s, "===== Unbound SMP Patch Notes: v10.0 - THE GALACTIC UPDATE =====");
+        l(s, "🌌 THE GALACTIC UPDATE IS HERE! Halloween is retired: the Halloween Shop, Trick or Treat Night "
+                + "and the Halloween events are gone - but EVERYTHING you already earned stays forever: your "
+                + "Halloween powers, ranks, titles and costumes all still work.");
+        l(s, "19 NEW POWERS - the four headliners");
+        how(s, "SUPERNOVA: fire resistance, and a super that shoots 3 fireballs at your enemy (20s cooldown). "
+                + "EARTH: Resistance II, and a super that traps your enemy in a stone box while you get "
+                + "Strength III and minions hunt only them, for a whole minute (5 minute cooldown!). "
+                + "FROST: water freezes under your feet, and the super freezes every enemy in 30 blocks for "
+                + "5 seconds, then frost damage bites them for 20 seconds. "
+                + "WIND: no fall damage, and a super that charges in the air for 2 seconds then SLAMS down "
+                + "for 15 hearts to everyone within 15 blocks. Wind is ONE OF A KIND: only one player can "
+                + "ever have it, and it only comes from an admin command. All four cost a LOT of Unbound Coins.");
+        l(s, "15 more galaxy powers");
+        how(s, "Starlight, Comet, Meteor, Lunar, Pulsar, Nebula, Solar Flare, Eclipse, Asteroid, Zero Gravity, "
+                + "Wormhole, Quasar, Black Hole, Antimatter and Rocket - all in /powers and /shop, priced by "
+                + "how strong they are, and all in Power Crates too (except Wind). Halloween powers are not "
+                + "sold or rolled anymore: if you have one, it's a collector's item now.");
+        l(s, "NEW CURRENCY: Galaxy Coins - /gshop");
+        how(s, "Galaxy Coins are items in your inventory (shiny purple crystals). Bosses pay them now "
+                + "(Horseman 30, Mimic 100, Ghost 10), and so do some quests, rebirths and events. Spend them "
+                + "in the Galaxy Shop: crates, keys, elytra, a Space Helmet, a Star Cloak, the Galaxy Guardian "
+                + "title and more - the limited-time items are there until Nov 16!");
+        l(s, "THE QUICK SWITCH - two powers at once!");
+        how(s, "equip TWO powers: in /powers, left-click sets slot 1 and right-click sets slot 2. Your two "
+                + "slots show above your hotbar like [1] and [2]. In game, press F (the swap-hands key) or "
+                + "crouch + right-click your Power Activator to switch powers instantly.");
+        l(s, "6 NEW EVENTS (admin /panel -> Server Events)");
+        how(s, "SUPERNOVA SPLEEF: a supernova teleports everyone to a molten arena - right-click shoots "
+                + "fireballs, break the floor, last one standing wins Galaxy Coins (Fight Totems keep you "
+                + "safe). GALAXY RUSH: Speed III for everyone under a galaxy night sky. VERITY: everyone "
+                + "gets Strength III, a Fight Totem and a one-shot Verity snowball in a yellow arena until "
+                + "the song ends - popped players go home. Plus Meteor Shower, Moon Gravity and Star Rain.");
+        l(s, "STAFF RANKS: Mod, Tester and Co-Owner");
+        how(s, "an OP can give them with /staffrank <player> <mod|tester|co-owner>. A staff rank shows "
+                + "instead of your normal rank in chat and the tab list. /staffrank <player> none removes it.");
+        l(s, "New locker stuff");
+        how(s, "a Space Helmet and a Star Cloak costume, the Nebula Trail (own the Black Hole power), and "
+                + "the Galaxy Guardian and Star Traveler titles - in /locker.");
+
+        h(s, "===== v9.0 - The Galactic Update Eve =====");
         l(s, "🌌 THE GALACTIC UPDATE lands Sunday Nov 1 at 1:00 PM! Type /galactic for the live countdown.");
         l(s, "POWER CRATES - /crate");
         how(s, "powers come from crates now (the shop still exists too). Right-click a Power Crate with a "
@@ -93,7 +133,7 @@ final class Notes {
         how(s, "a new selection of powers appears, paid for with Unbound Coins. Each power has limited stock for the "
                 + "whole server, so be quick. Admins can pin a power and put it on sale, and everyone sees it at the "
                 + "top of the screen.");
-        l(s, "Halloween Shop: /halloweenshop");
+        l(s, "Halloween Shop: /halloweenshop (replaced by the Galaxy Shop, /gshop, in v10)");
         how(s, "spend Halloween Coins on items. Limited-time Halloween items, like the Ghost and Vampire powers and "
                 + "the Soul Trail, are only sold until the date shown in the shop.");
         l(s, "Shopkeepers");

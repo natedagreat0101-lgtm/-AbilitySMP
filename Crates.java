@@ -34,7 +34,7 @@ import java.util.Random;
  * Power Crates (v9): the new way to get powers. A crate plus a key (right-click the crate) spins a
  * roulette and lands on a random power, weighted by rarity - Commons are common, Mythics are rare.
  * You win the power as a power star, the same item the shops hand out. Crates and keys come from
- * boss fights, the Halloween Shop, quests and rebirths.
+ * boss fights, the Galaxy Shop, quests and rebirths.
  */
 final class Crates implements Listener {
 
@@ -163,6 +163,7 @@ final class Crates implements Listener {
     AbilitySMP.Power rollPower(Player p) {
         List<AbilitySMP.Power> pool = new ArrayList<>();
         for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
+            if (pw.isHalloween() || pw == AbilitySMP.Power.WIND) continue; // v10: retired powers and the one-of-a-kind Wind never drop
             if (plugin.isEnabled(pw) && !plugin.profile.owns(p, pw)) pool.add(pw);
         }
         if (pool.isEmpty()) return null;
@@ -250,7 +251,7 @@ final class Crates implements Listener {
             }
         }
         if (keySlot < 0) {
-            plugin.bar(p, "You need a Power Crate Key! Get keys from bosses, quests and the Halloween Shop.",
+            plugin.bar(p, "You need a Power Crate Key! Get keys from bosses, quests and the Galaxy Shop.",
                     NamedTextColor.RED);
             p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
             return;
@@ -413,7 +414,7 @@ final class Crates implements Listener {
                 + weight(AbilitySMP.Rarity.RARE) + " / Epic " + weight(AbilitySMP.Rarity.EPIC) + " / Legendary "
                 + weight(AbilitySMP.Rarity.LEGENDARY) + " / Mythic " + weight(AbilitySMP.Rarity.MYTHIC),
                 NamedTextColor.GRAY));
-        p.sendMessage(Component.text("Get them from: boss fights, the Halloween Shop (/halloweenshop), rebirths (/rebirth).",
+        p.sendMessage(Component.text("Get them from: boss fights, the Galaxy Shop (/gshop), rebirths (/rebirth).",
                 NamedTextColor.GRAY));
     }
 }

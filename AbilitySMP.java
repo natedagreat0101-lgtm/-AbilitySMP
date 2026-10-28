@@ -25,6 +25,7 @@ import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fireball;
+import org.bukkit.entity.LargeFireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Tameable;
@@ -42,6 +43,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -86,7 +88,22 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         FLAME, SPEED, TANK, THOR, SHADOW, HEALER, FEATHER, STEALER, AQUA, HUNTER,
         GHOST, VAMPIRE, TELEPORTER, VOID,
         // Halloween update (v8): ten new Halloween powers
-        PUMPKIN, WITCH, SKELETON, SPIDER, SCARECROW, REAPER, CANDY, PHANTOM, WEREWOLF, CURSE;
+        PUMPKIN, WITCH, SKELETON, SPIDER, SCARECROW, REAPER, CANDY, PHANTOM, WEREWOLF, CURSE,
+        // Galactic Update (v10): the four headliners...
+        SUPERNOVA, EARTH, WIND, FROST,
+        // ...and fifteen more galaxy powers
+        STARLIGHT, COMET, METEOR, LUNAR, PULSAR, NEBULA, SOLAR_FLARE, ECLIPSE, ASTEROID,
+        ZERO_GRAVITY, WORMHOLE, QUASAR, BLACK_HOLE, ANTIMATTER, ROCKET;
+
+        /** Galactic Update powers (v10). */
+        boolean isGalaxy() {
+            return switch (this) {
+                case SUPERNOVA, EARTH, WIND, FROST, STARLIGHT, COMET, METEOR, LUNAR, PULSAR, NEBULA,
+                     SOLAR_FLARE, ECLIPSE, ASTEROID, ZERO_GRAVITY, WORMHOLE, QUASAR, BLACK_HOLE,
+                     ANTIMATTER, ROCKET -> true;
+                default -> false;
+            };
+        }
 
         /** Halloween powers: Ghost, Vampire and the ten v8 Halloween powers. */
         boolean isHalloween() {
@@ -100,11 +117,14 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         /** Rarity (v9): shown in menus and shops, and it drives the Power Crate odds and shop prices. */
         Rarity rarity() {
             return switch (this) {
-                case SPEED, FLAME, FEATHER, AQUA, CANDY -> Rarity.COMMON;
-                case HUNTER, HEALER, SHADOW, THOR, SKELETON, SPIDER, PUMPKIN -> Rarity.RARE;
-                case STEALER, TANK, WITCH, SCARECROW, PHANTOM, WEREWOLF -> Rarity.EPIC;
-                case TELEPORTER, VOID, REAPER, CURSE -> Rarity.LEGENDARY;
-                case GHOST, VAMPIRE -> Rarity.MYTHIC;
+                case SPEED, FLAME, FEATHER, AQUA, CANDY, STARLIGHT, ROCKET -> Rarity.COMMON;
+                case HUNTER, HEALER, SHADOW, THOR, SKELETON, SPIDER, PUMPKIN,
+                     COMET, LUNAR, METEOR -> Rarity.RARE;
+                case STEALER, TANK, WITCH, SCARECROW, PHANTOM, WEREWOLF,
+                     PULSAR, NEBULA, SOLAR_FLARE, ECLIPSE -> Rarity.EPIC;
+                case TELEPORTER, VOID, REAPER, CURSE, SUPERNOVA, FROST,
+                     ASTEROID, ZERO_GRAVITY, WORMHOLE, QUASAR -> Rarity.LEGENDARY;
+                case GHOST, VAMPIRE, EARTH, WIND, BLACK_HOLE, ANTIMATTER -> Rarity.MYTHIC;
             };
         }
 
@@ -131,6 +151,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     private static final String TANK_KEY = "tank_hearts";
 
     private final Map<UUID, Power> powers = new HashMap<>();
+    /** The quick switch (v10): each player's second loadout power ("slot 2"). Slot 1 is the equipped power. */
+    private final Map<UUID, Power> standby = new HashMap<>();
     private final Map<UUID, Long> cooldowns = new HashMap<>();
     /** haunter UUID -> players whose hearts that haunter is holding */
     private final Map<UUID, Set<UUID>> drained = new HashMap<>();
@@ -143,7 +165,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Tutorial tutorial;
     Admin admin;
     Unbound unbound;
-    TrickOrTreat tot;
     Profile profile;
     Ranks ranks;
     Locker locker;
@@ -182,7 +203,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         party = new BossParty();
         profile = new Profile(this);
         unbound = new Unbound(this);
-        tot = new TrickOrTreat(this);
         ranks = new Ranks(this);
         locker = new Locker(this);
         menus = new Menus();
@@ -201,7 +221,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(tutorial, this);
         Bukkit.getPluginManager().registerEvents(admin, this);
         Bukkit.getPluginManager().registerEvents(unbound, this);
-        Bukkit.getPluginManager().registerEvents(tot, this);
         Bukkit.getPluginManager().registerEvents(ranks, this);
         Bukkit.getPluginManager().registerEvents(locker, this);
         Bukkit.getPluginManager().registerEvents(menus, this);
@@ -214,6 +233,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(trading, this);
         Bukkit.getPluginManager().registerEvents(ranked, this);
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
+        // the quick-switch bar above the hotbar refreshes every 2 seconds
+        Bukkit.getScheduler().runTaskTimer(this, () -> {
+            for (Player p : Bukkit.getOnlinePlayers()) showSwitcher(p);
+        }, 23L, 40L);
         for (Player p : Bukkit.getOnlinePlayers()) setupPlayer(p);
     }
 
@@ -227,7 +250,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (trading != null) trading.shutdown();
         if (fightTotem != null) fightTotem.shutdown();
         if (shops != null) shops.save();
-        if (tot != null) tot.stop(false);
         if (unbound != null) unbound.save();
         if (profile != null) profile.save();
         for (Player p : Bukkit.getOnlinePlayers()) clearHeartSteals(p);
@@ -295,12 +317,33 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             cfg.set("duel.win-points", 12);
             cfg.set("config-version", 9);
         }
+        if (v < 10) {
+            // v10 "The Galactic Update": the 19 galaxy powers join the enabled list, the
+            // Halloween shop/sections retire (Halloween powers, ranks and cosmetics that
+            // players already earned are NOT touched), and the candy quest retires with
+            // Trick or Treat Night. New prices and the galaxy-shop arrive via copyDefaults.
+            List<String> en10 = new ArrayList<>(cfg.getStringList("powers.enabled"));
+            for (String s : new String[]{"supernova", "earth", "wind", "frost", "starlight", "comet",
+                    "meteor", "lunar", "pulsar", "nebula", "solar-flare", "eclipse", "asteroid",
+                    "zero-gravity", "wormhole", "quasar", "black-hole", "antimatter", "rocket"}) {
+                if (!en10.contains(s)) en10.add(s);
+            }
+            cfg.set("powers.enabled", en10);
+            cfg.set("quests.candy-collector", null); // Trick or Treat Night is gone
+            cfg.set("trickortreat", null);
+            cfg.set("halloween-shop", null);
+            cfg.set("events", null);
+            cfg.set("rebirth.galaxy-coins-per-rebirth",
+                    cfg.getInt("rebirth.halloween-coins-per-rebirth", 20));
+            cfg.set("config-version", 10);
+        }
         cfg.options().copyDefaults(true);
         saveConfig();
     }
 
     private void loadData() {
         powers.clear();
+        standby.clear();
         data = YamlConfiguration.loadConfiguration(dataFile);
         ConfigurationSection sec = data.getConfigurationSection("players");
         if (sec == null) return;
@@ -309,9 +352,94 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 UUID uuid = UUID.fromString(id);
                 Power p = Power.parse(sec.getString(id + ".power"));
                 if (p != null) powers.put(uuid, p);
+                Power s = Power.parse(sec.getString(id + ".standby"));
+                if (s != null) standby.put(uuid, s);
             } catch (IllegalArgumentException ignored) {
             }
         }
+    }
+
+    // =====================================================================
+    // The quick switch (v10): TWO powers equipped at once. Slot 1 is your
+    // active power; slot 2 waits. Press F (swap hands) or crouch +
+    // right-click your Power Activator to switch. The two slots are shown
+    // above your hotbar in the action bar, like a little [1] [2] bar.
+    // =====================================================================
+
+    Power standbyOf(Player p) {
+        return standby.get(p.getUniqueId());
+    }
+
+    /** Put a power you own into slot 2 (used by the /powers menu). */
+    boolean setStandby(Player p, Power pw) {
+        if (!profile.owns(p, pw)) {
+            bar(p, "You don't own that power yet. Check /shop.", NamedTextColor.RED);
+            return false;
+        }
+        if (!isEnabled(pw)) {
+            bar(p, "That power is disabled.", NamedTextColor.RED);
+            return false;
+        }
+        if (powerOf(p) == pw) {
+            bar(p, "That power is already in slot 1.", NamedTextColor.GRAY);
+            return false;
+        }
+        if (standbyOf(p) == pw) {
+            bar(p, "That power is already in slot 2.", NamedTextColor.GRAY);
+            return false;
+        }
+        standby.put(p.getUniqueId(), pw);
+        data.set("players." + p.getUniqueId() + ".standby", pw.name());
+        saveData();
+        p.sendMessage(Component.text(pretty(pw.key()) + " is now in slot 2. Switch with F or crouch + right-click!",
+                colorFor(pw)));
+        p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_DIAMOND, 1f, 1.4f);
+        showSwitcher(p);
+        return true;
+    }
+
+    /** Swap slot 1 and slot 2. */
+    void switchPower(Player p) {
+        Power cur = powerOf(p);
+        Power st = standbyOf(p);
+        if (st == null) {
+            bar(p, "No power in slot 2. Open /powers and right-click a power to fill slot 2.", NamedTextColor.GRAY);
+            return;
+        }
+        UUID id = p.getUniqueId();
+        if (cur == null) {
+            standby.remove(id);
+            data.set("players." + id + ".standby", "NONE");
+        } else {
+            standby.put(id, cur);
+            data.set("players." + id + ".standby", cur.name());
+        }
+        setPower(p, st); // saves players.yml, tank hearts, rank checks
+        p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.7f, 1.5f);
+        puff(p.getLocation().add(0, 1, 0), particleFor(st), 18);
+        showSwitcher(p);
+    }
+
+    /** The little [1] [2] bar above the hotbar (the action bar), like the picture of the quick switch. */
+    void showSwitcher(Player p) {
+        Power cur = powerOf(p);
+        Power st = standbyOf(p);
+        if (cur == null || st == null) return;
+        p.sendActionBar(Component.text("[1] ", NamedTextColor.RED, TextDecoration.BOLD)
+                .append(Component.text(pretty(cur.key()), colorFor(cur), TextDecoration.BOLD))
+                .append(Component.text("   [2] ", NamedTextColor.DARK_GRAY, TextDecoration.BOLD))
+                .append(Component.text(pretty(st.key()), NamedTextColor.GRAY))
+                .append(Component.text("   switch: F / crouch+click", NamedTextColor.DARK_GRAY)));
+    }
+
+    @EventHandler
+    public void onSwapHands(PlayerSwapHandItemsEvent e) {
+        Player p = e.getPlayer();
+        if (standbyOf(p) == null) return; // no loadout: the swap key works normally
+        if (fightTotem.isProtected(p)) return; // FightTotem owns the swap during fights
+        if (fightTotem.isFightTotem(e.getMainHandItem()) || fightTotem.isFightTotem(e.getOffHandItem())) return;
+        e.setCancelled(true); // the swap key switches powers instead of swapping items
+        switchPower(p);
     }
 
     void saveData() {
@@ -457,6 +585,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         double total = 0;
         for (Power p : Power.values()) {
             if (p == exclude || !isEnabled(p) || profile.owns(forWho, p)) continue;
+            if (p.isHalloween() || p == Power.WIND) continue; // v10: retired Halloween powers and the one-of-a-kind Wind never roll
             double w = d("drops." + p.key(), 0);
             if (w <= 0) continue;
             if (isLimited(p) && isHeldByOther(p, forWho)) continue;
@@ -568,6 +697,25 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case PHANTOM -> NamedTextColor.AQUA;
             case WEREWOLF -> NamedTextColor.GRAY;
             case CURSE -> NamedTextColor.DARK_PURPLE;
+            case SUPERNOVA -> NamedTextColor.RED;
+            case EARTH -> NamedTextColor.DARK_GREEN;
+            case WIND -> NamedTextColor.WHITE;
+            case FROST -> NamedTextColor.AQUA;
+            case STARLIGHT -> NamedTextColor.YELLOW;
+            case COMET -> NamedTextColor.BLUE;
+            case METEOR -> NamedTextColor.RED;
+            case LUNAR -> NamedTextColor.LIGHT_PURPLE;
+            case PULSAR -> NamedTextColor.YELLOW;
+            case NEBULA -> NamedTextColor.DARK_PURPLE;
+            case SOLAR_FLARE -> NamedTextColor.GOLD;
+            case ECLIPSE -> NamedTextColor.DARK_GRAY;
+            case ASTEROID -> NamedTextColor.GRAY;
+            case ZERO_GRAVITY -> NamedTextColor.LIGHT_PURPLE;
+            case WORMHOLE -> NamedTextColor.DARK_BLUE;
+            case QUASAR -> NamedTextColor.LIGHT_PURPLE;
+            case BLACK_HOLE -> NamedTextColor.DARK_GRAY;
+            case ANTIMATTER -> NamedTextColor.DARK_RED;
+            case ROCKET -> NamedTextColor.GOLD;
         };
     }
 
@@ -605,6 +753,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             bar(p, "You already own that power. Use /powers to equip it.", NamedTextColor.GRAY);
             return;
         }
+        if (newPower == Power.WIND && !windFree(p)) return; // only ONE Wind exists
         hand.setAmount(hand.getAmount() - 1);
         setPower(p, newPower); // unlocks it permanently and equips it
         p.sendMessage(Component.text("You unlocked and equipped the " + pretty(newPower.key()) + " power!",
@@ -613,12 +762,23 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         puff(p.getLocation().add(0, 1, 0), Particle.END_ROD, 30);
     }
 
+    /** The Wind power is one of a kind: true if nobody else owns it yet (or this player is the owner). */
+    boolean windFree(Player p) {
+        UUID owner = profile.ownerOf(Power.WIND);
+        if (owner == null || owner.equals(p.getUniqueId())) return true;
+        org.bukkit.OfflinePlayer op = Bukkit.getOfflinePlayer(owner);
+        bar(p, "The Wind power already belongs to " + (op.getName() == null ? "someone" : op.getName())
+                + " - only ONE exists!", NamedTextColor.RED);
+        return false;
+    }
+
     /** Equip a power you already own (used by the power menu). */
     boolean equipPower(Player p, Power pw) {
         if (!profile.owns(p, pw)) {
             bar(p, "You don't own that power yet. Check /shop.", NamedTextColor.RED);
             return false;
         }
+        if (pw == Power.WIND && !windFree(p)) return false;
         if (!isEnabled(pw)) {
             bar(p, "That power is disabled.", NamedTextColor.RED);
             return false;
@@ -685,7 +845,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     private void passiveTick() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             Power power = powerOf(p);
-            if (power == null || !isEnabled(power) || p.getGameMode() == GameMode.SPECTATOR || admin.isCursed(p)) continue;
+            if (power == null || !isEnabled(power) || p.getGameMode() == GameMode.SPECTATOR) continue;
 
             switch (power) {
                 case FLAME -> effect(p, PotionEffectType.FIRE_RESISTANCE, 1);
@@ -710,12 +870,51 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                     effect(p, PotionEffectType.NIGHT_VISION, 1);
                 }
                 case WITCH -> effect(p, PotionEffectType.NIGHT_VISION, 1);
-                default -> { } // TANK (hearts) and FEATHER (fall damage) are handled elsewhere
+                // ------------------------------------------------ Galactic powers (v10)
+                case SUPERNOVA -> effect(p, PotionEffectType.FIRE_RESISTANCE, 1);
+                case EARTH -> effect(p, PotionEffectType.RESISTANCE, 2);
+                case STARLIGHT -> effect(p, PotionEffectType.NIGHT_VISION, 1);
+                case COMET -> effect(p, PotionEffectType.SPEED, 1);
+                case LUNAR -> effect(p, PotionEffectType.JUMP_BOOST, 1);
+                case SOLAR_FLARE -> effect(p, PotionEffectType.STRENGTH, 1);
+                case FROST -> frostWalk(p);
+                case ASTEROID -> asteroidOrbit(p);
+                default -> { } // TANK (hearts), FEATHER and WIND (fall damage) are handled elsewhere
             }
 
             if (particles() && !p.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
                 p.getWorld().spawnParticle(particleFor(power), p.getLocation().add(0, 1, 0), 2, 0.3, 0.5, 0.3, 0.01);
             }
+        }
+    }
+
+    /** Frost (v10): Frost Walker all the time - the water under your feet freezes as you walk. */
+    private void frostWalk(Player p) {
+        int r = i("frost.walk-radius", 2);
+        Location base = p.getLocation();
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dz = -r; dz <= r; dz++) {
+                if (dx * dx + dz * dz > r * r + 1) continue;
+                for (int dy = -1; dy <= 0; dy++) {
+                    org.bukkit.block.Block b = base.clone().add(dx, dy, dz).getBlock();
+                    if (b.getType() == Material.WATER) b.setType(Material.FROSTED_ICE, false);
+                }
+            }
+        }
+    }
+
+    /** Asteroid (v10): rocks orbit you and chip away at anything that gets too close. */
+    private void asteroidOrbit(Player p) {
+        Location c = p.getLocation().add(0, 1.2, 0);
+        double ang = (System.currentTimeMillis() % 2000L) / 2000.0 * Math.PI * 2;
+        for (int k = 0; k < 3; k++) {
+            double a = ang + k * (Math.PI * 2 / 3);
+            Location rock = c.clone().add(Math.cos(a) * 1.6, Math.sin(a * 2) * 0.3, Math.sin(a) * 1.6);
+            rock.getWorld().spawnParticle(Particle.CRIT, rock, 2, 0.05, 0.05, 0.05, 0.01);
+        }
+        for (LivingEntity t : enemiesNear(p, d("asteroid.orbit-radius", 3.2))) {
+            t.damage(d("asteroid.orbit-damage", 1.0), p);
+            t.setNoDamageTicks(0);
         }
     }
 
@@ -744,6 +943,25 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case PHANTOM -> Particle.CLOUD;
             case WEREWOLF -> Particle.CRIT;
             case CURSE -> Particle.ENCHANT;
+            case SUPERNOVA -> Particle.FLAME;
+            case EARTH -> Particle.CRIT;
+            case WIND -> Particle.CLOUD;
+            case FROST -> Particle.SNOWFLAKE;
+            case STARLIGHT -> Particle.END_ROD;
+            case COMET -> Particle.SNOWFLAKE;
+            case METEOR -> Particle.FLAME;
+            case LUNAR -> Particle.END_ROD;
+            case PULSAR -> Particle.ELECTRIC_SPARK;
+            case NEBULA -> Particle.DRAGON_BREATH;
+            case SOLAR_FLARE -> Particle.FLAME;
+            case ECLIPSE -> Particle.SQUID_INK;
+            case ASTEROID -> Particle.CRIT;
+            case ZERO_GRAVITY -> Particle.END_ROD;
+            case WORMHOLE -> Particle.REVERSE_PORTAL;
+            case QUASAR -> Particle.GLOW;
+            case BLACK_HOLE -> Particle.SQUID_INK;
+            case ANTIMATTER -> Particle.EXPLOSION;
+            case ROCKET -> Particle.FLAME;
         };
     }
 
@@ -751,9 +969,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     public void onDamage(EntityDamageEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
         Power power = powerOf(p);
-        if (power == Power.FEATHER && isEnabled(power)
+        if ((power == Power.FEATHER || power == Power.WIND) && isEnabled(power)
                 && e.getCause() == EntityDamageEvent.DamageCause.FALL) {
-            e.setCancelled(true); // Feather: no fall damage
+            e.setCancelled(true); // Feather and Wind: no fall damage
         }
     }
 
@@ -791,8 +1009,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             bar(p, "Powers are disabled in duels.", NamedTextColor.GRAY);
             return;
         }
-        if (admin.isCursed(p)) {
-            admin.sealedMessage(p);
+
+        if (p.isSneaking()) { // crouch + right-click the Activator = the quick switch (Bedrock-friendly)
+            switchPower(p);
             return;
         }
 
@@ -1108,7 +1327,540 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 if (t instanceof Player tp) bar(tp, "You have been cursed!", NamedTextColor.DARK_PURPLE);
                 p.playSound(p.getLocation(), Sound.ENTITY_EVOKER_CAST_SPELL, 1f, 0.6f);
             }
+
+            // ------------------------------------------------ Galactic powers (v10)
+
+            case SUPERNOVA -> { // Supernova: three fireballs at the nearest enemy (or where you look)
+                startCooldown(p, power);
+                LivingEntity t = nearestEnemy(p, d("supernova.range", 40) * um(p));
+                Location eye = p.getEyeLocation();
+                Vector base = t != null
+                        ? t.getLocation().add(0, 1, 0).toVector().subtract(eye.toVector()).normalize()
+                        : eye.getDirection();
+                int n = i("supernova.fireballs", 3);
+                for (int j = 0; j < n; j++) {
+                    Vector dir = base.clone();
+                    if (j > 0) { // spread the extra fireballs a little
+                        dir.add(new Vector((random.nextDouble() - 0.5) * 0.16, (random.nextDouble() - 0.5) * 0.1,
+                                (random.nextDouble() - 0.5) * 0.16)).normalize();
+                    }
+                    Fireball fb = p.launchProjectile(Fireball.class, dir.clone().multiply(1.3));
+                    fb.setDirection(dir);
+                    fb.setYield((float) d("supernova.fireball-yield", 1.8));
+                    fb.setShooter(p);
+                }
+                puff(p.getLocation().add(0, 1, 0), Particle.FLAME, 30);
+                p.playSound(p.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1f, 0.7f);
+            }
+
+            case EARTH -> earthSuper(p);
+
+            case WIND -> windSuper(p);
+
+            case FROST -> frostSuper(p);
+
+            case STARLIGHT -> { // Starlight: a beam of starlight on the nearest enemy
+                LivingEntity t = nearestEnemy(p, d("starlight.range", 35) * um(p));
+                if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
+                startCooldown(p, power);
+                beamParticles(p.getEyeLocation(), t.getLocation().add(0, 1, 0), Particle.END_ROD);
+                t.damage(d("starlight.damage-hearts", 3.5) * 2.0 * um(p), p);
+                t.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 100, 0));
+                p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.2f, 1.4f);
+                if (t instanceof Player tp) bar(tp, "Starlight burns you!", NamedTextColor.YELLOW);
+            }
+
+            case COMET -> { // Comet: a freezing dash - enemies you pass get frostbitten
+                startCooldown(p, power);
+                Vector dash = p.getEyeLocation().getDirection().multiply(d("comet.dash-strength", 2.4));
+                dash.setY(Math.max(0.35, dash.getY()));
+                p.setVelocity(dash);
+                final Set<UUID> hit = new HashSet<>();
+                new BukkitRunnable() {
+                    int t = 0;
+
+                    @Override
+                    public void run() {
+                        if (!p.isOnline() || p.isDead() || t++ >= 12) {
+                            cancel();
+                            return;
+                        }
+                        puff(p.getLocation().add(0, 1, 0), Particle.SNOWFLAKE, 8);
+                        for (LivingEntity e : enemiesNear(p, 2.6)) {
+                            if (!hit.add(e.getUniqueId())) continue;
+                            e.damage(d("comet.damage-hearts", 2) * 2.0 * um(p), p);
+                            e.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1));
+                            e.setFreezeTicks(Math.min(e.getMaxFreezeTicks(), e.getFreezeTicks() + 100));
+                        }
+                    }
+                }.runTaskTimer(this, 0L, 1L);
+                p.playSound(p.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 1.2f, 0.7f);
+            }
+
+            case METEOR -> { // Meteor: a meteor falls out of the sky onto the nearest enemy
+                LivingEntity t = nearestEnemy(p, d("meteor.range", 45) * um(p));
+                if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
+                startCooldown(p, power);
+                final Location target = t.getLocation().clone();
+                target.getWorld().spawnParticle(Particle.FLAME, target.clone().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.05);
+                p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SHOOT, 0.8f, 1.3f);
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    Location from = target.clone().add(0, 26, 0);
+                    LargeFireball fb = target.getWorld().spawn(from, LargeFireball.class);
+                    fb.setDirection(new Vector(0, -1, 0));
+                    fb.setVelocity(new Vector(0, -2.2, 0));
+                    fb.setYield((float) d("meteor.yield", 3.0));
+                    fb.setShooter(p);
+                }, 12L);
+            }
+
+            case LUNAR -> { // Lunar: moon gravity - you bounce high, enemies float
+                startCooldown(p, power);
+                int ticks = i("lunar.duration-seconds", 15) * 20;
+                p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, ticks, 2));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, ticks, 0));
+                for (LivingEntity t : enemiesNear(p, d("lunar.range", 12) * um(p))) {
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 60, 0));
+                    if (t instanceof Player tp) bar(tp, "Moon gravity grabs you!", NamedTextColor.LIGHT_PURPLE);
+                }
+                puff(p.getLocation().add(0, 1, 0), Particle.END_ROD, 30);
+                p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 0.8f);
+            }
+
+            case PULSAR -> { // Pulsar: three shockwave pulses that shove and hurt everyone close
+                startCooldown(p, power);
+                for (int pulse = 0; pulse < 3; pulse++) {
+                    Bukkit.getScheduler().runTaskLater(this, () -> {
+                        if (!p.isOnline() || p.isDead()) return;
+                        double radius = d("pulsar.range", 9) * um(p);
+                        for (LivingEntity t : enemiesNear(p, radius)) {
+                            t.damage(d("pulsar.damage-hearts", 1.5) * 2.0 * um(p), p);
+                            Vector away = t.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
+                            if (away.lengthSquared() > 1.0E-6) t.setVelocity(away.normalize().multiply(1.3).setY(0.4));
+                        }
+                        p.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, p.getLocation().add(0, 1, 0),
+                                40, radius * 0.4, 0.5, radius * 0.4, 0.1);
+                        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 1.6f);
+                    }, pulse * 20L);
+                }
+            }
+
+            case NEBULA -> { // Nebula: vanish into a star cloud that blinds everyone near you
+                startCooldown(p, power);
+                int ticks = i("nebula.duration-seconds", 10) * 20;
+                p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, ticks, 0, false, false, false));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, ticks, 1));
+                for (LivingEntity t : enemiesNear(p, d("nebula.range", 8) * um(p))) {
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 80, 0));
+                    if (t instanceof Player tp) bar(tp, "You are lost in the nebula!", NamedTextColor.DARK_PURPLE);
+                }
+                puff(p.getLocation().add(0, 1, 0), Particle.DRAGON_BREATH, 45);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.6f);
+            }
+
+            case SOLAR_FLARE -> { // Solar Flare: blind and burn every enemy around you
+                startCooldown(p, power);
+                double radius = d("solar-flare.range", 15) * um(p);
+                int secs = i("solar-flare.blind-seconds", 5);
+                for (LivingEntity t : enemiesNear(p, radius)) {
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, secs * 20, 0));
+                    t.setFireTicks(Math.max(t.getFireTicks(), secs * 20));
+                    t.damage(d("solar-flare.damage-hearts", 2) * 2.0 * um(p), p);
+                    if (t instanceof Player tp) bar(tp, "A solar flare blinds you!", NamedTextColor.GOLD);
+                }
+                p.getWorld().spawnParticle(Particle.FLAME, p.getLocation().add(0, 1, 0), 60, radius * 0.4, 1, radius * 0.4, 0.1);
+                p.playSound(p.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1.2f, 0.6f);
+            }
+
+            case ECLIPSE -> { // Eclipse: darkness for your enemies, power for you
+                startCooldown(p, power);
+                int ticks = i("eclipse.duration-seconds", 10) * 20;
+                for (LivingEntity t : enemiesNear(p, d("eclipse.range", 20) * um(p))) {
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, ticks, 0));
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, ticks, 0));
+                    if (t instanceof Player tp) bar(tp, "The eclipse swallows the light!", NamedTextColor.DARK_GRAY);
+                }
+                p.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, ticks, 1));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, ticks, 1));
+                puff(p.getLocation().add(0, 1, 0), Particle.SQUID_INK, 45);
+                p.playSound(p.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 0.8f, 0.7f);
+            }
+
+            case ASTEROID -> { // Asteroid: a giant rock crashes down on the nearest enemy
+                LivingEntity t = nearestEnemy(p, d("asteroid.range", 35) * um(p));
+                if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
+                startCooldown(p, power);
+                final Location target = t.getLocation().clone();
+                target.getWorld().spawnParticle(Particle.SMOKE, target.clone().add(0, 0.3, 0), 25, 1.5, 0.2, 1.5, 0.02);
+                p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SHOOT, 0.9f, 1.1f);
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    double radius = d("asteroid.impact-radius", 5);
+                    target.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, target.clone().add(0, 1, 0), 3, 0.5, 0.5, 0.5, 0);
+                    target.getWorld().spawnParticle(Particle.LAVA, target.clone().add(0, 0.5, 0), 30, 1.5, 0.5, 1.5, 0.1);
+                    target.getWorld().playSound(target, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 0.8f);
+                    for (LivingEntity e : target.getWorld().getNearbyLivingEntities(target, radius)) {
+                        if (isEnemy(p, e)) e.damage(d("asteroid.damage-hearts", 6) * 2.0 * um(p), p);
+                    }
+                }, 16L);
+            }
+
+            case ZERO_GRAVITY -> { // Zero Gravity: every enemy floats up... then crashes down
+                startCooldown(p, power);
+                double radius = d("zero-gravity.range", 14) * um(p);
+                int secs = i("zero-gravity.float-seconds", 6);
+                List<LivingEntity> targets = new ArrayList<>(enemiesNear(p, radius));
+                for (LivingEntity t : targets) {
+                    t.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, secs * 20, 0));
+                    if (t instanceof Player tp) bar(tp, "Gravity is gone!", NamedTextColor.LIGHT_PURPLE);
+                }
+                puff(p.getLocation().add(0, 1, 0), Particle.END_ROD, 40);
+                p.playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1f, 1.2f);
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    for (LivingEntity t : targets) {
+                        if (!t.isValid() || t.isDead()) continue;
+                        t.removePotionEffect(PotionEffectType.LEVITATION);
+                        t.setVelocity(new Vector(0, -2.5, 0));
+                        t.damage(d("zero-gravity.slam-hearts", 3) * 2.0 * um(p), p);
+                        t.getWorld().spawnParticle(Particle.CLOUD, t.getLocation(), 15, 0.4, 0.2, 0.4, 0.05);
+                    }
+                }, secs * 20L + 10L);
+            }
+
+            case WORMHOLE -> { // Wormhole: swap places with the nearest enemy
+                LivingEntity t = nearestEnemy(p, d("wormhole.range", 40) * um(p));
+                if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
+                startCooldown(p, power);
+                Location mine = p.getLocation().clone();
+                Location theirs = t.getLocation().clone();
+                puff(mine.clone().add(0, 1, 0), Particle.REVERSE_PORTAL, 35);
+                puff(theirs.clone().add(0, 1, 0), Particle.REVERSE_PORTAL, 35);
+                p.teleport(theirs);
+                t.teleport(mine);
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 100, 1));
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.2f, 0.7f);
+                if (t instanceof Player tp) bar(tp, "A wormhole swapped you!", NamedTextColor.DARK_BLUE);
+            }
+
+            case QUASAR -> quasarBeam(p);
+
+            case BLACK_HOLE -> blackHole(p);
+
+            case ANTIMATTER -> antimatter(p);
+
+            case ROCKET -> { // Rocket: blast off!
+                startCooldown(p, power);
+                Vector v = p.getLocation().getDirection().multiply(0.5);
+                v.setY(d("rocket.launch-strength", 2.6));
+                p.setVelocity(v);
+                int ticks = i("rocket.fall-seconds", 10) * 20;
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, ticks, 0));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, ticks, 0));
+                p.playSound(p.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.4f, 1f);
+                new BukkitRunnable() {
+                    int t = 0;
+
+                    @Override
+                    public void run() {
+                        if (!p.isOnline() || p.isDead() || t++ >= 30) {
+                            cancel();
+                            return;
+                        }
+                        puff(p.getLocation(), Particle.FIREWORK, 4);
+                    }
+                }.runTaskTimer(this, 0L, 2L);
+            }
         }
+    }
+
+    /** A line of particles from A to B (starlight beams, quasar beams). */
+    private void beamParticles(Location from, Location to, Particle particle) {
+        Vector step = to.toVector().subtract(from.toVector());
+        int pts = Math.max(2, (int) (step.length() * 2));
+        step.multiply(1.0 / pts);
+        Location cur = from.clone();
+        for (int k = 0; k <= pts; k++) {
+            cur.getWorld().spawnParticle(particle, cur, 2, 0.05, 0.05, 0.05, 0.01);
+            cur.add(step);
+        }
+    }
+
+    // =====================================================================
+    // Earth (v10): trap your enemy in a stone box, gain Strength III, and
+    // send minions that hunt only them. Lasts a minute; cooldown 5 minutes.
+    // =====================================================================
+
+    private void earthSuper(Player p) {
+        LivingEntity t = nearestEnemy(p, d("earth.range", 30) * um(p));
+        if (t == null) { bar(p, "No one in range.", NamedTextColor.GRAY); return; }
+        startCooldown(p, Power.EARTH);
+        final int secs = i("earth.duration-seconds", 60);
+        p.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, secs * 20, 2)); // Strength III
+        bar(p, "The earth rises for you!", NamedTextColor.DARK_GREEN);
+        if (t instanceof Player tp) bar(tp, "The earth traps you!", NamedTextColor.DARK_GREEN);
+
+        // the box: a hollow stone shell around the enemy, every block remembered and restored
+        final Map<Location, org.bukkit.block.data.BlockData> old = new HashMap<>();
+        Location c = t.getLocation().getBlock().getLocation();
+        Material mat = Material.matchMaterial(getConfig().getString("earth.box-material", "STONE"));
+        final Material boxMat = mat == null ? Material.STONE : mat;
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                for (int dy = -1; dy <= 3; dy++) {
+                    boolean shell = Math.abs(dx) == 2 || Math.abs(dz) == 2 || dy == -1 || dy == 3;
+                    if (!shell) continue;
+                    org.bukkit.block.Block b = c.clone().add(dx, dy, dz).getBlock();
+                    if (b.getType() == Material.BEDROCK || b.getType() == boxMat) continue;
+                    old.putIfAbsent(b.getLocation(), b.getBlockData());
+                    b.setType(boxMat, false);
+                }
+            }
+        }
+        c.getWorld().playSound(c, Sound.BLOCK_STONE_PLACE, 1.2f, 0.7f);
+
+        // the minions: earth zombies that hunt only this enemy
+        final List<org.bukkit.entity.Zombie> minions = new ArrayList<>();
+        int count = i("earth.minions", 4);
+        for (int k = 0; k < count; k++) {
+            Location at = c.clone().add(3.5 + random.nextDouble() * 2, 1, (random.nextInt(9) - 4));
+            org.bukkit.entity.Zombie z = c.getWorld().spawn(at, org.bukkit.entity.Zombie.class, mob -> {
+                mob.setShouldBurnInDay(false);
+                mob.customName(Component.text("Earth Minion", NamedTextColor.DARK_GREEN));
+                mob.setCustomNameVisible(true);
+                mob.getEquipment().setItemInMainHand(new ItemStack(Material.STONE_SWORD));
+                mob.getEquipment().setItemInMainHandDropChance(0f);
+                mob.getEquipment().setHelmet(new ItemStack(Material.LEATHER_HELMET));
+                mob.getEquipment().setHelmetDropChance(0f);
+                mob.setTarget(t);
+            });
+            minions.add(z);
+        }
+
+        final LivingEntity target = t;
+        new BukkitRunnable() {
+            int ticks = 0;
+
+            @Override
+            public void run() {
+                ticks += 10;
+                boolean done = ticks >= secs * 20 || !target.isValid() || target.isDead()
+                        || target.getWorld() != c.getWorld()
+                        || target.getLocation().distanceSquared(c) > 40 * 40;
+                if (done) {
+                    for (org.bukkit.entity.Zombie z : minions) if (z.isValid()) z.remove();
+                    for (Map.Entry<Location, org.bukkit.block.data.BlockData> en : old.entrySet()) {
+                        if (en.getKey().getBlock().getType() == boxMat) en.getKey().getBlock().setBlockData(en.getValue(), false);
+                    }
+                    cancel();
+                    return;
+                }
+                for (org.bukkit.entity.Zombie z : minions) if (z.isValid()) z.setTarget(target);
+            }
+        }.runTaskTimer(this, 10L, 10L);
+    }
+
+    // =====================================================================
+    // Wind (v10): charge up in the air for 2 seconds, then slam down and
+    // blast everyone in 15 blocks for 15 hearts. Only ONE exists.
+    // =====================================================================
+
+    private void windSuper(Player p) {
+        startCooldown(p, Power.WIND);
+        bar(p, "The wind gathers...", NamedTextColor.WHITE);
+        new BukkitRunnable() {
+            int t = 0;
+            boolean slammed = false;
+
+            @Override
+            public void run() {
+                if (!p.isOnline() || p.isDead()) {
+                    cancel();
+                    return;
+                }
+                t++;
+                if (t <= 40) { // charging: hover and rise for 2 seconds
+                    Vector v = p.getVelocity();
+                    v.setY(0.55);
+                    p.setVelocity(v);
+                    p.setFallDistance(0f);
+                    puff(p.getLocation().add(0, 0.5, 0), Particle.CLOUD, 6);
+                    if (t % 10 == 0) p.playSound(p.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 0.8f, 0.6f + t / 40f);
+                    return;
+                }
+                if (!slammed) { // slam!
+                    slammed = true;
+                    p.setVelocity(new Vector(0, -3.2, 0));
+                    p.playSound(p.getLocation(), Sound.ENTITY_BREEZE_CHARGE, 1.4f, 0.6f);
+                    return;
+                }
+                if (p.isOnGround() || t > 70) { // impact
+                    double radius = d("wind.radius", 15) * um(p);
+                    for (LivingEntity e : enemiesNear(p, radius)) {
+                        e.damage(d("wind.damage-hearts", 15) * 2.0, p);
+                        Vector away = e.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
+                        if (away.lengthSquared() > 1.0E-6) e.setVelocity(away.normalize().multiply(1.6).setY(0.7));
+                        if (e instanceof Player ep) bar(ep, "The Wind slammed you!", NamedTextColor.WHITE);
+                    }
+                    Location at = p.getLocation();
+                    at.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, at.clone().add(0, 0.5, 0), 2, 0.5, 0.3, 0.5, 0);
+                    at.getWorld().spawnParticle(Particle.CLOUD, at.clone().add(0, 0.5, 0), 60, radius * 0.4, 0.5, radius * 0.4, 0.25);
+                    at.getWorld().playSound(at, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 1.1f);
+                    p.setFallDistance(0f);
+                    cancel();
+                }
+            }
+        }.runTaskTimer(this, 0L, 1L);
+    }
+
+    // =====================================================================
+    // Frost (v10): freeze every enemy in 30 blocks for 5 seconds, then
+    // frost damage keeps biting them for 20 seconds.
+    // =====================================================================
+
+    private void frostSuper(Player p) {
+        startCooldown(p, Power.FROST);
+        double radius = d("frost.radius", 30) * um(p);
+        int freezeSecs = i("frost.freeze-seconds", 5);
+        int dotSecs = i("frost.damage-seconds", 20);
+        List<LivingEntity> targets = new ArrayList<>(enemiesNear(p, radius));
+        for (LivingEntity t : targets) {
+            t.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, freezeSecs * 20, 10));
+            t.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, freezeSecs * 20, 128));
+            t.setFreezeTicks(t.getMaxFreezeTicks());
+            puff(t.getLocation().add(0, 1, 0), Particle.SNOWFLAKE, 25);
+            if (t instanceof Player tp) bar(tp, "You are frozen solid!", NamedTextColor.AQUA);
+        }
+        p.getWorld().spawnParticle(Particle.SNOWFLAKE, p.getLocation().add(0, 1, 0), 80, radius * 0.35, 1, radius * 0.35, 0.1);
+        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT_FREEZE, 1.3f, 0.8f);
+        if (targets.isEmpty()) return;
+        new BukkitRunnable() {
+            int pulses = 0;
+
+            @Override
+            public void run() { // frost damage every 2 seconds for the whole duration
+                pulses++;
+                if (pulses * 2 > dotSecs) {
+                    cancel();
+                    return;
+                }
+                for (LivingEntity t : targets) {
+                    if (!t.isValid() || t.isDead()) continue;
+                    t.damage(d("frost.damage-per-pulse", 1.0) * um(p), p);
+                    t.setFreezeTicks(Math.max(t.getFreezeTicks(), t.getMaxFreezeTicks() / 2));
+                    puff(t.getLocation().add(0, 1, 0), Particle.SNOWFLAKE, 6);
+                }
+            }
+        }.runTaskTimer(this, 40L, 40L);
+    }
+
+    // =====================================================================
+    // Quasar (v10): a huge beam of starlight in the direction you look
+    // =====================================================================
+
+    private void quasarBeam(Player p) {
+        startCooldown(p, Power.QUASAR);
+        bar(p, "Charging the quasar...", NamedTextColor.LIGHT_PURPLE);
+        p.playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1f, 0.7f);
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (!p.isOnline() || p.isDead()) return;
+            Location eye = p.getEyeLocation();
+            Vector dir = eye.getDirection();
+            double range = d("quasar.range", 30);
+            beamParticles(eye.clone().add(dir), eye.clone().add(dir.clone().multiply(range)), Particle.GLOW);
+            beamParticles(eye.clone().add(dir), eye.clone().add(dir.clone().multiply(range)), Particle.END_ROD);
+            for (LivingEntity t : enemiesNear(p, range + 4)) {
+                // distance from the enemy to the beam line
+                Vector to = t.getLocation().add(0, 1, 0).toVector().subtract(eye.toVector());
+                double along = to.dot(dir);
+                if (along < 0 || along > range) continue;
+                Vector closest = dir.clone().multiply(along);
+                if (to.subtract(closest).length() <= d("quasar.width", 2.2)) {
+                    t.damage(d("quasar.damage-hearts", 8) * 2.0 * um(p), p);
+                    if (t instanceof Player tp) bar(tp, "The quasar beam hits you!", NamedTextColor.LIGHT_PURPLE);
+                }
+            }
+            p.getWorld().playSound(eye, Sound.ENTITY_WITHER_SHOOT, 1.1f, 1.4f);
+        }, 20L);
+    }
+
+    // =====================================================================
+    // Black Hole (v10): a hungry void that drags every enemy in, then bursts
+    // =====================================================================
+
+    private void blackHole(Player p) {
+        LivingEntity t = nearestEnemy(p, d("black-hole.range", 30) * um(p));
+        final Location center;
+        if (t != null) center = t.getLocation().add(0, 1.5, 0);
+        else center = p.getEyeLocation().add(p.getEyeLocation().getDirection().multiply(14)).add(0, 0.5, 0);
+        startCooldown(p, Power.BLACK_HOLE);
+        final int secs = i("black-hole.duration-seconds", 6);
+        p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.7f, 0.6f);
+        new BukkitRunnable() {
+            int ticks = 0;
+
+            @Override
+            public void run() {
+                ticks += 2;
+                center.getWorld().spawnParticle(Particle.SQUID_INK, center, 14, 0.4, 0.4, 0.4, 0.05);
+                center.getWorld().spawnParticle(Particle.REVERSE_PORTAL, center, 10, 1.2, 1.2, 1.2, 0.4);
+                for (LivingEntity e : center.getWorld().getNearbyLivingEntities(center, d("black-hole.pull-radius", 12))) {
+                    if (!isEnemy(p, e)) continue;
+                    Vector pull = center.toVector().subtract(e.getLocation().toVector());
+                    double dist = Math.max(1.0, pull.length());
+                    e.setVelocity(pull.normalize().multiply(Math.min(1.1, 14.0 / dist)).setY(0.12));
+                }
+                if (ticks >= secs * 20) { // the burst
+                    for (LivingEntity e : center.getWorld().getNearbyLivingEntities(center, 8)) {
+                        if (!isEnemy(p, e)) continue;
+                        e.damage(d("black-hole.burst-hearts", 4) * 2.0 * um(p), p);
+                        Vector away = e.getLocation().toVector().subtract(center.toVector());
+                        away.setY(0.5);
+                        if (away.lengthSquared() > 1.0E-6) e.setVelocity(away.normalize().multiply(1.5));
+                    }
+                    center.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 2, 0.4, 0.4, 0.4, 0);
+                    center.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 0.7f);
+                    cancel();
+                }
+            }
+        }.runTaskTimer(this, 0L, 2L);
+    }
+
+    // =====================================================================
+    // Antimatter (v10): charge up, then a huge explosion centred on you
+    // (it never hurts you, and it never breaks blocks)
+    // =====================================================================
+
+    private void antimatter(Player p) {
+        startCooldown(p, Power.ANTIMATTER);
+        p.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, 70, 4));
+        bar(p, "Antimatter charging...", NamedTextColor.DARK_RED);
+        new BukkitRunnable() {
+            int t = 0;
+
+            @Override
+            public void run() {
+                if (!p.isOnline() || p.isDead()) {
+                    cancel();
+                    return;
+                }
+                t++;
+                puff(p.getLocation().add(0, 1, 0), Particle.SMOKE, 4);
+                if (t % 10 == 0) p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 0.5f + t / 20f);
+                if (t < 40) return;
+                double radius = d("antimatter.radius", 12) * um(p);
+                for (LivingEntity e : enemiesNear(p, radius)) {
+                    e.damage(d("antimatter.damage-hearts", 10) * 2.0 * um(p), p);
+                    Vector away = e.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
+                    if (away.lengthSquared() > 1.0E-6) e.setVelocity(away.normalize().multiply(2.0).setY(0.8));
+                    if (e instanceof Player ep) bar(ep, "ANTIMATTER!", NamedTextColor.DARK_RED);
+                }
+                Location at = p.getLocation();
+                at.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, at.clone().add(0, 1, 0), 5, 1, 0.6, 1, 0);
+                at.getWorld().spawnParticle(Particle.FIREWORK, at.clone().add(0, 1, 0), 60, radius * 0.4, 1, radius * 0.4, 0.2);
+                at.getWorld().playSound(at, Sound.ENTITY_GENERIC_EXPLODE, 1.6f, 0.6f);
+                at.getWorld().playSound(at, Sound.ENTITY_WITHER_SPAWN, 0.7f, 0.8f);
+                cancel();
+            }
+        }.runTaskTimer(this, 0L, 1L);
     }
 
     // =====================================================================
@@ -1466,6 +2218,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             if (crates != null) crates.giveKeys(p, Math.max(1, Math.min(64, parseInt(parts[1], 1))));
             return;
         }
+        if (parts[0].equalsIgnoreCase("galaxy")) { // galaxy:N = N Galaxy Coins (v10)
+            if (shops != null) shops.giveGalaxyCoins(p, Math.max(1, Math.min(640, parseInt(parts[1], 1))));
+            return;
+        }
         if (parts[0].equalsIgnoreCase("power")) {
             Power pw = Power.parse(parts[1]);
             if (pw == null) {
@@ -1649,8 +2405,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             else horseman.command(sender, args);
             return true;
         }
-        if (name.equals("halloweenshop")) {
-            if (sender instanceof Player hp) shops.openHalloweenShop(hp);
+        if (name.equals("gshop")) {
+            if (sender instanceof Player hp) shops.openGalaxyShop(hp);
+            return true;
+        }
+        if (name.equals("staffrank")) {
+            staffRankCommand(sender, args);
             return true;
         }
         if (name.equals("shopkeeper")) {
@@ -1707,6 +2467,15 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 if (power == null) { sender.sendMessage("Unknown power. Use /power list"); return true; }
                 Player t = Bukkit.getPlayerExact(args[2]);
                 if (t == null) { sender.sendMessage("Player not online."); return true; }
+                if (power == Power.WIND) { // only ONE Wind exists, and commands are the only way to get it
+                    UUID owner = profile.ownerOf(Power.WIND);
+                    if (owner != null && !owner.equals(t.getUniqueId())) {
+                        org.bukkit.OfflinePlayer op = Bukkit.getOfflinePlayer(owner);
+                        sender.sendMessage("The Wind power already belongs to "
+                                + (op.getName() == null ? "someone" : op.getName()) + " - only ONE exists.");
+                        return true;
+                    }
+                }
                 if (!args[0].equalsIgnoreCase("set")) { // give = the power star item; set = assign directly
                     give(t, powerItem(power));
                     sender.sendMessage("Gave a " + pretty(power.key()) + " power star to " + t.getName() + ".");
@@ -1746,6 +2515,47 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             default -> sender.sendMessage(usage);
         }
         return true;
+    }
+
+    /** /staffrank <player> <mod|tester|co-owner|none> - staff ranks only an OP can give (v10). */
+    private void staffRankCommand(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            sender.sendMessage(Component.text("Only an OP can give staff ranks.", NamedTextColor.RED));
+            return;
+        }
+        if (args.length < 2) {
+            sender.sendMessage("Usage: /staffrank <player> <mod|tester|co-owner|none>");
+            return;
+        }
+        Player t = Bukkit.getPlayerExact(args[0]);
+        org.bukkit.OfflinePlayer off = t == null ? Bukkit.getOfflinePlayer(args[0]) : t;
+        if (off == null || (!off.hasPlayedBefore() && t == null)) {
+            sender.sendMessage("Player not found.");
+            return;
+        }
+        String rank = args[1].toLowerCase(Locale.ROOT).replace('_', '-');
+        if (rank.equals("coowner")) rank = "co-owner";
+        if (rank.equals("none") || rank.equals("remove")) {
+            profile.of(off.getUniqueId()).staffRank = null;
+            profile.save();
+            if (t != null) {
+                ranks.refresh(t);
+                t.sendMessage(Component.text("Your staff rank was removed.", NamedTextColor.GRAY));
+            }
+            sender.sendMessage("Removed the staff rank from " + args[0] + ".");
+            return;
+        }
+        if (!Ranks.STAFF.containsKey(rank)) {
+            sender.sendMessage("Staff ranks are: mod, tester, co-owner (or none to remove).");
+            return;
+        }
+        profile.of(off.getUniqueId()).staffRank = rank;
+        profile.save();
+        if (t != null) {
+            ranks.refresh(t);
+            t.sendMessage(Component.text("You are now a " + Ranks.staffName(rank) + "!", Ranks.staffColor(rank)));
+        }
+        sender.sendMessage("Gave the " + Ranks.staffName(rank) + " rank to " + args[0] + ".");
     }
 
     private boolean reroll(CommandSender sender) {

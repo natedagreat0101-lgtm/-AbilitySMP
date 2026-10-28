@@ -1,8 +1,8 @@
 name: AbilitySMP
-version: 9.0
+version: 10.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
-description: Unbound SMP - powers, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and events
+description: Unbound SMP - powers, the quick switch, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and galaxy events
 commands:
   power:
     description: Give or remove a power (admin)
@@ -60,7 +60,7 @@ commands:
     description: Rebirth - reset your coins and power levels for permanent bonuses
     usage: /rebirth [confirm]
   galactic:
-    description: Countdown timer for the Galactic Update (admins can move the date)
+    description: The Galactic Update is out! (admins can move the date for the next event)
     usage: /galactic [set 2026-11-01 13:00]
   locker:
     description: Your permanent collection - ranks, trails and more
@@ -71,13 +71,15 @@ commands:
   boss:
     description: Fight a boss, or invite a friend to join your boss fights
     usage: /boss fight <Headless Horseman|Mimic|Ghost> | /boss invite <player> | /boss accept | /boss leave
-  halloweenshop:
-    description: Spend Halloween Coins (limited-time items inside)
-    usage: /halloweenshop
-    aliases: [hshop]
+  gshop:
+    description: Spend Galaxy Coins in the Galaxy Shop (limited-time items inside)
+    usage: /gshop
+  staffrank:
+    description: Give a staff rank (Mod, Tester, Co-Owner) - only an OP can do this
+    usage: /staffrank <player> <mod|tester|co-owner|none>
   shopkeeper:
     description: Give shopkeeper spawn eggs or remove a shopkeeper (admin)
-    usage: /shopkeeper egg <power|halloween> [player] [amount]
+    usage: /shopkeeper egg <power|galaxy> [player] [amount]
     permission: abilitysmp.admin
 permissions:
   abilitysmp.admin:

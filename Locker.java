@@ -117,6 +117,8 @@ final class Locker implements Listener {
                 out.add(rankTrail("witch", "Witch Trail", Material.BLAZE_ROD, "mimic-bane", "Chest Breaker"));
                 out.add(rankTrail("note", "Music Trail", Material.NOTE_BLOCK, "ranked-star", "Ranked Star"));
                 out.add(rankTrail("snow", "Snow Trail", Material.SNOWBALL, "time-lord", "Time Lord"));
+                out.add(new Entry("nebula", "Nebula Trail", Material.DRAGON_BREATH,
+                        "Own the Black Hole power", p -> plugin.profile.owns(p, AbilitySMP.Power.BLACK_HOLE)));
                 return out;
             }
         });
@@ -149,7 +151,12 @@ final class Locker implements Listener {
                 out.add(new Entry("unbound-king", "Unbound King", Material.NETHER_STAR,
                         "Reach 2400 ranked rating - the best rank there is", p -> plugin.profile.of(p).rankedRating >= 2400));
                 out.add(new Entry("the-completionist", "The Completionist", Material.DRAGON_EGG,
-                        "Own every power", p -> plugin.profile.of(p).owned.size() >= AbilitySMP.Power.values().length));
+                        "Own every power (except the one-of-a-kind Wind)",
+                        p -> ownable(p) >= AbilitySMP.Power.values().length - 1));
+                out.add(new Entry("galaxy-guardian", "Galaxy Guardian", Material.END_CRYSTAL,
+                        "Buy it in the Galaxy Shop (/gshop)", p -> false));
+                out.add(new Entry("star-traveler", "Star Traveler", Material.SPYGLASS,
+                        "Own 30 different powers", p -> ownable(p) >= 30));
                 return out;
             }
             public void onChange(Player p) { plugin.ranks.refresh(p); }
@@ -178,7 +185,12 @@ final class Locker implements Listener {
                 out.add(new Entry("vampire-cape", "Vampire Costume", Material.LEATHER_CHESTPLATE,
                         "Own the Vampire power", p -> plugin.profile.owns(p, AbilitySMP.Power.VAMPIRE)));
                 out.add(new Entry("dragon-suit", "Dragon Costume", Material.DRAGON_HEAD,
-                        "Own every power", p -> plugin.profile.of(p).owned.size() >= AbilitySMP.Power.values().length));
+                        "Own every power (except the one-of-a-kind Wind)",
+                        p -> ownable(p) >= AbilitySMP.Power.values().length - 1));
+                out.add(new Entry("astro-helmet", "Space Helmet", Material.LEATHER_HELMET,
+                        "Buy it in the Galaxy Shop (/gshop)", p -> false));
+                out.add(new Entry("star-cloak", "Star Cloak", Material.LEATHER_CHESTPLATE,
+                        "Buy it in the Galaxy Shop (/gshop)", p -> false));
                 return out;
             }
             public void onChange(Player p) { applyCosmetics(p); }
@@ -215,6 +227,7 @@ final class Locker implements Listener {
                 case "witch" -> Particle.WITCH;
                 case "note" -> Particle.NOTE;
                 case "snow" -> Particle.SNOWFLAKE;
+                case "nebula" -> Particle.DRAGON_BREATH;
                 default -> null;
             };
             if (part != null) p.getWorld().spawnParticle(part, p.getLocation().add(0, 0.1, 0), 2, 0.2, 0.05, 0.2, 0.01);
@@ -243,6 +256,7 @@ final class Locker implements Listener {
             case "wither-suit" -> costumeItem(id, Material.WITHER_SKELETON_SKULL, "Wither Head", null);
             case "witch-hat" -> costumeItem(id, Material.LEATHER_HELMET, "Witch Hat", 0x2A0A4A);
             case "dragon-suit" -> costumeItem(id, Material.DRAGON_HEAD, "Dragon Head", null);
+            case "astro-helmet" -> costumeItem(id, Material.LEATHER_HELMET, "Space Helmet", 0xB8C4CE);
             default -> null;
         };
     }
@@ -250,8 +264,15 @@ final class Locker implements Listener {
     private ItemStack costumeChest(String id) {
         return switch (id) {
             case "vampire-cape" -> costumeItem(id, Material.LEATHER_CHESTPLATE, "Vampire Cape", 0x6E0E0E);
+            case "star-cloak" -> costumeItem(id, Material.LEATHER_CHESTPLATE, "Star Cloak", 0x5B2A86);
             default -> null;
         };
+    }
+
+    /** Owned powers, not counting the one-of-a-kind Wind power. */
+    private int ownable(Player p) {
+        java.util.Set<String> owned = plugin.profile.of(p).owned;
+        return owned.size() - (owned.contains("WIND") ? 1 : 0);
     }
 
     private String costumeTag(ItemStack it) {

@@ -1,4 +1,4 @@
-# AbilitySMP (Unbound SMP) — v9.0 The Galactic Update Eve
+# AbilitySMP (Unbound SMP) — v10.0 The Galactic Update
 
 A Paper 1.21 plugin: powers, Power Activator, quests, upgrades, duels, Trick or Treat Night,
 and Halloween bosses.
@@ -19,6 +19,45 @@ mvn package
 ```
 
 The jar appears in `target/AbilitySMP.jar`.
+
+## What's new in v10.0 — THE GALACTIC UPDATE
+
+- **Halloween retired, nothing lost.** The Halloween Shop, Trick or Treat Night and the Halloween
+  `/panel` events are gone. Everything players already earned stays forever: Halloween powers
+  (they still work, they're just not sold or rolled anymore), ranks, titles, costumes, and even
+  Halloween Coin items already in inventories.
+- **19 new powers.** The headliners: **Supernova** (idle fire resistance; super shoots 3 fireballs,
+  20s cooldown), **Earth** (idle Resistance II; super traps your enemy in a stone box while you
+  get Strength III and minions hunt only them for 1 minute; 5-minute cooldown), **Frost** (idle
+  Frost Walker; super freezes every enemy in 30 blocks for 5s, then frost damage for 20s) and
+  **Wind** (idle no fall damage; super charges in the air 2s then slams for 15 hearts in 15
+  blocks). **Wind is one of a kind**: only one player can ever own it and it only comes from an
+  admin command (`/power set wind <player>`); the plugin refuses a second owner everywhere.
+  Plus 15 more: Starlight, Comet, Meteor, Lunar, Pulsar, Nebula, Solar Flare, Eclipse, Asteroid,
+  Zero Gravity, Wormhole, Quasar, Black Hole, Antimatter, Rocket. All priced in Unbound Coins
+  by strength (60 for Starlight up to 2500 for Earth) and all in Power Crates except Wind.
+- **Galaxy Coins + `/gshop`.** A new physical currency (prismarine crystals). Bosses pay it now
+  (Horseman 30, Mimic 100, Ghost 10), as do some quests, rebirths and events. The Galaxy Shop
+  mirrors the old Halloween Shop — regular stock plus limited-time items (until Nov 16 2026):
+  galaxy power stars, a Space Helmet, a Star Cloak, the Galaxy Guardian title, the Nebula Trail.
+- **The quick switch.** Equip **two** powers at once: in `/powers`, left-click sets slot 1,
+  right-click sets slot 2. The action bar above the hotbar shows `[1] Power  [2] Power`, like a
+  little loadout bar. Switch in game with the **swap-hands key (F)** or **crouch + right-click**
+  the Power Activator (the crouch way works on Bedrock). Switching mid-fight is blocked wherever
+  a Fight Totem is in play.
+- **6 new admin events** (`/panel` → Server Events). **Supernova Spleef**: everyone is teleported
+  to a molten arena, right-click shoots fireballs, break the magma floor, Fight Totems on,
+  last one standing wins Galaxy Coins (60s limit). **Galaxy Rush**: Speed III for everyone under
+  a night sky full of star particles for 2 minutes. **Verity**: everyone gets Strength III, a
+  Fight Totem and a one-shot **Verity** snowball in a yellow arena for the length of the song
+  (~2:30, `galaxy-events.verity.seconds`); popped players are sent home, survivors get Galaxy
+  Coins. Plus **Meteor Shower**, **Moon Gravity** and **Star Rain**. A plugin still can't stream
+  the actual YouTube song — the server plays a dark note-block version of it live instead.
+- **Staff ranks.** `/staffrank <player> <mod|tester|co-owner|none>` — **OP only**. A staff rank
+  (Mod = green, Tester = yellow, Co-Owner = red) replaces the player's normal rank in chat and
+  the tab list until removed.
+- **More locker loot:** Space Helmet + Star Cloak costumes, the Nebula Trail, and the Galaxy
+  Guardian / Star Traveler titles.
 
 ## What's new in v9.0
 
@@ -97,7 +136,9 @@ The jar appears in `target/AbilitySMP.jar`.
 | `/crate` | Your Power Crates and keys (right-click a crate to open it) |
 | `/trade <player>` | Safe item trading (both players confirm) |
 | `/rebirth` | Rebirth: reset coins + power levels for permanent bonuses |
-| `/galactic` | Countdown to the Galactic Update (Sunday Nov 1, 1:00 PM) |
+| `/galactic` | The Galactic Update is out! (was the countdown) |
+| `/gshop` | The Galaxy Shop - spend Galaxy Coins |
+| `/staffrank <player> <rank>` | Give a staff rank: Mod, Tester or Co-Owner (OP only) |
 | `/powers`, `/shop`, `/quests`, `/locker`, `/halloweenshop`, `/notes` | Menus, shops and patch notes |
 
 Boss numbers (health, damage, rewards, arena spots) all live in `config.yml` under
