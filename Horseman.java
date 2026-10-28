@@ -70,6 +70,7 @@ final class Horseman implements Listener {
         int phase = 1;
         long tick;
         boolean ending;
+        boolean skipCooldown;
         final List<FallingBlock> shots = new ArrayList<>();
         final List<LivingEntity> minions = new ArrayList<>();
         final Map<Location, BlockData> old = new HashMap<>();
@@ -91,6 +92,7 @@ final class Horseman implements Listener {
         this.bossKey = new NamespacedKey(plugin, "headless_horseman");
         this.shotKey = new NamespacedKey(plugin, "horseman_shot");
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 1L);
+        Bukkit.getScheduler().runTaskTimer(plugin, this::readyCheck, 40L, 20L);
     }
 
     boolean isBusy(Player p) {
@@ -131,6 +133,21 @@ final class Horseman implements Listener {
     void command(CommandSender s, String[] args) {
         if (!(s instanceof Player p)) {
             s.sendMessage("Players only.");
+            return;
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("reset")) { // admin: clear a cooldown
+            if (!p.hasPermission("abilitysmp.admin")) {
+                p.sendMessage(Component.text("Only admins can do that.", NamedTextColor.RED));
+                return;
+            }
+            Player t = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : p;
+            if (t == null) {
+                p.sendMessage(Component.text("Player not online.", NamedTextColor.RED));
+                return;
+            }
+            plugin.profile.of(t).bossReadyAt = 0L;
+            plugin.profile.save();
+            p.sendMessage(Component.text("Cleared the Headless Horseman cooldown for " + t.getName() + ".", NamedTextColor.GREEN));
             return;
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("fight")) {
@@ -182,6 +199,12 @@ final class Horseman implements Listener {
     private void start(Player p) {
         if (!plugin.getConfig().getBoolean("halloween.enabled", true)) {
             p.sendMessage(Component.text("The Halloween content is closed right now.", NamedTextColor.GRAY));
+            return;
+        }
+        long wait = plugin.profile.of(p).bossReadyAt - System.currentTimeMillis();
+        if (wait > 0) {
+            p.sendMessage(Component.text("The Headless Horseman is resting. You can fight him again in "
+                    + span((wait + 999) / 1000L) + ".", NamedTextColor.RED));
             return;
         }
         if (fight != null) {
@@ -543,6 +566,11 @@ final class Horseman implements Listener {
     private void end(Fight f, boolean win, boolean immediate) {
         if (f.ending) return;
         f.ending = true;
+        if (!f.skipCooldown) { // the cooldown starts when a fight ends, however it ends
+            plugin.profile.of(f.player).bossReadyAt = System.currentTimeMillis()
+                    + Math.max(0, cfg("horseman.cooldown-minutes", 20)) * 60_000L;
+            plugin.profile.save();
+        }
         Player p = f.player;
         if (f.bar != null) p.hideBossBar(f.bar);
         for (FallingBlock fb : f.shots) fb.remove();
@@ -568,7 +596,32 @@ final class Horseman implements Listener {
         else Bukkit.getScheduler().runTaskLater(plugin, back, win ? 100L : 40L);
     }
 
+    private static String span(long secs) {
+        return (secs / 60) + "m " + (secs % 60) + "s";
+    }
+
+    /** Tells you when your cooldown is over, even if it ended while you were offline. */
+    private void readyCheck() {
+        long now = System.currentTimeMillis();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Profile.Data d = plugin.profile.of(p);
+            if (d.bossReadyAt > 0 && now >= d.bossReadyAt) {
+                d.bossReadyAt = 0L;
+                plugin.profile.save();
+                p.showTitle(Title.title(Component.text("The Headless Horseman is ready!", NamedTextColor.GOLD),
+                        Component.text("Your cooldown is over: /boss fight Headless Horseman", NamedTextColor.YELLOW),
+                        Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(4), Duration.ofMillis(600))));
+                p.sendMessage(Component.text("The Headless Horseman can be fought again! /boss fight Headless Horseman",
+                        NamedTextColor.GOLD));
+                p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 0.6f);
+            }
+        }
+    }
+
     void shutdown() {
-        if (fight != null) end(fight, false, true);
+        if (fight != null) {
+            fight.skipCooldown = true; // a server stop is not the player's fault
+            end(fight, false, true);
+        }
     }
 }

@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "8.0";
+    static final String VERSION = "10.0";
 
     private Notes() {
     }
@@ -28,7 +28,22 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v8.0 =====");
+        h(s, "===== Unbound SMP Patch Notes: v10.0 =====");
+        l(s, "4 new special ranks");
+        how(s, "Unbound Tester, Unbound Mob, Unbound Co-Owner and Unbound Owner are given by the server owner and are "
+                + "permanent. Pick which rank to show in /locker.");
+        l(s, "Better scary music");
+        how(s, "Halloween Night now plays an original eerie music-box tune instead of a looping disc.");
+        h(s, "===== v9.0 =====");
+        l(s, "Headless Horseman cooldown: 20 minutes");
+        how(s, "after a fight you must wait 20 minutes. You get a title and a sound the moment it resets, even if it "
+                + "ended while you were offline.");
+        l(s, "Halloween Shopkeepers");
+        how(s, "every Trick or Treat hut now has a Halloween Shopkeeper villager. Right-click one to open the Halloween Shop.");
+        l(s, "New Halloween ranks");
+        how(s, "Halloween Starter, Veteran and Expert come from kills with Halloween powers (Ghost or Vampire). "
+                + "Survivor needs the Headless Horseman, and King needs the Horseman, every Halloween power and Expert.");
+        h(s, "===== v8.0 =====");
         l(s, "New way to get powers: /power shop");
         how(s, "buy a Reroll Token or a random power with Unbound Coins. Every 5 minutes ONE power is stocked; the "
                 + "better the power, the more it costs. Rerolls are how you get new powers.");

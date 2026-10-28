@@ -212,6 +212,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             cfg.set("quests.haunted-survivor", null);
             cfg.set("config-version", 7);
         }
+        if (v < 9) {
+            cfg.set("ranks.halloween.starter-kills", 1);   // Halloween ranks now come from kills with Halloween powers
+            cfg.set("ranks.halloween.veteran-kills", 25);
+            cfg.set("ranks.halloween.expert-kills", 100);
+            cfg.set("config-version", 9);
+        }
         cfg.options().copyDefaults(true);
         saveConfig();
     }
@@ -1337,6 +1343,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 case "quests" -> powerMenus.openQuests(mp);
                 default -> locker.open(mp);
             }
+            return true;
+        }
+        if (name.equals("rank")) {
+            ranks.command(sender, args);
             return true;
         }
         if (name.equals("duel")) {

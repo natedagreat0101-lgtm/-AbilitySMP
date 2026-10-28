@@ -297,6 +297,12 @@ final class Unbound implements Listener {
         LivingEntity dead = e.getEntity();
         Player killer = killerOf(dead);
         if (killer == null || killer.equals(dead)) return;
+        AbilitySMP.Power held = plugin.powerOf(killer);
+        if ((dead instanceof Player || dead instanceof Enemy) && held != null && held.isHalloween()) {
+            plugin.profile.of(killer).hwPowerKills++; // counts toward the Halloween ranks
+            plugin.profile.touch();
+            plugin.ranks.evaluate(killer);
+        }
         if (dead instanceof Player) addProgress(killer, "KILL_PLAYERS", 1);
         else if (dead instanceof Enemy) addProgress(killer, "KILL_MOBS", 1);
     }

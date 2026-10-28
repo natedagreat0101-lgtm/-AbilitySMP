@@ -52,6 +52,7 @@ final class TrickOrTreat implements Listener {
         final Location center;
         final Map<Location, BlockData> old = new LinkedHashMap<>();
         UUID npc;
+        UUID keeper;
 
         Hut(Location center) {
             this.center = center;
@@ -234,6 +235,9 @@ final class TrickOrTreat implements Listener {
             vil.getPersistentDataContainer().set(npcKey, PersistentDataType.STRING, "1");
         });
         hut.npc = v.getUniqueId();
+        // a Halloween Shopkeeper stands beside the trick-or-treater
+        Location keeperLoc = new Location(w, cx + px + 0.5, gy + 1, cz + pz + 0.5);
+        hut.keeper = plugin.shops.spawnKeeper(keeperLoc, "halloween", npcLoc.clone().add(sx * 3, 0, sz * 3), false).getUniqueId();
         huts.add(hut);
         w.spawnParticle(Particle.SOUL, npcLoc.clone().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.02);
     }
@@ -241,6 +245,8 @@ final class TrickOrTreat implements Listener {
     private void removeHut(Hut h) {
         Entity e = h.npc == null ? null : Bukkit.getEntity(h.npc);
         if (e != null) e.remove();
+        Entity k = h.keeper == null ? null : Bukkit.getEntity(h.keeper);
+        if (k != null) k.remove();
         for (Map.Entry<Location, BlockData> en : h.old.entrySet()) {
             en.getKey().getBlock().setBlockData(en.getValue(), false);
         }

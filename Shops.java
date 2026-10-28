@@ -516,15 +516,15 @@ final class Shops implements Listener {
         return it.getItemMeta().getPersistentDataContainer().get(eggKey, PersistentDataType.STRING);
     }
 
-    private void spawnKeeper(Location at, String kind, Location lookAt) {
+    Villager spawnKeeper(Location at, String kind, Location lookAt, boolean persistent) {
         boolean hw = kind.equals("halloween");
         Vector face = lookAt.toVector().subtract(at.toVector()).setY(0);
         if (face.lengthSquared() > 1.0E-6) at.setDirection(face);
-        at.getWorld().spawn(at, Villager.class, v -> {
+        return at.getWorld().spawn(at, Villager.class, v -> {
             v.setAI(false);
             v.setInvulnerable(true);
             v.setSilent(true);
-            v.setPersistent(true);
+            v.setPersistent(persistent);
             v.setProfession(hw ? Villager.Profession.CLERIC : Villager.Profession.LIBRARIAN);
             v.customName(Component.text(hw ? "Halloween Shopkeeper" : "Shopkeeper", hw ? NamedTextColor.GOLD : NamedTextColor.GREEN));
             v.setCustomNameVisible(true);
@@ -540,7 +540,7 @@ final class Shops implements Listener {
         e.setCancelled(true); // no ordinary villager
         Player p = e.getPlayer();
         Location at = e.getClickedBlock().getRelative(e.getBlockFace()).getLocation().add(0.5, 0, 0.5);
-        spawnKeeper(at, kind, p.getLocation());
+        spawnKeeper(at, kind, p.getLocation(), true);
         if (p.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
     }
 
@@ -568,6 +568,12 @@ final class Shops implements Listener {
             e.setAmount(Math.max(1, Math.min(64, args.length > 3 ? num(args[3]) : 1)));
             plugin.give(target, e);
             s.sendMessage("Gave a " + kind + " shopkeeper egg to " + target.getName() + ".");
+        } else if (args.length >= 2 && args[0].equalsIgnoreCase("place") && s instanceof Player pl2) {
+            Vector d = pl2.getLocation().getDirection().setY(0);
+            if (d.lengthSquared() < 1.0E-6) d = new Vector(0, 0, 1);
+            Location at = pl2.getLocation().add(d.normalize().multiply(1.5));
+            spawnKeeper(at, args[1].equalsIgnoreCase("halloween") ? "halloween" : "power", pl2.getLocation(), true);
+            pl2.sendMessage("Placed a shopkeeper in front of you. /shopkeeper remove deletes the nearest one.");
         } else if (args.length >= 1 && args[0].equalsIgnoreCase("remove") && s instanceof Player p) {
             for (Entity en : p.getNearbyEntities(6, 6, 6)) {
                 if (en instanceof Villager v && v.getPersistentDataContainer().has(keeperKey, PersistentDataType.STRING)) {
@@ -578,7 +584,7 @@ final class Shops implements Listener {
             }
             p.sendMessage("No shopkeeper within 6 blocks.");
         } else {
-            s.sendMessage("Usage: /shopkeeper egg <power|halloween> [player] [amount]   or   /shopkeeper remove");
+            s.sendMessage("Usage: /shopkeeper egg <power|halloween> [player] [amount]  |  place <power|halloween>  |  remove");
         }
     }
 

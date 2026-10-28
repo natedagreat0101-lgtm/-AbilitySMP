@@ -338,7 +338,7 @@ final class Admin implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         applySky(e.getPlayer());
-        if (musicOn) play(e.getPlayer(), hallowMusicKey());
+        if (musicOn && discMusic()) play(e.getPlayer(), hallowMusicKey());
     }
 
     // =====================================================================
@@ -432,8 +432,34 @@ final class Admin implements Listener {
         else startHalloweenMusic();
     }
 
+    private int scoreStep;
+
+    /** One step of the composed spooky tune (every half second) for everyone online. */
+    private void composedStep() {
+        scoreStep = (scoreStep + 1) % SpookyScore.STEPS;
+        float master = (float) plugin.getConfig().getDouble("halloween.music-volume", 0.8);
+        for (SpookyScore.Note n : SpookyScore.at(scoreStep, 0)) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                try {
+                    p.playSound(net.kyori.adventure.sound.Sound.sound(net.kyori.adventure.key.Key.key(n.sound),
+                            net.kyori.adventure.sound.Sound.Source.RECORD, Math.min(1f, n.volume * master), n.pitch),
+                            net.kyori.adventure.sound.Sound.Emitter.self());
+                } catch (RuntimeException ignored) {
+                }
+            }
+        }
+    }
+
+    private boolean discMusic() {
+        return "disc".equalsIgnoreCase(plugin.getConfig().getString("halloween.music-mode", "composed"));
+    }
+
     private void startHalloweenMusic() {
         musicOn = true;
+        if (!discMusic()) {
+            musicTask = Bukkit.getScheduler().runTaskTimer(plugin, this::composedStep, 0L, 10L);
+            return;
+        }
         final String key = hallowMusicKey();
         long period = Math.max(10, plugin.getConfig().getInt("halloween.music-length-seconds", 178)) * 20L;
         musicTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {

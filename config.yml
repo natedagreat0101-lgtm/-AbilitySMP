@@ -1,4 +1,4 @@
-config-version: 8
+config-version: 9
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -187,6 +187,8 @@ halloween:
   enabled: true      # false = portal, Haunted Forest mobs, boss and events are off. Ranks and progress stay.
   music: "minecraft:music_disc.13"
   music-length-seconds: 178
+  music-mode: composed       # composed = an eerie music-box tune made of note-block sounds. disc = loops the disc above.
+  music-volume: 0.8
   curse-seconds: 60
   max-lanterns: 120
   lantern-interval-seconds: 5
@@ -292,6 +294,7 @@ horseman:
   gravestone-damage: 6
   pumpkin-damage: 8
   slash-damage: 6            # phase 3 doubles all of these
+  cooldown-minutes: 20       # per player, starts when a fight ends. You are told when it resets.
 
 # ------------------------------------------------------------------
 # Duels: /duel <player>, then the other player runs /duel accept
@@ -331,9 +334,10 @@ ranks:
     unbound-king:
       name: "Unbound King"
       minutes: 160
-  halloween:
-    veteran-kills: 50
-    expert-kills: 150
+  halloween:               # kills with Halloween powers (Ghost or Vampire)
+    starter-kills: 1
+    veteran-kills: 25
+    expert-kills: 100
 
 # ------------------------------------------------------------------
 # /power shop. Costs Unbound Coins. Every restock ONE power is stocked; the better the power, the
