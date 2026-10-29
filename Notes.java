@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "10.0";
+    static final String VERSION = "11.0";
 
     private Notes() {
     }
@@ -28,7 +28,25 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v10.0 - THE GALACTIC UPDATE =====");
+        h(s, "===== Unbound SMP Patch Notes: v11.0 - The Spawn Update =====");
+        l(s, "🏝️ A REAL SPAWN, DonutSMP style! Admins: run /spawnbuild and a whole little spawn appears - "
+                + "a round platform with lamp posts, NPCs, crate chests and the countdown board, all placed "
+                + "for you. Or build your own spot and use /setspawn + /spawnnpc to place things by hand.");
+        l(s, "NPCs at spawn - just right-click them");
+        how(s, "RANDOM TELEPORT warps you somewhere safe in the wild (also /rtp). POWER SHOP opens /shop. "
+                + "EVENT SHOP opens the current event shop (right now the Galaxy Shop). RANKED opens the "
+                + "ranked menu. DUELS opens a list of everyone online - click a head to challenge them. "
+                + "Brand-new players now start at spawn, and /spawn brings anyone back.");
+        l(s, "The COUNTDOWN BOARD");
+        how(s, "floating text at spawn counts down to the next big update, second by second - and the "
+                + "moment the update lands it flips to IT IS OUT NOW! It uses the same date as /galactic, "
+                + "so /galactic set moves the board too.");
+        l(s, "CRATE CHESTS at spawn");
+        how(s, "the crates at spawn are real chests now, like DonutSMP. Right-click one with a Power Crate "
+                + "Key in your inventory to spin - the chest is never used up, only the key is. Admins can "
+                + "turn any chest into a spawn crate with /crate set (and back with /crate unset).");
+
+        h(s, "===== v10.0 - THE GALACTIC UPDATE =====");
         l(s, "🌌 THE GALACTIC UPDATE IS HERE! Halloween is retired: the Halloween Shop, Trick or Treat Night "
                 + "and the Halloween events are gone - but EVERYTHING you already earned stays forever: your "
                 + "Halloween powers, ranks, titles and costumes all still work.");

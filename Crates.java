@@ -66,6 +66,7 @@ final class Crates implements Listener {
         this.plugin = plugin;
         this.crateKey = new NamespacedKey(plugin, "power_crate");
         this.keyKey = new NamespacedKey(plugin, "crate_key");
+        loadChests();
     }
 
     // =====================================================================
@@ -222,6 +223,7 @@ final class Crates implements Listener {
     public void onUse(PlayerInteractEvent e) {
         if (e.getHand() != EquipmentSlot.HAND) return;
         if (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (e.getClickedBlock() != null && isCrateChest(e.getClickedBlock())) return; // the spawn crate chest handles itself
         Player p = e.getPlayer();
         ItemStack hand = e.getItem();
         if (isKey(hand)) {
@@ -234,26 +236,41 @@ final class Crates implements Listener {
         open(p, hand);
     }
 
-    private void open(Player p, ItemStack hand) {
+    /** Shared checks before any spin: not mid-fight, not already spinning. */
+    private boolean readyToSpin(Player p) {
         if (plugin.fightTotem.isProtected(p) || plugin.duel.isBusy(p) || plugin.horseman.isBusy(p)
                 || plugin.hallow.isBusy(p) || plugin.trading.isBusy(p) || plugin.ranked.isBusy(p)) {
             plugin.bar(p, "You can't open a crate in the middle of a fight.", NamedTextColor.RED);
-            return;
+            return false;
         }
-        if (p.getOpenInventory().getTopInventory().getHolder() instanceof CrateHolder) return; // already spinning
-        // find a key
-        int keySlot = -1;
+        return !(p.getOpenInventory().getTopInventory().getHolder() instanceof CrateHolder); // already spinning
+    }
+
+    private int findKey(Player p) {
         ItemStack[] contents = p.getInventory().getContents();
-        for (int i = 0; i < contents.length; i++) {
-            if (isKey(contents[i])) {
-                keySlot = i;
-                break;
-            }
-        }
+        for (int i = 0; i < contents.length; i++) if (isKey(contents[i])) return i;
+        return -1;
+    }
+
+    private void consumeKey(Player p, int slot) {
+        ItemStack keyStack = p.getInventory().getItem(slot);
+        if (keyStack == null) return;
+        keyStack.setAmount(keyStack.getAmount() - 1);
+        if (keyStack.getAmount() <= 0) p.getInventory().setItem(slot, null);
+    }
+
+    private void noKey(Player p) {
+        plugin.bar(p, "You need a Power Crate Key! Get keys from bosses, quests and the Galaxy Shop.",
+                NamedTextColor.RED);
+        p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+    }
+
+    /** Opening a crate ITEM: costs one key and the crate itself. */
+    private void open(Player p, ItemStack hand) {
+        if (!readyToSpin(p)) return;
+        int keySlot = findKey(p);
         if (keySlot < 0) {
-            plugin.bar(p, "You need a Power Crate Key! Get keys from bosses, quests and the Galaxy Shop.",
-                    NamedTextColor.RED);
-            p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+            noKey(p);
             return;
         }
         AbilitySMP.Power result = rollPower(p);
@@ -261,12 +278,29 @@ final class Crates implements Listener {
             plugin.bar(p, "You already own every power! The crate stays closed.", NamedTextColor.GRAY);
             return;
         }
-        // consume one key and one crate
-        ItemStack keyStack = contents[keySlot];
-        keyStack.setAmount(keyStack.getAmount() - 1);
-        if (keyStack.getAmount() <= 0) p.getInventory().setItem(keySlot, null);
+        consumeKey(p, keySlot);
         hand.setAmount(hand.getAmount() - 1);
+        startWheel(p, result);
+    }
 
+    /** Opening a spawn crate CHEST (v11): the chest stays forever, it only costs one key. */
+    void openChestCrate(Player p) {
+        if (!readyToSpin(p)) return;
+        int keySlot = findKey(p);
+        if (keySlot < 0) {
+            noKey(p);
+            return;
+        }
+        AbilitySMP.Power result = rollPower(p);
+        if (result == null) {
+            plugin.bar(p, "You already own every power! The crate stays closed.", NamedTextColor.GRAY);
+            return;
+        }
+        consumeKey(p, keySlot);
+        startWheel(p, result);
+    }
+
+    private void startWheel(Player p, AbilitySMP.Power result) {
         plugin.unbound.addProgress(p, "OPEN_CRATE", 1);
 
         CrateHolder holder = new CrateHolder(p, result);
@@ -365,10 +399,102 @@ final class Crates implements Listener {
     }
 
     // =====================================================================
+    // Spawn crate chests (v11): real chest blocks at spawn, DonutSMP style.
+    // Right-click one with a Power Crate Key in your inventory to spin.
+    // The chest is never used up - only the key is. Set one with /crate set
+    // while looking at a chest, remove it with /crate unset (or break it as an OP).
+    // =====================================================================
+
+    private final java.util.Set<String> crateChests = new java.util.HashSet<>();
+
+    private static String blockId(org.bukkit.block.Block b) {
+        return b.getWorld().getName() + ";" + b.getX() + ";" + b.getY() + ";" + b.getZ();
+    }
+
+    private void loadChests() {
+        crateChests.clear();
+        crateChests.addAll(plugin.data.getStringList("crate-chests"));
+    }
+
+    private void saveChests() {
+        plugin.data.set("crate-chests", new ArrayList<>(crateChests));
+        plugin.saveData();
+    }
+
+    boolean isCrateChest(org.bukkit.block.Block b) {
+        return b != null && (b.getType() == Material.CHEST || b.getType() == Material.TRAPPED_CHEST)
+                && crateChests.contains(blockId(b));
+    }
+
+    boolean addCrateChest(org.bukkit.block.Block b) {
+        if (!crateChests.add(blockId(b))) return false;
+        saveChests();
+        return true;
+    }
+
+    boolean removeCrateChest(org.bukkit.block.Block b) {
+        if (!crateChests.remove(blockId(b))) return false;
+        saveChests();
+        return true;
+    }
+
+    @EventHandler
+    public void onChestClick(PlayerInteractEvent e) {
+        if (e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (!isCrateChest(e.getClickedBlock())) return;
+        e.setCancelled(true); // the chest itself never opens
+        openChestCrate(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onChestBreak(org.bukkit.event.block.BlockBreakEvent e) {
+        if (!isCrateChest(e.getBlock())) return;
+        if (e.getPlayer().hasPermission("abilitysmp.admin")) {
+            removeCrateChest(e.getBlock());
+            e.getPlayer().sendMessage(Component.text("Spawn crate removed.", NamedTextColor.GRAY));
+        } else {
+            e.setCancelled(true);
+            plugin.bar(e.getPlayer(), "That is a spawn crate - it can't be broken.", NamedTextColor.RED);
+        }
+    }
+
+    @EventHandler
+    public void onExplode(org.bukkit.event.entity.EntityExplodeEvent e) {
+        e.blockList().removeIf(this::isCrateChest);
+    }
+
+    @EventHandler
+    public void onBlockExplode(org.bukkit.event.block.BlockExplodeEvent e) {
+        e.blockList().removeIf(this::isCrateChest);
+    }
+
+    // =====================================================================
     // Command: /crate   /crate give <player> [amount]   /crate key <player> [amount]
+    //          /crate set   /crate unset   (admins: turn the chest you are looking at into a spawn crate)
     // =====================================================================
 
     void command(CommandSender s, String[] args) {
+        if (args.length >= 1 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("unset"))
+                && s.hasPermission("abilitysmp.admin")) {
+            if (!(s instanceof Player p)) {
+                s.sendMessage("Players only.");
+                return;
+            }
+            org.bukkit.block.Block b = p.getTargetBlockExact(6);
+            if (b == null || (b.getType() != Material.CHEST && b.getType() != Material.TRAPPED_CHEST)) {
+                s.sendMessage("Look at a chest (within 6 blocks) and try again.");
+                return;
+            }
+            if (args[0].equalsIgnoreCase("set")) {
+                s.sendMessage(addCrateChest(b)
+                        ? "That chest is now a spawn Power Crate - right-click it with a key to spin!"
+                        : "That chest is already a spawn crate.");
+            } else {
+                s.sendMessage(removeCrateChest(b) ? "That chest is a normal chest again."
+                        : "That chest is not a spawn crate.");
+            }
+            return;
+        }
         if (args.length >= 1 && args[0].equalsIgnoreCase("give") && s.hasPermission("abilitysmp.admin")) {
             Player t = args.length >= 2 ? Bukkit.getPlayerExact(args[1]) : null;
             if (t == null) {
@@ -409,7 +535,8 @@ final class Crates implements Listener {
         }
         p.sendMessage(Component.text("===== Power Crates =====", NamedTextColor.GOLD));
         p.sendMessage(Component.text("You have " + count(p, true) + " crate(s) and " + count(p, false)
-                + " key(s). Right-click a crate to open it!", NamedTextColor.YELLOW));
+                + " key(s). Right-click a crate to open it - or use a crate chest at /spawn, "
+                + "where only the key is used up!", NamedTextColor.YELLOW));
         p.sendMessage(Component.text("Odds: Common " + weight(AbilitySMP.Rarity.COMMON) + " / Rare "
                 + weight(AbilitySMP.Rarity.RARE) + " / Epic " + weight(AbilitySMP.Rarity.EPIC) + " / Legendary "
                 + weight(AbilitySMP.Rarity.LEGENDARY) + " / Mythic " + weight(AbilitySMP.Rarity.MYTHIC),

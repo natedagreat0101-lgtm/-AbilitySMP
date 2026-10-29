@@ -1,8 +1,8 @@
 name: AbilitySMP
-version: 10.0
+version: 11.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
-description: Unbound SMP - powers, the quick switch, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and galaxy events
+description: Unbound SMP - powers, the quick switch, a DonutSMP-style spawn, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and galaxy events
 commands:
   power:
     description: Give or remove a power (admin)
@@ -48,8 +48,8 @@ commands:
     description: Buy powers (the stock restocks every few minutes)
     usage: /shop
   crate:
-    description: Power Crates - see your crates and keys, or (admin) give them
-    usage: /crate [give|key <player> [amount]]
+    description: Power Crates - see your crates and keys, or (admin) give them / set a spawn crate chest
+    usage: /crate [give|key <player> [amount]] or /crate set|unset
   trade:
     description: Trade items safely with another player (both players confirm)
     usage: /trade <player|accept|deny|cancel>
@@ -59,6 +59,21 @@ commands:
   rebirth:
     description: Rebirth - reset your coins and power levels for permanent bonuses
     usage: /rebirth [confirm]
+  spawn:
+    description: Teleport to the spawn
+    usage: /spawn
+  setspawn:
+    description: Set the spawn point where you stand (admin)
+    usage: /setspawn
+  spawnnpc:
+    description: Place a spawn NPC or the countdown board (admin)
+    usage: /spawnnpc <rtp|shop|event|ranked|duels|board|remove>
+  spawnbuild:
+    description: Build a ready-made DonutSMP-style spawn platform with NPCs, crate chests and the countdown board (admin)
+    usage: /spawnbuild
+  rtp:
+    description: Random teleport into the wild
+    usage: /rtp
   galactic:
     description: The Galactic Update is out! (admins can move the date for the next event)
     usage: /galactic [set 2026-11-01 13:00]

@@ -1,4 +1,4 @@
-# AbilitySMP (Unbound SMP) — v10.0 The Galactic Update
+# AbilitySMP (Unbound SMP) — v11.0 The Spawn Update
 
 A Paper 1.21 plugin: powers, Power Activator, quests, upgrades, duels, Trick or Treat Night,
 and Halloween bosses.
@@ -19,6 +19,24 @@ mvn package
 ```
 
 The jar appears in `target/AbilitySMP.jar`.
+
+## What's new in v11.0 — The Spawn Update
+
+- **A little DonutSMP-style spawn.** `/spawnbuild` (admin) builds the whole thing in one go: a round
+  platform with lamp posts, the countdown board, 5 NPCs and 3 crate chests, and sets `/spawn` to the
+  middle. Prefer your own build? `/setspawn` saves your spot instead, and `/spawnnpc` places the
+  pieces by hand (`rtp`, `shop`, `event`, `ranked`, `duels`, `board`, `remove`).
+- **NPCs you right-click.** **Random Teleport** warps you to a safe spot up to 5,000 blocks out
+  (30s cooldown, also `/rtp`). **Power Shop** opens `/shop`. **Event Shop** opens the current event
+  shop (the Galaxy Shop today). **Ranked** opens the ranked menu. **Duels** opens a head-picker of
+  everyone online — click one to send a normal duel request. Brand-new players start at spawn.
+- **The countdown board.** Floating text at spawn counts down to the next update every second,
+  using the same date as `/galactic` (so `/galactic set` moves it), and flips to
+  **IT IS OUT NOW!** the moment the update lands.
+- **Crate chests at spawn.** Real chest blocks, DonutSMP style: right-click one with a Power Crate
+  Key in your inventory to spin the normal roulette. The chest is never consumed — only the key is.
+  Admins can turn any chest into a spawn crate with `/crate set` (`/crate unset` undoes it); spawn
+  crates can't be broken by players or blown up.
 
 ## What's new in v10.0 — THE GALACTIC UPDATE
 
@@ -139,6 +157,8 @@ The jar appears in `target/AbilitySMP.jar`.
 | `/galactic` | The Galactic Update is out! (was the countdown) |
 | `/gshop` | The Galaxy Shop - spend Galaxy Coins |
 | `/staffrank <player> <rank>` | Give a staff rank: Mod, Tester or Co-Owner (OP only) |
+| `/spawn` / `/rtp` | Go to spawn / random teleport into the wild |
+| `/setspawn` / `/spawnnpc` / `/spawnbuild` | Set up the spawn: point, NPCs + countdown board, or the whole platform (admin) |
 | `/powers`, `/shop`, `/quests`, `/locker`, `/halloweenshop`, `/notes` | Menus, shops and patch notes |
 
 Boss numbers (health, damage, rewards, arena spots) all live in `config.yml` under

@@ -105,7 +105,7 @@ final class Duel implements Listener {
         }
     }
 
-    private void request(Player p, String name) {
+    void request(Player p, String name) {
         Player t = Bukkit.getPlayerExact(name);
         if (t == null || t.equals(p)) {
             p.sendMessage(Component.text("Pick another player who is online.", NamedTextColor.RED));

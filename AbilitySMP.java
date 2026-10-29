@@ -180,6 +180,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Trading trading;
     Ranked ranked;
     Rebirths rebirths;
+    Spawn spawn;
     private NamespacedKey activatorKey;
     private final Set<UUID> needsActivator = new HashSet<>();
 
@@ -217,6 +218,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         shops = new Shops(this);
         tutorial = new Tutorial(this);
         admin = new Admin(this);
+        spawn = new Spawn(this);
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(tutorial, this);
         Bukkit.getPluginManager().registerEvents(admin, this);
@@ -232,6 +234,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(crates, this);
         Bukkit.getPluginManager().registerEvents(trading, this);
         Bukkit.getPluginManager().registerEvents(ranked, this);
+        Bukkit.getPluginManager().registerEvents(spawn, this);
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
         // the quick-switch bar above the hotbar refreshes every 2 seconds
         Bukkit.getScheduler().runTaskTimer(this, () -> {
@@ -336,6 +339,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             cfg.set("rebirth.galaxy-coins-per-rebirth",
                     cfg.getInt("rebirth.halloween-coins-per-rebirth", 20));
             cfg.set("config-version", 10);
+        }
+        if (v < 11) {
+            // v11 "The Spawn Update": the DonutSMP-style spawn (NPCs, countdown board,
+            // crate chests, RTP). The spawn section arrives via copyDefaults; the spawn
+            // point itself is set in game with /setspawn or /spawnbuild.
+            cfg.set("config-version", 11);
         }
         cfg.options().copyDefaults(true);
         saveConfig();
@@ -2439,6 +2448,26 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
         if (name.equals("galactic")) {
             Galactic.command(this, sender, args);
+            return true;
+        }
+        if (name.equals("spawn")) {
+            spawn.teleportCommand(sender);
+            return true;
+        }
+        if (name.equals("setspawn")) {
+            spawn.setSpawnCommand(sender);
+            return true;
+        }
+        if (name.equals("spawnnpc")) {
+            spawn.npcCommand(sender, args);
+            return true;
+        }
+        if (name.equals("spawnbuild")) {
+            spawn.buildCommand(sender);
+            return true;
+        }
+        if (name.equals("rtp")) {
+            spawn.rtpCommand(sender);
             return true;
         }
 
