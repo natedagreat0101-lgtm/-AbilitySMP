@@ -1,6 +1,7 @@
 package me.abilitysmp;
 
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -187,6 +188,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Weapons weapons;
     ItemShop itemShop;
     Lasso lasso;
+    Music music;
     private NamespacedKey activatorKey;
     private NamespacedKey dupedKey;
     /** The two power slots shown at the TOP of the screen (v12), one boss bar per player. */
@@ -231,6 +233,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         weapons = new Weapons(this);
         itemShop = new ItemShop(this);
         lasso = new Lasso(this);
+        music = new Music(this);
         lasso.registerRecipe();
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(tutorial, this);
@@ -367,6 +370,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             // point itself is set in game with /setspawn or /spawnbuild.
             cfg.set("config-version", 11);
         }
+        if (v < 13) {
+            // v13: hotbar-style power bar + /music - nothing to move; the HUD default
+            // reads a config default when the key is absent from an old config.
+            cfg.set("config-version", 13);
+        }
         if (v < 12) {
             // v12: the six galaxy bosses replace the Horseman, the Mimic and the Ghost,
             // so the old boss sections and their cooldowns go away. Hacker joins the
@@ -467,6 +475,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     /** The little [1] [2] bar above the hotbar (the action bar), like the picture of the quick switch. */
     void showSwitcher(Player p) {
+        if (!hudMode(p).equals("text")) return;
         Power cur = powerOf(p);
         Power st = standbyOf(p);
         if (cur == null || st == null) return;
@@ -2381,23 +2390,53 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
     }
 
-    /** The two power slots, shown at the TOP of the screen as a boss bar. */
+    /** The player's power-bar style: their own /hud choice, else the config default. */
+    String hudMode(Player p) {
+        String own = data.getString("players." + p.getUniqueId() + ".hud");
+        if (own != null && (own.equals("font") || own.equals("text") || own.equals("off"))) return own;
+        String d = getConfig().getString("quick-switch.hud-default", "font");
+        return d.equals("text") || d.equals("off") ? d : "font";
+    }
+
+    void setHudMode(Player p, String mode) {
+        data.set("players." + p.getUniqueId() + ".hud", mode);
+        saveData();
+        refreshSlotBar(p);
+    }
+
+    /** One hotbar-slot picture from the Power Pack font (empty slot when the power is null). */
+    private String slotGlyph(Power pw, boolean selected) {
+        if (pw == null) return String.valueOf((char) (selected ? 0xE159 : 0xE158));
+        return String.valueOf((char) ((selected ? 0xE12C : 0xE100) + pw.ordinal()));
+    }
+
+    /** The two power slots at the TOP of the screen: hotbar pictures (font mode,
+     *  needs the Power Pack) or plain text, as a boss bar. */
     void refreshSlotBar(Player p) {
         Power cur = powerOf(p);
         Power st = standbyOf(p);
         BossBar bar = slotBars.get(p.getUniqueId());
-        if (!getConfig().getBoolean("quick-switch.top-bar", true) || cur == null || st == null) {
+        String mode = hudMode(p);
+        boolean show = getConfig().getBoolean("quick-switch.top-bar", true) && !mode.equals("off")
+                && (mode.equals("font") ? cur != null : cur != null && st != null);
+        if (!show) {
             if (bar != null) {
                 p.hideBossBar(bar);
                 slotBars.remove(p.getUniqueId());
             }
             return;
         }
-        Component name = Component.text("[1] ", NamedTextColor.RED, TextDecoration.BOLD)
-                .append(Component.text(pretty(cur.key()), colorFor(cur), TextDecoration.BOLD))
-                .append(Component.text("    [2] ", NamedTextColor.WHITE, TextDecoration.BOLD))
-                .append(Component.text(pretty(st.key()), colorFor(st), TextDecoration.BOLD))
-                .append(Component.text("    switch: F / crouch+click", NamedTextColor.GRAY));
+        Component name;
+        if (mode.equals("font")) {
+            name = Component.text(slotGlyph(cur, true) + "\uE15A" + slotGlyph(st, false))
+                    .font(Key.key("abilitysmp", "hud"));
+        } else {
+            name = Component.text("[1] ", NamedTextColor.RED, TextDecoration.BOLD)
+                    .append(Component.text(pretty(cur.key()), colorFor(cur), TextDecoration.BOLD))
+                    .append(Component.text("    [2] ", NamedTextColor.WHITE, TextDecoration.BOLD))
+                    .append(Component.text(pretty(st.key()), colorFor(st), TextDecoration.BOLD))
+                    .append(Component.text("    switch: F / crouch+click", NamedTextColor.GRAY));
+        }
         if (bar == null) {
             bar = BossBar.bossBar(name, 1f, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
             slotBars.put(p.getUniqueId(), bar);
@@ -2667,6 +2706,27 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
         if (name.equals("weapons")) {
             if (sender instanceof Player wp) weapons.info(wp);
+            return true;
+        }
+        if (name.equals("music")) {
+            if (sender instanceof Player mup) music.handle(mup, args);
+            return true;
+        }
+        if (name.equals("hud")) {
+            if (sender instanceof Player hp2) {
+                String cur2 = hudMode(hp2);
+                String next = args.length > 0 ? args[0].toLowerCase(Locale.ROOT)
+                        : cur2.equals("font") ? "text" : cur2.equals("text") ? "off" : "font";
+                if (!next.equals("font") && !next.equals("text") && !next.equals("off")) {
+                    hp2.sendMessage(Component.text("Use /hud font, /hud text or /hud off.", NamedTextColor.RED));
+                } else {
+                    setHudMode(hp2, next);
+                    if (next.equals("font")) hp2.sendMessage(Component.text(
+                            "Power bar: hotbar pictures (needs the Power Pack on). Seeing boxes instead? The pack is off - use /hud text.", NamedTextColor.GREEN));
+                    else if (next.equals("text")) hp2.sendMessage(Component.text("Power bar: text style.", NamedTextColor.GREEN));
+                    else hp2.sendMessage(Component.text("Power bar: hidden.", NamedTextColor.GREEN));
+                }
+            }
             return true;
         }
         if (name.equals("staffrank")) {

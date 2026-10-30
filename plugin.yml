@@ -1,8 +1,8 @@
 name: AbilitySMP
-version: 12.0
+version: 13.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
-description: Unbound SMP - powers, the quick switch, a DonutSMP-style spawn, six galaxy bosses, legendary weapons, the Item Shop, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and galaxy events
+description: Unbound SMP - powers, the hotbar-style power bar, a DonutSMP-style spawn, six galaxy bosses, legendary weapons, the Item Shop, music, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and galaxy events
 commands:
   power:
     description: Give or remove a power (admin)
@@ -92,6 +92,12 @@ commands:
   weapons:
     description: List the legendary weapons from AltarSMP and where to buy them
     usage: /weapons
+  music:
+    description: Your personal music player - music discs and Power Pack songs, only you hear it
+    usage: /music [list|stop|play <song>]
+  hud:
+    description: Change how your power bar looks - hotbar pictures, text, or hidden
+    usage: /hud [font|text|off]
   gshop:
     description: Spend Galaxy Coins in the Galaxy Shop (limited-time items inside)
     usage: /gshop

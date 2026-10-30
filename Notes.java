@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "12.0";
+    static final String VERSION = "13.0";
 
     private Notes() {
     }
@@ -28,7 +28,29 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v12.0 - Galaxy Bosses, Weapons & the Item Shop =====");
+        h(s, "===== Unbound SMP Patch Notes: v13.0 - Hotbar Power Bar, Animated Powers & Music =====");
+        l(s, "\uD83C\uDFAE THE POWER BAR IS A HOTBAR NOW");
+        how(s, "your two power slots at the top of the screen are real hotbar slots now - the same "
+                + "boxes as your item hotbar, with your power's orb sitting inside, and the equipped "
+                + "slot lit up with the bright selection frame. It comes from the Power Pack, so the "
+                + "pack has to be ON. Seeing little boxes instead of pictures? That means the pack is "
+                + "off. Don't like it? /hud switches styles: /hud font (pictures), /hud text (the old "
+                + "text bar), /hud off (hidden). Your pick is remembered.");
+        l(s, "\u2728 EVERY POWER ORB IS ANIMATED NOW - Power Pack v2");
+        how(s, "update your Power Pack! Every power orb was redrawn bigger and smoother with a "
+                + "glow, and now they MOVE: Flame's fire flickers and rises, Frost sparkles, the "
+                + "Black Hole's ring spins around it, Ghost fades in and out, Thor's lightning "
+                + "crackles, Hacker's terminal cursor blinks. The orbs animate in your hand AND in "
+                + "the hotbar slots at the top.");
+        l(s, "\uD83C\uDFB5 /music - YOUR OWN MUSIC PLAYER");
+        how(s, "/music list shows everything, /music play <song> plays it just for you (nobody "
+                + "else hears it), /music stop stops it. It plays every vanilla MUSIC DISC (cat, "
+                + "pigstep, otherside...) plus three songs built into the Power Pack: nebula, "
+                + "galaxy and boss. One honest note: YouTube links can NOT be played in Minecraft - "
+                + "the game can't stream them. Want a real song in the game? Send the song file "
+                + "(mp3/ogg) to the server owner and it can be packed in like the other songs.");
+
+        h(s, "===== v12.0 - Galaxy Bosses, Weapons & the Item Shop =====");
         l(s, "🌌 SIX NEW GALAXY BOSSES - and the old bosses are GONE");
         how(s, "the Headless Horseman, the Mimic and the Ghost have left for good. In their place: "
                 + "NOTAZOMBIEMC (yes, the zombie himself - and his fans rush in when he gets angry) and the "

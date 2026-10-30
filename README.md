@@ -1,4 +1,4 @@
-# AbilitySMP (Unbound SMP) — v12.0 Galaxy Bosses, Weapons & the Item Shop
+# AbilitySMP (Unbound SMP) — v13.0 Hotbar Power Bar, Animated Powers & Music
 
 A Paper 1.21 plugin: powers, Power Activator, quests, upgrades, duels, six galaxy bosses,
 legendary weapons from AltarSMP, an Item Shop, and a DonutSMP-style spawn.
@@ -19,6 +19,27 @@ mvn package
 ```
 
 The jar appears in `target/AbilitySMP.jar`.
+
+## What's new in v13.0 — Hotbar Power Bar, Animated Powers & Music
+
+- **The power bar is a hotbar now.** The two slots at the top of the screen render as real
+  hotbar slots — dark boxes with the power's orb inside and the bright selection frame on the
+  equipped slot — drawn by a custom font in the Power Pack (`assets/abilitysmp/font/hud.json`;
+  slot glyphs at U+E100–E159, slot 1 always uses the selected frame). `/hud font|text|off`
+  switches per player (font = pictures, text = the v12 text bar, off = hidden); the server
+  default is `quick-switch.hud-default`. Without the pack, font mode shows placeholder boxes —
+  that's what text mode is for.
+- **Power Pack v2: animated orbs.** All 44 orbs redrawn at 32×32 with glow, rim light and a
+  thematic accent, as 8-frame animated texture strips (`.mcmeta` included): flames rise,
+  black-hole rings spin, ghosts fade, the Hacker cursor blinks. The same animation shows on the
+  held Activator and inside the hotbar HUD slots.
+- **`/music` — a personal music player.** `/music play <name>` plays a vanilla music disc
+  (`cat`, `pigstep`, `otherside`, `13`, ...) or one of three original songs baked into the
+  Power Pack (`nebula`, `galaxy`, `boss` — real `.ogg` files registered in the pack's
+  `sounds.json`, played per-player so only you hear yours). `/music list`, `/music stop`.
+  **YouTube links cannot be played** — a plugin cannot stream audio and YouTube blocks direct
+  streaming; the command says so in chat and offers the working route: pack a song file
+  (mp3/ogg) into the resource pack, then it plays like the built-in songs.
 
 ## What's new in v12.0 — Galaxy Bosses, Weapons & the Item Shop
 
@@ -198,6 +219,8 @@ The jar appears in `target/AbilitySMP.jar`.
 | `/spawn` / `/rtp` | Go to spawn / random teleport into the wild |
 | `/setspawn` / `/spawnnpc` / `/spawnbuild` | Set up the spawn: point, NPCs + countdown board, or the whole platform (admin) |
 | `/itemshop` / `/weapons` | The Item Shop (legendary weapons + daily deals) / the weapon list |
+| `/music` | Your personal music player: `/music play <song>`, `/music list`, `/music stop` |
+| `/hud` | Power bar style: `/hud font` (hotbar pictures), `/hud text`, `/hud off` |
 | `/powers`, `/shop`, `/quests`, `/locker`, `/halloweenshop`, `/notes` | Menus, shops and patch notes |
 
 Boss health and rewards live in `config.yml` under `galaxy-bosses:` (cooldowns under
