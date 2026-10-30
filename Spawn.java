@@ -348,8 +348,8 @@ final class Spawn implements Listener {
     }
 
     void rtp(Player p) {
-        if (plugin.fightTotem.isProtected(p) || plugin.duel.isBusy(p) || plugin.horseman.isBusy(p)
-                || plugin.hallow.isBusy(p) || plugin.ranked.isBusy(p) || plugin.trading.isBusy(p)) {
+        if (plugin.fightTotem.isProtected(p) || plugin.duel.isBusy(p) || plugin.bosses.isBusy(p)
+                || plugin.bosses.isBusy(p) || plugin.ranked.isBusy(p) || plugin.trading.isBusy(p)) {
             plugin.bar(p, "You can't teleport in the middle of a fight.", NamedTextColor.RED);
             return;
         }
@@ -469,37 +469,83 @@ final class Spawn implements Listener {
         Location center = p.getLocation().getBlock().getLocation().add(0.5, 0, 0.5);
         World w = center.getWorld();
         int cx = center.getBlockX(), cy = center.getBlockY(), cz = center.getBlockZ();
+        NamespacedKey labelKey = new NamespacedKey(plugin, "spawn_label");
 
-        // the floor: a round platform, plus clear air above it
-        for (int dx = -12; dx <= 12; dx++) {
-            for (int dz = -12; dz <= 12; dz++) {
-                double dist = Math.sqrt((double) dx * dx + (double) dz * dz);
-                if (dist > 11.5) continue;
-                Block floor = w.getBlockAt(cx + dx, cy - 1, cz + dz);
-                if (floor.getType() != Material.BEDROCK) {
-                    Material m;
-                    if (dist < 2.5) m = Material.GOLD_BLOCK;
-                    else if (dist <= 4.5) m = Material.POLISHED_ANDESITE;
-                    else if (dist <= 8.5) m = Material.STONE_BRICKS;
-                    else m = (dx + dz) % 6 == 0 ? Material.SEA_LANTERN : Material.POLISHED_ANDESITE;
-                    floor.setType(m, false);
-                }
-                for (int dy = 0; dy <= 5; dy++) {
-                    Block air = w.getBlockAt(cx + dx, cy + dy, cz + dz);
-                    if (air.getType() != Material.BEDROCK) air.setType(Material.AIR, false);
+        // unregister any crate chests from an older, smaller spawn so they don't linger
+        for (int dx = -14; dx <= 14; dx++) {
+            for (int dz = -14; dz <= 14; dz++) {
+                for (int dy = 0; dy <= 2; dy++) {
+                    Block b = w.getBlockAt(cx + dx, cy + dy, cz + dz);
+                    if (b.getType() == Material.CHEST) plugin.crates.removeCrateChest(b);
                 }
             }
         }
-        // lamp posts on the four straight sides
-        int[][] lamps = {{8, 0}, {-8, 0}, {0, 8}, {0, -8}};
-        for (int[] l : lamps) {
-            w.getBlockAt(cx + l[0], cy, cz + l[1]).setType(Material.OAK_FENCE, false);
-            w.getBlockAt(cx + l[0], cy + 1, cz + l[1]).setType(Material.OAK_FENCE, false);
-            w.getBlockAt(cx + l[0], cy + 2, cz + l[1]).setType(Material.SEA_LANTERN, false);
+
+        // the floor: a bigger round platform (radius 13) with a stepped rim one block
+        // lower, glowing accents, and clear air above it all
+        for (int dx = -16; dx <= 16; dx++) {
+            for (int dz = -16; dz <= 16; dz++) {
+                double dist = Math.sqrt((double) dx * dx + (double) dz * dz);
+                if (dist <= 13.5) {
+                    Block floor = w.getBlockAt(cx + dx, cy - 1, cz + dz);
+                    if (floor.getType() != Material.BEDROCK) {
+                        Material m;
+                        if (dist < 2.5) m = Material.GOLD_BLOCK;                       // the golden middle
+                        else if (dist <= 5.5) m = Material.SMOOTH_QUARTZ;
+                        else if (dist <= 9.5) m = (dx * 7 + dz * 13) % 6 == 0 ? Material.SEA_LANTERN : Material.POLISHED_ANDESITE;
+                        else if (dist <= 12.5) m = Material.STONE_BRICKS;
+                        else m = (dx + dz) % 4 == 0 ? Material.SEA_LANTERN : Material.POLISHED_ANDESITE; // glowing rim
+                        floor.setType(m, false);
+                    }
+                } else if (dist <= 15.5) {
+                    Block rim = w.getBlockAt(cx + dx, cy - 2, cz + dz);
+                    if (rim.getType() != Material.BEDROCK) rim.setType(Material.SMOOTH_STONE, false);
+                }
+                if (dist <= 15.5) {
+                    for (int dy = 0; dy <= 10; dy++) {
+                        Block air = w.getBlockAt(cx + dx, cy + dy, cz + dz);
+                        if (air.getType() != Material.BEDROCK) air.setType(Material.AIR, false);
+                    }
+                }
+            }
         }
-        // 3 crate chests on the west side, facing the middle
+        // carpet paths from the golden middle out to the good stuff
+        path(w, cx, cy, cz, 0, -1, 12, Material.PURPLE_CARPET);   // north: the countdown board
+        path(w, cx, cy, cz, 0, 1, 11, Material.CYAN_CARPET);      // south: the RTP wizard
+        path(w, cx, cy, cz, -1, 0, 10, Material.ORANGE_CARPET);   // west: the crates
+        path(w, cx, cy, cz, 1, 0, 10, Material.MAGENTA_CARPET);   // east: towards the event shop side
+        // lamp posts on the diagonals: quartz pillars with a glowing top
+        int[][] lamps = {{9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
+        for (int[] l : lamps) {
+            for (int h = 0; h <= 2; h++) w.getBlockAt(cx + l[0], cy + h, cz + l[1]).setType(Material.QUARTZ_PILLAR, false);
+            w.getBlockAt(cx + l[0], cy + 3, cz + l[1]).setType(Material.SEA_LANTERN, false);
+        }
+        // potted flowers between the paths, for a bit of life
+        Material[] pots = {Material.POTTED_POPPY, Material.POTTED_ALLIUM, Material.POTTED_BLUE_ORCHID, Material.POTTED_DANDELION};
+        int[][] spots = {{5, 5}, {5, -5}, {-5, 5}, {-5, -5}};
+        for (int i = 0; i < spots.length; i++) {
+            w.getBlockAt(cx + spots[i][0], cy, cz + spots[i][1]).setType(pots[i], false);
+        }
+        // the floating donut ring above the middle - the DonutSMP nod - with a lantern
+        // chandelier hanging in its centre
+        for (int dx = -6; dx <= 6; dx++) {
+            for (int dz = -6; dz <= 6; dz++) {
+                double dist = Math.sqrt((double) dx * dx + (double) dz * dz);
+                if (Math.abs(dist - 4.6) <= 0.8) {
+                    Material m = (dx * 3 + dz * 5) % 4 == 0 ? Material.SEA_LANTERN : Material.STONE_BRICKS;
+                    w.getBlockAt(cx + dx, cy + 8, cz + dz).setType(m, false);
+                }
+            }
+        }
+        w.getBlockAt(cx, cy + 7, cz).setType(Material.IRON_CHAIN, false);
+        w.getBlockAt(cx, cy + 6, cz).setType(Material.SEA_LANTERN, false);
+        // 3 crate chests on the west side in a little quartz alcove, facing the middle
+        for (int dz = -3; dz <= 3; dz++) {
+            w.getBlockAt(cx - 12, cy, cz + dz).setType(Material.QUARTZ_PILLAR, false);
+            w.getBlockAt(cx - 12, cy + 1, cz + dz).setType(Material.QUARTZ_PILLAR, false);
+        }
         for (int dz : new int[]{-2, 0, 2}) {
-            Block chest = w.getBlockAt(cx - 9, cy, cz + dz);
+            Block chest = w.getBlockAt(cx - 10, cy, cz + dz);
             chest.setType(Material.CHEST, false);
             if (chest.getBlockData() instanceof Directional dir) {
                 dir.setFacing(BlockFace.EAST);
@@ -507,30 +553,51 @@ final class Spawn implements Listener {
             }
             plugin.crates.addCrateChest(chest);
         }
-        // wipe any old spawn NPCs/board standing on the platform, then place fresh ones
-        for (Entity en : w.getNearbyEntities(center, 14, 8, 14)) {
+        // wipe any old spawn NPCs, board and labels standing nearby, then place fresh ones
+        for (Entity en : w.getNearbyEntities(center, 18, 12, 18)) {
             if ((en instanceof Villager && en.getPersistentDataContainer().has(npcKey, PersistentDataType.STRING))
-                    || (en instanceof ArmorStand
-                    && en.getPersistentDataContainer().has(boardKey, PersistentDataType.STRING))) {
+                    || (en instanceof ArmorStand && (en.getPersistentDataContainer().has(boardKey, PersistentDataType.STRING)
+                    || en.getPersistentDataContainer().has(labelKey, PersistentDataType.STRING)))) {
                 en.remove();
             }
         }
         board.clear();
-        // the countdown board on the north side, NPCs in an arc facing the middle
-        placeBoard(new Location(w, cx + 0.5, cy, cz - 8.5));
-        placeNpc(new Location(w, cx - 7.5, cy, cz - 1.5), "ranked", center);
-        placeNpc(new Location(w, cx + 7.5, cy, cz - 1.5), "event", center);
-        placeNpc(new Location(w, cx - 5.5, cy, cz + 4.5), "duels", center);
-        placeNpc(new Location(w, cx + 5.5, cy, cz + 4.5), "shop", center);
-        placeNpc(new Location(w, cx + 0.5, cy, cz + 8.0), "rtp", center);
+        // a floating label over the crates
+        w.spawn(new Location(w, cx - 10 + 0.5, cy + 2.4, cz + 0.5), ArmorStand.class, a -> {
+            a.setInvisible(true);
+            a.setGravity(false);
+            a.setMarker(true);
+            a.setInvulnerable(true);
+            a.setPersistent(true);
+            a.setCustomNameVisible(true);
+            a.customName(Component.text("📦 POWER CRATES 📦", NamedTextColor.GOLD)
+                    .decoration(TextDecoration.BOLD, true));
+            a.getPersistentDataContainer().set(labelKey, PersistentDataType.STRING, "crates");
+        });
+        // the countdown board on the north side, NPCs spread around the bigger platform
+        placeBoard(new Location(w, cx + 0.5, cy, cz - 10.5));
+        placeNpc(new Location(w, cx - 9.5, cy, cz - 2.5), "ranked", center);
+        placeNpc(new Location(w, cx + 9.5, cy, cz - 2.5), "event", center);
+        placeNpc(new Location(w, cx - 7.5, cy, cz + 6.5), "duels", center);
+        placeNpc(new Location(w, cx + 7.5, cy, cz + 6.5), "shop", center);
+        placeNpc(new Location(w, cx + 0.5, cy, cz + 10.0), "rtp", center);
         // the spawn point itself: middle of the platform, facing the board
         Location spawnAt = new Location(w, cx + 0.5, cy, cz + 0.5, 180f, 0f);
         setSpawn(spawnAt);
         w.setSpawnLocation(spawnAt);
         p.teleport(spawnAt);
-        s.sendMessage(Component.text("Your DonutSMP-style spawn is built! Platform, countdown board, 5 NPCs "
-                + "and 3 crate chests are all placed, and /spawn now brings players here.", NamedTextColor.GREEN));
+        s.sendMessage(Component.text("Your prettier DonutSMP-style spawn is built! Bigger platform with carpet "
+                + "paths, lamp posts, flowers, a floating donut ring, countdown board, 5 NPCs and 3 crate "
+                + "chests - and /spawn now brings players here.", NamedTextColor.GREEN));
         s.sendMessage(Component.text("Right-click the NPCs to use them. The crate chests open with a "
                 + "Power Crate Key.", NamedTextColor.YELLOW));
+    }
+
+    /** A one-block-wide carpet path from just outside the golden middle to a target. */
+    private void path(World w, int cx, int cy, int cz, int stepX, int stepZ, int length, Material carpet) {
+        for (int i = 3; i <= length; i++) {
+            Block b = w.getBlockAt(cx + stepX * i, cy, cz + stepZ * i);
+            if (b.getType() == Material.AIR) b.setType(carpet, false);
+        }
     }
 }

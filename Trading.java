@@ -130,7 +130,7 @@ final class Trading implements Listener {
 
     private boolean busyEither(Player x, Player y) {
         for (Player p : new Player[]{x, y}) {
-            if (isBusy(p) || plugin.duel.isBusy(p) || plugin.horseman.isBusy(p) || plugin.hallow.isBusy(p)
+            if (isBusy(p) || plugin.duel.isBusy(p) || plugin.bosses.isBusy(p)
                     || plugin.ranked.isBusy(p) || plugin.fightTotem.isProtected(p)) return true;
         }
         return false;

@@ -191,16 +191,16 @@ final class Ranks implements Listener {
         ranks.add(ach("hoarder", "Power Hoarder", "Own 18 different powers", NamedTextColor.LIGHT_PURPLE,
                 p -> plugin.profile.of(p).owned.size() >= 18));
         ranks.add(ach("completionist", "Completionist", "Own every power (except the one-of-a-kind Wind)", NamedTextColor.GOLD,
-                p -> ownableOwned(p) >= AbilitySMP.Power.values().length - 1));
+                p -> ownableOwned(p) >= AbilitySMP.Power.values().length - 2));
         // Rebirths
         ranks.add(ach("reborn", "The Reborn", "Rebirth at least once (use /rebirth)", NamedTextColor.DARK_PURPLE,
                 p -> plugin.profile.of(p).rebirths >= 1));
     }
 
-    /** How many powers this player owns, not counting the one-of-a-kind Wind power. */
+    /** How many powers this player owns, not counting the one-of-a-kind Wind and the streak-only Hacker. */
     private int ownableOwned(Player p) {
         java.util.Set<String> owned = plugin.profile.of(p).owned;
-        return owned.size() - (owned.contains("WIND") ? 1 : 0);
+        return owned.size() - (owned.contains("WIND") ? 1 : 0) - (owned.contains("HACKER") ? 1 : 0);
     }
 
     private Rank ach(String id, String name, String req, NamedTextColor color, Predicate<Player> cond) {

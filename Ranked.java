@@ -129,7 +129,7 @@ final class Ranked implements Listener {
     }
 
     private boolean busyElsewhere(Player p) {
-        return plugin.duel.isBusy(p) || plugin.horseman.isBusy(p) || plugin.hallow.isBusy(p)
+        return plugin.duel.isBusy(p) || plugin.bosses.isBusy(p)
                 || plugin.trading.isBusy(p) || plugin.fightTotem.isProtected(p);
     }
 

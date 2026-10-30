@@ -1,8 +1,8 @@
 name: AbilitySMP
-version: 11.0
+version: 12.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
-description: Unbound SMP - powers, the quick switch, a DonutSMP-style spawn, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and galaxy events
+description: Unbound SMP - powers, the quick switch, a DonutSMP-style spawn, six galaxy bosses, legendary weapons, the Item Shop, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and galaxy events
 commands:
   power:
     description: Give or remove a power (admin)
@@ -85,7 +85,13 @@ commands:
     usage: /duel <player|accept|deny>
   boss:
     description: Fight a boss, or invite a friend to join your boss fights
-    usage: /boss fight <Headless Horseman|Mimic|Ghost> | /boss invite <player> | /boss accept | /boss leave
+    usage: /boss [fight <notazombiemc|astronout|comet-knight|solar-titan|void-serpent|eclipse-reaper>] | /boss invite <player> | /boss accept | /boss leave
+  itemshop:
+    description: The Item Shop - legendary weapons (always in stock) and daily deals
+    usage: /itemshop
+  weapons:
+    description: List the legendary weapons from AltarSMP and where to buy them
+    usage: /weapons
   gshop:
     description: Spend Galaxy Coins in the Galaxy Shop (limited-time items inside)
     usage: /gshop

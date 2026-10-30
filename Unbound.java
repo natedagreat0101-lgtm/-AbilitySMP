@@ -323,6 +323,7 @@ final class Unbound implements Listener {
                         + "). It has reset, so you can do it again!", NamedTextColor.GREEN));
                 p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
                 save(); // quest progress and rewards are saved the moment a quest is finished
+                plugin.hackerQuestDay(p); // v12: quest days build the streak that unlocks Hacker
             }
         }
     }
@@ -483,6 +484,9 @@ final class Unbound implements Listener {
                 p.sendMessage(Component.text("Playtime: " + d.minutes + "/" + need + " minutes to your next +"
                         + plugin.getConfig().getInt("points.play-reward", 10) + " points. Quests done so far: "
                         + d.completed, NamedTextColor.GRAY));
+                p.sendMessage(Component.text("Quest streak: " + plugin.questStreak(p) + "/"
+                        + plugin.getConfig().getInt("hacker.streak-days", 7)
+                        + " days - finish a quest every day to unlock the HACKER power!", NamedTextColor.GREEN));
             }
             case "upgrade" -> {
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }

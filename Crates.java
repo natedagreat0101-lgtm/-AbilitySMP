@@ -164,7 +164,7 @@ final class Crates implements Listener {
     AbilitySMP.Power rollPower(Player p) {
         List<AbilitySMP.Power> pool = new ArrayList<>();
         for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
-            if (pw.isHalloween() || pw == AbilitySMP.Power.WIND) continue; // v10: retired powers and the one-of-a-kind Wind never drop
+            if (pw.isHalloween() || pw == AbilitySMP.Power.WIND || pw == AbilitySMP.Power.HACKER) continue; // v10/v12: retired powers, the one-of-a-kind Wind and the streak-only Hacker never drop
             if (plugin.isEnabled(pw) && !plugin.profile.owns(p, pw)) pool.add(pw);
         }
         if (pool.isEmpty()) return null;
@@ -238,8 +238,8 @@ final class Crates implements Listener {
 
     /** Shared checks before any spin: not mid-fight, not already spinning. */
     private boolean readyToSpin(Player p) {
-        if (plugin.fightTotem.isProtected(p) || plugin.duel.isBusy(p) || plugin.horseman.isBusy(p)
-                || plugin.hallow.isBusy(p) || plugin.trading.isBusy(p) || plugin.ranked.isBusy(p)) {
+        if (plugin.fightTotem.isProtected(p) || plugin.duel.isBusy(p) || plugin.bosses.isBusy(p)
+                || plugin.bosses.isBusy(p) || plugin.trading.isBusy(p) || plugin.ranked.isBusy(p)) {
             plugin.bar(p, "You can't open a crate in the middle of a fight.", NamedTextColor.RED);
             return false;
         }

@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "11.0";
+    static final String VERSION = "12.0";
 
     private Notes() {
     }
@@ -28,7 +28,49 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v11.0 - The Spawn Update =====");
+        h(s, "===== Unbound SMP Patch Notes: v12.0 - Galaxy Bosses, Weapons & the Item Shop =====");
+        l(s, "🌌 SIX NEW GALAXY BOSSES - and the old bosses are GONE");
+        how(s, "the Headless Horseman, the Mimic and the Ghost have left for good. In their place: "
+                + "NOTAZOMBIEMC (yes, the zombie himself - and his fans rush in when he gets angry) and the "
+                + "ASTRONOUT, a moon-hopping astronaut with a ray gun and a zero-gravity beam. Those two "
+                + "stay in the game FOREVER. The other four are SEASONAL and leave on Nov 30: the Comet "
+                + "Knight, the Solar Titan, the Void Serpent and the Eclipse Reaper. Type /boss for the "
+                + "list, /boss fight <name> to fight. Same rules as always: your own arena, a Fight Totem "
+                + "(pops = you lose, you never die), a friend can join with /boss invite, and winning pays "
+                + "Unbound Coins, Galaxy Coins and crate loot.");
+        l(s, "⚔️ 14 LEGENDARY WEAPONS from AltarSMP - and a whole new ITEM SHOP");
+        how(s, "/itemshop: the weapons from AltarSMP are here - Hyperion, Nightpiercer, Frost Scythe, the "
+                + "Wand of Illusion, Bone Blade, Bloodlust, Vulcan's Crossbow, Shadow Blade, Cutlass, the "
+                + "Paladin's Battle Axe, Mindweaver, Pure Blade, Earth Gauntlet and the Wither Reaper. They "
+                + "are ALWAYS in stock and yours forever once bought. Right-click = ability 1, crouch + "
+                + "right-click = ability 2 (the full list is in /weapons). The shop ALSO has daily deals "
+                + "that restock every day - when those sell out, they are gone until they rotate back.");
+        l(s, "🪢 THE LASSO - craft it yourself!");
+        how(s, "4 string around a stick in a crafting table. Right-click to throw it at whatever you are "
+                + "looking at (up to 12 blocks): it hits for 1.5 hearts, plays a whip sound, draws the rope "
+                + "through the air and YANKS the target toward you. Cooldown: just 1 second.");
+        l(s, "💻 NEW POWER: HACKER - unlocked by a 7-day quest streak");
+        how(s, "finish a quest every day for 7 days in a row and the HACKER power unlocks for you (miss a "
+                + "day and the streak resets - /quests shows your streak). Its super dupes the best sword "
+                + "of the nearest player: you get a copy that is fully yours for 30 seconds, then it "
+                + "vanishes. Cooldown: 1 minute. Hacker is never sold and never drops from crates - the "
+                + "streak is the only way.");
+        l(s, "🔝 Your power slots are now AT THE TOP");
+        how(s, "your two quick-switch slots now show at the very TOP of your screen, all the time - and "
+                + "they are pinned at the top of the /powers menu too. Still switch with F or crouch + "
+                + "right-click.");
+        l(s, "🎒 THE POWER PACK - hold your power in your hand");
+        how(s, "with the AbilitySMP resource pack on, your Power Activator stops looking like a plain iron "
+                + "sword: it turns into a glowing orb of YOUR power - a ball of flame for Flame, an icy orb "
+                + "for Frost, a dark void ball for Black Hole... all 44 powers have their own. Ask an admin "
+                + "for the pack file, drop it in your resourcepacks folder and turn it on.");
+        l(s, "🏝️ Spawn got a glow-up");
+        how(s, "/spawnbuild now builds a bigger, prettier spawn: a larger platform with carpet paths to "
+                + "everything, quartz lamp posts, potted flowers, a crate alcove with a floating POWER "
+                + "CRATES sign - and a floating donut ring above the middle. Admins: just run /spawnbuild "
+                + "again where the old spawn is.");
+
+        h(s, "===== v11.0 - The Spawn Update =====");
         l(s, "🏝️ A REAL SPAWN, DonutSMP style! Admins: run /spawnbuild and a whole little spawn appears - "
                 + "a round platform with lamp posts, NPCs, crate chests and the countdown board, all placed "
                 + "for you. Or build your own spot and use /setspawn + /spawnnpc to place things by hand.");

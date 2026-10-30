@@ -1,8 +1,10 @@
 package me.abilitysmp;
 
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.GameMode;
@@ -93,7 +95,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         SUPERNOVA, EARTH, WIND, FROST,
         // ...and fifteen more galaxy powers
         STARLIGHT, COMET, METEOR, LUNAR, PULSAR, NEBULA, SOLAR_FLARE, ECLIPSE, ASTEROID,
-        ZERO_GRAVITY, WORMHOLE, QUASAR, BLACK_HOLE, ANTIMATTER, ROCKET;
+        ZERO_GRAVITY, WORMHOLE, QUASAR, BLACK_HOLE, ANTIMATTER, ROCKET,
+        // v12: unlocked by a 7-day quest streak, never sold or rolled
+        HACKER;
 
         /** Galactic Update powers (v10). */
         boolean isGalaxy() {
@@ -124,7 +128,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                      PULSAR, NEBULA, SOLAR_FLARE, ECLIPSE -> Rarity.EPIC;
                 case TELEPORTER, VOID, REAPER, CURSE, SUPERNOVA, FROST,
                      ASTEROID, ZERO_GRAVITY, WORMHOLE, QUASAR -> Rarity.LEGENDARY;
-                case GHOST, VAMPIRE, EARTH, WIND, BLACK_HOLE, ANTIMATTER -> Rarity.MYTHIC;
+                case GHOST, VAMPIRE, EARTH, WIND, BLACK_HOLE, ANTIMATTER, HACKER -> Rarity.MYTHIC;
             };
         }
 
@@ -170,8 +174,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Locker locker;
     Menus menus;
     PowerMenus powerMenus;
-    Horseman horseman;
-    HallowBosses hallow;
+    GalaxyBosses bosses;
     FightTotem fightTotem;
     BossParty party;
     Duel duel;
@@ -181,7 +184,13 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Ranked ranked;
     Rebirths rebirths;
     Spawn spawn;
+    Weapons weapons;
+    ItemShop itemShop;
+    Lasso lasso;
     private NamespacedKey activatorKey;
+    private NamespacedKey dupedKey;
+    /** The two power slots shown at the TOP of the screen (v12), one boss bar per player. */
+    final Map<UUID, BossBar> slotBars = new HashMap<>();
     private final Set<UUID> needsActivator = new HashSet<>();
 
     // =====================================================================
@@ -195,6 +204,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         powerItemKey = new NamespacedKey(this, "power_item");
         rerollKey = new NamespacedKey(this, "reroll_token");
         activatorKey = new NamespacedKey(this, "power_activator");
+        dupedKey = new NamespacedKey(this, "duped_sword");
         registerRerollRecipe();
 
         dataFile = new File(getDataFolder(), "players.yml");
@@ -208,8 +218,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         locker = new Locker(this);
         menus = new Menus();
         powerMenus = new PowerMenus(this);
-        horseman = new Horseman(this);
-        hallow = new HallowBosses(this);
+        bosses = new GalaxyBosses(this);
         duel = new Duel(this);
         crates = new Crates(this);
         trading = new Trading(this);
@@ -219,6 +228,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         tutorial = new Tutorial(this);
         admin = new Admin(this);
         spawn = new Spawn(this);
+        weapons = new Weapons(this);
+        itemShop = new ItemShop(this);
+        lasso = new Lasso(this);
+        lasso.registerRecipe();
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(tutorial, this);
         Bukkit.getPluginManager().registerEvents(admin, this);
@@ -227,27 +240,35 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(locker, this);
         Bukkit.getPluginManager().registerEvents(menus, this);
         Bukkit.getPluginManager().registerEvents(shops, this);
-        Bukkit.getPluginManager().registerEvents(horseman, this);
-        Bukkit.getPluginManager().registerEvents(hallow, this);
+        Bukkit.getPluginManager().registerEvents(bosses, this);
         Bukkit.getPluginManager().registerEvents(fightTotem, this);
         Bukkit.getPluginManager().registerEvents(duel, this);
         Bukkit.getPluginManager().registerEvents(crates, this);
         Bukkit.getPluginManager().registerEvents(trading, this);
         Bukkit.getPluginManager().registerEvents(ranked, this);
         Bukkit.getPluginManager().registerEvents(spawn, this);
+        Bukkit.getPluginManager().registerEvents(weapons, this);
+        Bukkit.getPluginManager().registerEvents(itemShop, this);
+        Bukkit.getPluginManager().registerEvents(lasso, this);
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
-        // the quick-switch bar above the hotbar refreshes every 2 seconds
+        // the quick-switch bar above the hotbar refreshes every 2 seconds, and so does
+        // the power-slots bar at the TOP of the screen (v12) and the Activator's look
         Bukkit.getScheduler().runTaskTimer(this, () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) showSwitcher(p);
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                showSwitcher(p);
+                refreshSlotBar(p);
+                refreshActivator(p);
+            }
         }, 23L, 40L);
+        // duped swords (Hacker, v12) vanish 30 seconds after they were copied
+        Bukkit.getScheduler().runTaskTimer(this, this::cleanDupedSwords, 27L, 20L);
         for (Player p : Bukkit.getOnlinePlayers()) setupPlayer(p);
     }
 
     @Override
     public void onDisable() {
         if (admin != null) admin.shutdown();
-        if (horseman != null) horseman.shutdown();
-        if (hallow != null) hallow.shutdown();
+        if (bosses != null) bosses.shutdown();
         if (duel != null) duel.shutdown();
         if (ranked != null) ranked.shutdown();
         if (trading != null) trading.shutdown();
@@ -345,6 +366,21 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             // crate chests, RTP). The spawn section arrives via copyDefaults; the spawn
             // point itself is set in game with /setspawn or /spawnbuild.
             cfg.set("config-version", 11);
+        }
+        if (v < 12) {
+            // v12: the six galaxy bosses replace the Horseman, the Mimic and the Ghost,
+            // so the old boss sections and their cooldowns go away. Hacker joins the
+            // enabled list (it is unlocked by a 7-day quest streak, never sold).
+            List<String> en12 = new ArrayList<>(cfg.getStringList("powers.enabled"));
+            if (!en12.contains("hacker")) en12.add("hacker");
+            cfg.set("powers.enabled", en12);
+            cfg.set("horseman", null);
+            cfg.set("mimic", null);
+            cfg.set("ghost-boss", null);
+            cfg.set("boss.cooldown-seconds.horseman", null);
+            cfg.set("boss.cooldown-seconds.mimic", null);
+            cfg.set("boss.cooldown-seconds.ghost", null);
+            cfg.set("config-version", 12);
         }
         cfg.options().copyDefaults(true);
         saveConfig();
@@ -594,7 +630,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         double total = 0;
         for (Power p : Power.values()) {
             if (p == exclude || !isEnabled(p) || profile.owns(forWho, p)) continue;
-            if (p.isHalloween() || p == Power.WIND) continue; // v10: retired Halloween powers and the one-of-a-kind Wind never roll
+            if (p.isHalloween() || p == Power.WIND || p == Power.HACKER) continue; // v10/v12: retired Halloween powers, the one-of-a-kind Wind and the streak-only Hacker never roll
             double w = d("drops." + p.key(), 0);
             if (w <= 0) continue;
             if (isLimited(p) && isHeldByOther(p, forWho)) continue;
@@ -625,6 +661,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         applyTankHearts(p);
         saveData();
         if (ranks != null) ranks.evaluate(p);
+        refreshActivator(p); // the Activator sword shows the new power (resource pack)
+        refreshSlotBar(p);
     }
 
     private void removePowerEffects(Player p) {
@@ -725,6 +763,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case BLACK_HOLE -> NamedTextColor.DARK_GRAY;
             case ANTIMATTER -> NamedTextColor.DARK_RED;
             case ROCKET -> NamedTextColor.GOLD;
+            case HACKER -> NamedTextColor.GREEN;
         };
     }
 
@@ -971,6 +1010,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case BLACK_HOLE -> Particle.SQUID_INK;
             case ANTIMATTER -> Particle.EXPLOSION;
             case ROCKET -> Particle.FLAME;
+            case HACKER -> Particle.HAPPY_VILLAGER;
         };
     }
 
@@ -1578,6 +1618,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                     }
                 }.runTaskTimer(this, 0L, 2L);
             }
+
+            case HACKER -> hackerSuper(p);
         }
     }
 
@@ -2162,7 +2204,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     // fighting that same boss again. Stored per player in players.yml.
     // =====================================================================
 
-    /** Cooldown length in seconds for one boss id ("horseman", "mimic", "ghost"). */
+    /** Cooldown length in seconds for one boss id (e.g. "notazombiemc", "astronout"). */
     long bossCooldownSeconds(String bossId) {
         long def = getConfig().getLong("boss.cooldown-seconds.default", 300L);
         return Math.max(0L, getConfig().getLong("boss.cooldown-seconds." + bossId, def));
@@ -2299,6 +2341,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
+        if (isDupedSword(e.getItemDrop().getItemStack())) {
+            e.setCancelled(true);
+            bar(e.getPlayer(), "The duped sword can't be dropped - it vanishes on its own.", NamedTextColor.GRAY);
+            return;
+        }
         if (isActivator(e.getItemDrop().getItemStack())) {
             e.setCancelled(true);
             bar(e.getPlayer(), "The Power Activator is soulbound.", NamedTextColor.GRAY);
@@ -2307,6 +2354,201 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     private double um(Player p) {
         return unbound.powerMult(p);
+    }
+
+
+    // =====================================================================
+    // v12: the two power slots at the TOP of the screen (a boss bar), the
+    // Activator's per-power look for the resource pack, the Hacker power and
+    // the 7-day quest streak that unlocks it
+    // =====================================================================
+
+    /** CustomModelData the resource pack uses to show your equipped power in your hand. */
+    static int modelDataFor(Power pw) {
+        return 2000 + pw.ordinal();
+    }
+
+    /** Makes every Power Activator in the inventory show the equipped power's orb. */
+    void refreshActivator(Player p) {
+        Power cur = powerOf(p);
+        Integer want = cur == null ? null : modelDataFor(cur);
+        for (ItemStack it : p.getInventory().getContents()) {
+            if (!isActivator(it)) continue;
+            ItemMeta m = it.getItemMeta();
+            if (java.util.Objects.equals(m.getCustomModelData(), want)) continue;
+            m.setCustomModelData(want);
+            it.setItemMeta(m);
+        }
+    }
+
+    /** The two power slots, shown at the TOP of the screen as a boss bar. */
+    void refreshSlotBar(Player p) {
+        Power cur = powerOf(p);
+        Power st = standbyOf(p);
+        BossBar bar = slotBars.get(p.getUniqueId());
+        if (!getConfig().getBoolean("quick-switch.top-bar", true) || cur == null || st == null) {
+            if (bar != null) {
+                p.hideBossBar(bar);
+                slotBars.remove(p.getUniqueId());
+            }
+            return;
+        }
+        Component name = Component.text("[1] ", NamedTextColor.RED, TextDecoration.BOLD)
+                .append(Component.text(pretty(cur.key()), colorFor(cur), TextDecoration.BOLD))
+                .append(Component.text("    [2] ", NamedTextColor.WHITE, TextDecoration.BOLD))
+                .append(Component.text(pretty(st.key()), colorFor(st), TextDecoration.BOLD))
+                .append(Component.text("    switch: F / crouch+click", NamedTextColor.GRAY));
+        if (bar == null) {
+            bar = BossBar.bossBar(name, 1f, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
+            slotBars.put(p.getUniqueId(), bar);
+            p.showBossBar(bar);
+        } else {
+            bar.name(name);
+        }
+    }
+
+    boolean isDupedSword(ItemStack it) {
+        return it != null && it.hasItemMeta()
+                && it.getItemMeta().getPersistentDataContainer().has(dupedKey, PersistentDataType.LONG);
+    }
+
+    private void cleanDupedSwords() {
+        long now = System.currentTimeMillis();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            boolean removed = false;
+            ItemStack[] contents = p.getInventory().getContents();
+            for (int slot = 0; slot < contents.length; slot++) {
+                ItemStack it = contents[slot];
+                if (!isDupedSword(it)) continue;
+                long expiry = it.getItemMeta().getPersistentDataContainer()
+                        .getOrDefault(dupedKey, PersistentDataType.LONG, 0L);
+                if (now >= expiry) {
+                    p.getInventory().setItem(slot, null);
+                    removed = true;
+                }
+            }
+            if (removed) {
+                bar(p, "The duped sword vanished!", NamedTextColor.GREEN);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.6f);
+            }
+        }
+    }
+
+    /** How good a sword is: material tier first, then Sharpness, then everything else. */
+    private static int swordScore(ItemStack it) {
+        String n = it.getType().name();
+        int tier = n.startsWith("NETHERITE") ? 6 : n.startsWith("DIAMOND") ? 5 : n.startsWith("IRON") ? 4
+                : n.startsWith("STONE") ? 3 : n.startsWith("GOLDEN") ? 2 : 1;
+        int ench = 0;
+        for (Map.Entry<org.bukkit.enchantments.Enchantment, Integer> e : it.getEnchantments().entrySet()) {
+            ench += e.getKey().equals(org.bukkit.enchantments.Enchantment.SHARPNESS)
+                    ? e.getValue() * 10 : e.getValue();
+        }
+        return tier * 1000 + ench;
+    }
+
+    /** The best sword in a player's whole inventory (hotbar, storage and off hand), or null. */
+    static ItemStack bestSwordOf(Player target) {
+        ItemStack best = null;
+        int bestScore = -1;
+        List<ItemStack> all = new ArrayList<>(Arrays.asList(target.getInventory().getContents()));
+        all.add(target.getInventory().getItemInOffHand());
+        for (ItemStack it : all) {
+            if (it == null || !it.getType().name().endsWith("_SWORD")) continue;
+            int score = swordScore(it);
+            if (score > bestScore) {
+                bestScore = score;
+                best = it;
+            }
+        }
+        return best;
+    }
+
+    /** Hacker: copy the nearest enemy player's best sword. The copy vanishes after 30 seconds. */
+    private void hackerSuper(Player p) {
+        Player target = null;
+        double best = Double.MAX_VALUE;
+        double range = d("hacker.range", 20) * um(p);
+        for (Player other : p.getWorld().getPlayers()) {
+            if (other.equals(p) || !isEnemy(p, other)) continue;
+            double dist = other.getLocation().distanceSquared(p.getLocation());
+            if (dist < best) {
+                best = dist;
+                target = other;
+            }
+        }
+        if (target == null || best > range * range) {
+            bar(p, "No player in range to hack.", NamedTextColor.GRAY);
+            return;
+        }
+        ItemStack sword = bestSwordOf(target);
+        if (sword == null) {
+            bar(p, target.getName() + " has no sword to dupe!", NamedTextColor.GRAY);
+            return;
+        }
+        startCooldown(p, Power.HACKER);
+        ItemStack copy = sword.clone();
+        copy.setAmount(1);
+        ItemMeta m = copy.getItemMeta();
+        m.getPersistentDataContainer().set(dupedKey, PersistentDataType.LONG,
+                System.currentTimeMillis() + i("hacker.dupe-seconds", 30) * 1000L);
+        List<Component> lore = m.hasLore() ? new ArrayList<>(m.lore()) : new ArrayList<>();
+        lore.add(line("Duped by the Hacker power - vanishes in " + i("hacker.dupe-seconds", 30) + "s!",
+                NamedTextColor.GREEN));
+        m.lore(lore);
+        copy.setItemMeta(m);
+        give(p, copy);
+        puff(p.getLocation().add(0, 1, 0), Particle.HAPPY_VILLAGER, 25);
+        puff(target.getLocation().add(0, 1, 0), Particle.HAPPY_VILLAGER, 25);
+        p.playSound(p.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1f, 1.2f);
+        bar(p, "You duped " + target.getName() + "'s best sword for "
+                + i("hacker.dupe-seconds", 30) + "s!", NamedTextColor.GREEN);
+        bar(target, "A hacker duped your sword!", NamedTextColor.GREEN);
+    }
+
+    /** The player's current quest-day streak (0 if the streak has already lapsed). */
+    int questStreak(Player p) {
+        String path = "players." + p.getUniqueId() + ".";
+        String last = data.getString(path + "quest-last-day", "");
+        java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("America/Toronto"));
+        if (last.equals(today.toString()) || last.equals(today.minusDays(1).toString())) {
+            return data.getInt(path + "quest-streak", 0);
+        }
+        return 0;
+    }
+
+    /** Called every time a player finishes a quest: that day counts toward the streak. */
+    void hackerQuestDay(Player p) {
+        String path = "players." + p.getUniqueId() + ".";
+        java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("America/Toronto"));
+        String last = data.getString(path + "quest-last-day", "");
+        if (today.toString().equals(last)) return; // today already counted
+        int streak = today.minusDays(1).toString().equals(last)
+                ? data.getInt(path + "quest-streak", 0) + 1 : 1;
+        data.set(path + "quest-streak", streak);
+        data.set(path + "quest-last-day", today.toString());
+        saveData();
+        int need = i("hacker.streak-days", 7);
+        if (profile.owns(p, Power.HACKER)) return;
+        if (streak >= need) {
+            profile.addOwned(p.getUniqueId(), Power.HACKER);
+            profile.save();
+            ranks.evaluate(p);
+            p.showTitle(Title.title(Component.text("HACKER UNLOCKED!", NamedTextColor.GREEN),
+                    Component.text(need + "-day quest streak complete!", NamedTextColor.GRAY),
+                    Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofSeconds(5),
+                            java.time.Duration.ofMillis(800))));
+            p.sendMessage(Component.text("You finished a quest " + need + " days in a row and unlocked the "
+                    + "HACKER power! Equip it in /powers: it dupes the best sword of the nearest player.",
+                    NamedTextColor.GREEN));
+            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
+            Bukkit.broadcast(Component.text(p.getName() + " unlocked the HACKER power with a " + need
+                    + "-day quest streak!", NamedTextColor.GREEN));
+        } else {
+            p.sendMessage(Component.text("Quest streak: " + streak + "/" + need
+                    + " days. Finish a quest every day to unlock the HACKER power - miss a day and it resets!",
+                    NamedTextColor.GREEN));
+        }
     }
 
     // =====================================================================
@@ -2324,6 +2566,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Player p = e.getPlayer();
         UUID id = p.getUniqueId();
         if (party != null) party.onQuit(p);
+        BossBar topBar = slotBars.remove(id);
+        if (topBar != null) p.hideBossBar(topBar);
         clearHeartSteals(p);
         drained.remove(id);
         for (Set<UUID> s : drained.values()) s.remove(id);
@@ -2336,6 +2580,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
         // the Power Activator is soulbound: it never drops, and comes back on respawn
         e.getDrops().removeIf(this::isActivator);
+        e.getDrops().removeIf(this::isDupedSword); // duped swords (Hacker) vanish instead of dropping
         needsActivator.add(id);
 
         Set<UUID> victims = drained.remove(id);
@@ -2409,13 +2654,19 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             return true;
         }
         if (name.equals("boss")) {
-            String joined = String.join(" ", args).toLowerCase(Locale.ROOT);
-            if (joined.contains("mimic") || joined.contains("ghost")) hallow.command(sender, args);
-            else horseman.command(sender, args);
+            bosses.command(sender, args);
             return true;
         }
         if (name.equals("gshop")) {
             if (sender instanceof Player hp) shops.openGalaxyShop(hp);
+            return true;
+        }
+        if (name.equals("itemshop")) {
+            if (sender instanceof Player ip) itemShop.open(ip);
+            return true;
+        }
+        if (name.equals("weapons")) {
+            if (sender instanceof Player wp) weapons.info(wp);
             return true;
         }
         if (name.equals("staffrank")) {

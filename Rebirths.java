@@ -78,8 +78,8 @@ final class Rebirths {
     }
 
     private void doRebirth(Player p) {
-        if (plugin.fightTotem.isProtected(p) || plugin.duel.isBusy(p) || plugin.horseman.isBusy(p)
-                || plugin.hallow.isBusy(p) || plugin.ranked.isBusy(p) || plugin.trading.isBusy(p)) {
+        if (plugin.fightTotem.isProtected(p) || plugin.duel.isBusy(p) || plugin.bosses.isBusy(p)
+                || plugin.bosses.isBusy(p) || plugin.ranked.isBusy(p) || plugin.trading.isBusy(p)) {
             p.sendMessage(Component.text("You can't rebirth in the middle of something!", NamedTextColor.RED));
             return;
         }

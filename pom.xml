@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>me.abilitysmp</groupId>
   <artifactId>AbilitySMP</artifactId>
-  <version>11.0</version>
+  <version>12.0</version>
   <packaging>jar</packaging>
 
   <properties>

@@ -64,6 +64,7 @@ final class PowerMenus {
             case BLACK_HOLE -> "Galactic. Super: a black hole drags every enemy in, then bursts.";
             case ANTIMATTER -> "Galactic. Super: charge up, then a huge explosion centred on you (it never hurts you).";
             case ROCKET -> "Galactic. Super: blast off into the sky!";
+            case HACKER -> "Unlocked by a 7-day quest streak. Super: dupe the best sword of the nearest player - the copy is yours for 30 seconds. Cooldown: 1 minute.";
         };
     }
 
@@ -79,6 +80,7 @@ final class PowerMenus {
 
     private String priceText(AbilitySMP.Power p) {
         if (p == AbilitySMP.Power.WIND) return "One of a kind - only an admin command can give it";
+        if (p == AbilitySMP.Power.HACKER) return "Finish a quest 7 days in a row to unlock it (quest streak)";
         if (p.isHalloween()) return "Retired: owners keep it, but it is not sold anymore";
         if (pointPrice(p) > 0) return "Price: " + pointPrice(p) + " Unbound Coins";
         return "Not sold in the shop";
@@ -98,6 +100,10 @@ final class PowerMenus {
                         "QUICK SWITCH: equip TWO powers - slot 1 and slot 2.",
                         "In game, press F or crouch + right-click to switch.",
                         atStation ? "Right-click a power to upgrade it." : "Right-click a power to put it in slot 2."), null));
+                // v12: your two power slots are pinned at the TOP of the menu (they also
+                // show at the top of your screen in game, above everything else)
+                out.add(new Menus.Entry(slotIcon(pl, 1, cur), null));
+                out.add(new Menus.Entry(slotIcon(pl, 2, st), null));
                 for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
                     if (!plugin.isEnabled(pw)) continue;
                     boolean owned = plugin.profile.owns(pl, pw);
@@ -196,5 +202,31 @@ final class PowerMenus {
 
     void openShop(Player p) {
         plugin.shops.openPowerShop(p);
+    }
+
+    /** The pinned slot icons at the top of /powers: the Activator sword showing the power's orb. */
+    private org.bukkit.inventory.ItemStack slotIcon(Player pl, int slot, AbilitySMP.Power pw) {
+        if (pw == null) {
+            return Menus.icon(Material.BARRIER, "SLOT " + slot + " - empty", false,
+                    slot == 1 ? "Equip a power below to fill slot 1." : "Right-click a power below to fill slot 2.",
+                    "Your two slots also show at the TOP of your screen in game.");
+        }
+        org.bukkit.inventory.ItemStack it = plugin.activatorItem();
+        org.bukkit.inventory.meta.ItemMeta m = it.getItemMeta();
+        m.setCustomModelData(AbilitySMP.modelDataFor(pw));
+        m.displayName(net.kyori.adventure.text.Component.text("SLOT " + slot + ": " + AbilitySMP.pretty(pw.key()),
+                pw == null ? net.kyori.adventure.text.format.NamedTextColor.GRAY : plugin.colorFor(pw))
+                .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+        m.lore(java.util.List.of(
+                net.kyori.adventure.text.Component.text(describe(pw), net.kyori.adventure.text.format.NamedTextColor.GRAY)
+                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false),
+                net.kyori.adventure.text.Component.text("Your two slots also show at the TOP of your screen in game.",
+                        net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false),
+                net.kyori.adventure.text.Component.text("Switch with F or crouch + right-click.",
+                        net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)));
+        it.setItemMeta(m);
+        return it;
     }
 }

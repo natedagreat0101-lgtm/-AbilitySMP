@@ -1,7 +1,7 @@
-# AbilitySMP (Unbound SMP) — v11.0 The Spawn Update
+# AbilitySMP (Unbound SMP) — v12.0 Galaxy Bosses, Weapons & the Item Shop
 
-A Paper 1.21 plugin: powers, Power Activator, quests, upgrades, duels, Trick or Treat Night,
-and Halloween bosses.
+A Paper 1.21 plugin: powers, Power Activator, quests, upgrades, duels, six galaxy bosses,
+legendary weapons from AltarSMP, an Item Shop, and a DonutSMP-style spawn.
 
 ## How to build it (GitHub build method)
 
@@ -19,6 +19,45 @@ mvn package
 ```
 
 The jar appears in `target/AbilitySMP.jar`.
+
+## What's new in v12.0 — Galaxy Bosses, Weapons & the Item Shop
+
+- **Six galaxy bosses replace the old three.** The Headless Horseman, the Mimic and the Ghost are
+  gone. `/boss` lists the new six: **Notazombiemc** (160 HP; a giant zombie whose fans rush in at
+  half health) and the **Astronout** (360 HP; moon hops, a ray-gun volley and a zero-gravity beam)
+  are **permanent**. **Comet Knight** (200), **Solar Titan** (280), **Void Serpent** (240) and
+  **Eclipse Reaper** (450) are **seasonal** — they leave on the date in `config.yml`
+  (`galaxy-bosses.seasonal-until`, default Nov 30 2026, 11:59 PM Toronto). Same fight rules as
+  always: per-fight arena, Fight Totem (pops = out, never death), boss party, per-boss cooldowns,
+  and wins pay Unbound Coins, Galaxy Coins, crate loot and quest progress.
+- **14 legendary weapons from AltarSMP + the Item Shop (`/itemshop`, `/weapons`).** Hyperion,
+  Nightpiercer, Frost Scythe, Wand of Illusion, Bone Blade, Bloodlust, Vulcan's Crossbow, Shadow
+  Blade, Cutlass, Paladin's Battle Axe, Mindweaver, Pure Blade, Earth Gauntlet, Wither Reaper —
+  rebuilt as AbilitySMP items (same `legendary_weapon` tag AltarSMP used), priced in Unbound
+  Coins and **always in stock**. Right-click = ability 1, crouch + right-click = ability 2. Two
+  honest simplifications: the Wand of Illusion can't truly disguise you without a packet library,
+  so a captured soul powers a burst/release instead; Vulcan's arrows ignite but don't literally
+  pierce shields. The shop's other half is **daily deals**: 6 rotating items restock every day
+  (midnight Toronto) with limited stock, configured under `itemshop.daily`.
+- **The Lasso.** Craftable (4 string around a stick). Right-click throws it at what you're looking
+  at (12 blocks): **1.5 hearts**, a whip sound, an animated rope, and the target is yanked toward
+  you. Cooldown **1 second**. Numbers live under `lasso:` in `config.yml`.
+- **New power: Hacker.** Finish a quest **7 days in a row** (a quest streak — `/quests` shows it;
+  miss a day and it resets) to unlock it. Its super **dupes the nearest player's best sword**: the
+  copy is fully yours for **30 seconds**, then it vanishes (it can't be dropped or kept). Cooldown
+  **1 minute**. Never sold, never in crates, never rerolled.
+- **Power slots at the top.** The two quick-switch slots now also show at the **top of the screen**
+  on a bar (`quick-switch.top-bar`), and are pinned at the top of `/powers` with icons that wear
+  the powers' orb look.
+- **The Power Pack (resource pack).** `AbilitySMP-PowerPack.zip` (delivered alongside the plugin)
+  gives every power a held orb: the Power Activator's CustomModelData is set to `2000 + power
+  index`, and the pack maps that to a per-power ball texture (a flame ball for Flame, an ice orb
+  for Frost, a green `>_` orb for Hacker...). Players just enable the pack; without it the
+  Activator stays a normal iron sword.
+- **Spawn glow-up.** `/spawnbuild` now builds a radius-13 platform with a stepped rim, glowing
+  edge, carpet paths to each NPC, quartz lamp posts, potted flowers, a crate alcove with a
+  floating "POWER CRATES" label, and a floating donut ring with a lantern chandelier above the
+  middle. Re-running it upgrades an old spawn in place (old crate chests are re-registered).
 
 ## What's new in v11.0 — The Spawn Update
 
@@ -143,9 +182,8 @@ The jar appears in `target/AbilitySMP.jar`.
 
 | Command | What it does |
 |---|---|
-| `/boss fight Headless Horseman` | Fight the Headless Horseman (40 Unbound, 30 Halloween Coins) |
-| `/boss fight Mimic` | Fight the Mimic (100 Halloween Coins) |
-| `/boss fight Ghost` | Fight the Ghost (10 Halloween, 5 Unbound Coins) |
+| `/boss` | The galaxy boss list (who is ready, who is resting, who has left) |
+| `/boss fight <name>` | Fight a galaxy boss: notazombiemc, astronout (forever) or comet-knight, solar-titan, void-serpent, eclipse-reaper (seasonal) |
 | `/boss invite <player>` / `/boss accept` / `/boss deny` | Boss party: bring one friend into your boss fights |
 | `/boss leave` | Leave your current boss fight |
 | `/boss leaveparty` | Leave your boss party |
@@ -159,16 +197,16 @@ The jar appears in `target/AbilitySMP.jar`.
 | `/staffrank <player> <rank>` | Give a staff rank: Mod, Tester or Co-Owner (OP only) |
 | `/spawn` / `/rtp` | Go to spawn / random teleport into the wild |
 | `/setspawn` / `/spawnnpc` / `/spawnbuild` | Set up the spawn: point, NPCs + countdown board, or the whole platform (admin) |
+| `/itemshop` / `/weapons` | The Item Shop (legendary weapons + daily deals) / the weapon list |
 | `/powers`, `/shop`, `/quests`, `/locker`, `/halloweenshop`, `/notes` | Menus, shops and patch notes |
 
-Boss numbers (health, damage, rewards, arena spots) all live in `config.yml` under
-`horseman:`, `mimic:` and `ghost-boss:`.
+Boss health and rewards live in `config.yml` under `galaxy-bosses:` (cooldowns under
+`boss.cooldown-seconds:`).
 
 ## A note on the boss looks
 
 A plain Paper plugin cannot add custom 3D models, so the bosses are built from vanilla
-pieces, as close to the pictures as a plugin can get: the Mimic is a giant invisible zombie
-wearing a **chest for a head** with dark red armor and a red glow, with a pink particle
-tongue; the Ghost is a **giant glowing purple Vex** (see-through and flying) that truly
-turns invisible. For the exact picture models you would need a resource pack / model
-plugin on top of this.
+pieces: Notazombiemc is a giant green-armored zombie, the Astronout wears a glass helmet and
+a white space suit, the Eclipse Reaper is a tall wither skeleton with a scythe. The one piece
+of truly custom art in v12 is the **Power Pack** resource pack: a hand-drawn orb texture for
+every power, shown on the Power Activator.

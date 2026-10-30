@@ -1,4 +1,4 @@
-config-version: 11
+config-version: 12
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -267,9 +267,17 @@ rocket:
   launch-strength: 2.6
   fall-seconds: 10
 
+# Hacker (v12): unlocked by finishing a quest 7 days in a row (a quest streak).
+# It is never sold, never in crates and never rerolled - the streak is the only way.
+hacker:
+  cooldown: 60              # 1 minute, like he asked
+  streak-days: 7            # finish a quest this many days in a row to unlock it
+  dupe-seconds: 30          # the duped sword vanishes after this long
+  range: 20                 # how far away the player you hack can be
+
 # ------------------------------------------------------------------
 # Chance weights used when someone rerolls their power:
-# (retired Halloween powers and the Wind power never roll)
+# (retired Halloween powers, the Wind power and Hacker never roll)
 # ------------------------------------------------------------------
 drops:
   enabled: true
@@ -382,6 +390,7 @@ powers:
     - black-hole
     - antimatter
     - rocket
+    - hacker
 
 # ------------------------------------------------------------------
 # Who counts as an enemy for powers (targeting, glow, stun)
@@ -508,7 +517,7 @@ quests:
     target: 3
     reward: 15
   horseman-slayer:
-    name: "Horseman Slayer"
+    name: "Boss Slayer"
     description: "Defeat a boss (any boss counts)"
     type: BOSS_KILL
     target: 1
@@ -554,69 +563,55 @@ quests:
     reward: 50
 
 # ------------------------------------------------------------------
-# Headless Horseman boss: /boss fight Headless Horseman
+# Galaxy Bosses (v12): /boss shows the list, /boss fight <name> starts one.
+# The old bosses (Headless Horseman, Mimic, Ghost) are GONE.
+# Notazombiemc and the Astronout stay in the game FOREVER. The other four
+# are seasonal: after the date below they leave the galaxy for good.
+# Every fight gets its OWN arena copy, and fighters hold a Fight Totem:
+# if it pops they lose the fight, but they never die. A friend joins with
+# /boss invite <player> + /boss accept.
 # ------------------------------------------------------------------
-horseman:
-  health: 100
-  rage-health: 25            # phase 3 (raging) starts at this health
+galaxy-bosses:
+  seasonal-until: "2026-11-30 23:59"   # when the 4 seasonal bosses leave
+  timezone: "America/Toronto"
   arena-x: 0
   arena-y: 200
-  arena-z: -4000
-  reward-points: 40
-  reward-coins: 30           # Galaxy Coins (v10; these were Halloween Coins before)
-  gravestone-damage: 6
-  pumpkin-damage: 8
-  slash-damage: 6            # phase 3 doubles all of these
+  arena-z: 16000
+  notazombiemc:               # permanent - the zombie himself
+    health: 160
+    coins: 40                 # Galaxy Coins for winning
+    points: 25                # Unbound Coins for winning
+  astronout:                  # permanent - the astronaut
+    health: 360
+    coins: 120
+    points: 50
+  comet-knight:               # seasonal
+    health: 200
+    coins: 50
+    points: 30
+  solar-titan:                # seasonal
+    health: 280
+    coins: 80
+    points: 40
+  void-serpent:               # seasonal
+    health: 240
+    coins: 70
+    points: 35
+  eclipse-reaper:             # seasonal - the hardest of the six
+    health: 450
+    coins: 150
+    points: 60
 
-# ------------------------------------------------------------------
-# All boss fights: every fight gets its OWN arena copy, spaced this many
-# blocks apart along X, so nobody ever waits for an arena. Fighters hold a
-# Fight Totem: if it pops they lose the fight, but they never die.
-# A friend joins with /boss invite <player> + /boss accept.
-# ------------------------------------------------------------------
 boss:
   arena-slot-spacing: 100
-  cooldown-seconds:       # v9: after a boss fight starts, that boss is on cooldown for you
+  cooldown-seconds:       # after a boss fight starts, that boss rests for you
     default: 300          # 5 minutes
-    horseman: 300
-    mimic: 600            # 10 minutes - he pays out the most
-    ghost: 180            # 3 minutes - he is the easy boss
-
-# ------------------------------------------------------------------
-# Mimic boss: /boss fight Mimic. A giant chest monster.
-# Phases: 100-75% tongue pull, 75-50% chomp (4 hearts + poison) and weaken,
-# 50-25% spawns a copy of you, 25-0% ULTRA: 2 giant copies of you.
-# ------------------------------------------------------------------
-mimic:
-  health: 300
-  arena-x: 0
-  arena-y: 200
-  arena-z: -8000
-  reward-coins: 100           # Galaxy Coins (v10; these were Halloween Coins before)
-  reward-points: 0            # Unbound Coins
-  bite-hearts: 3              # normal melee
-  tongue-bite-hearts: 2       # bite after the tongue drags you in
-  chomp-hearts: 4             # phase 2+ bite
-  poison-seconds: 5
-  weaken-seconds: 5
-  giant-damage-hearts: 6      # the giant copies of you hit this hard (but die in 2 hits)
-
-# ------------------------------------------------------------------
-# Ghost boss: /boss fight Ghost. An easy boss: 20 hearts (40 HP).
-# Visible for 5 seconds, invisible for 3 seconds (he sneaks behind you
-# and hits you), then visible again, over and over.
-# NOTE: this is the BOSS. The "ghost:" section higher up is the Ghost power.
-# ------------------------------------------------------------------
-ghost-boss:
-  health: 40
-  arena-x: 0
-  arena-y: 200
-  arena-z: 8000
-  reward-coins: 10            # Galaxy Coins (v10; these were Halloween Coins before)
-  reward-points: 5            # Unbound Coins
-  damage-hearts: 2.5
-  visible-seconds: 5
-  invisible-seconds: 3
+    notazombiemc: 240
+    astronout: 600
+    comet-knight: 300
+    solar-titan: 420
+    void-serpent: 360
+    eclipse-reaper: 900
 
 # ------------------------------------------------------------------
 # Duels: /duel <player>, then the other player runs /duel accept
@@ -705,8 +700,9 @@ shop:
 
 # ------------------------------------------------------------------
 # Galaxy Shop (/gshop). Everything here costs Galaxy Coins.
-# Galaxy Coins are items in your inventory. Earn them from boss fights
-# (Horseman 30, Mimic 100, Ghost 10), quests, rebirths and events.
+# Galaxy Coins are items in your inventory. Earn them from the galaxy bosses
+# (Astronout 120, Eclipse Reaper 150, Solar Titan 80, Void Serpent 70,
+# Comet Knight 50, Notazombiemc 40), quests, rebirths and events.
 # reward: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT, crate:AMOUNT (crate + key),
 #         cratekey:AMOUNT, galaxy:AMOUNT, or unlock:category:id (a Locker unlock)
 # limit: how many times one player can buy it (0 = unlimited)
@@ -841,12 +837,18 @@ crates:
     legendary: 5
     mythic: 2
   boss-drops:
-    horseman-key-chance: 0.35
-    horseman-crate-chance: 0.10
-    mimic-key-chance: 1.0
-    mimic-crate-chance: 0.50
-    ghost-key-chance: 0.15
-    ghost-crate-chance: 0.0
+    notazombiemc-key-chance: 0.35
+    notazombiemc-crate-chance: 0.10
+    astronout-key-chance: 0.60
+    astronout-crate-chance: 0.25
+    comet-knight-key-chance: 0.35
+    comet-knight-crate-chance: 0.10
+    solar-titan-key-chance: 0.50
+    solar-titan-crate-chance: 0.20
+    void-serpent-key-chance: 0.45
+    void-serpent-crate-chance: 0.15
+    eclipse-reaper-key-chance: 1.0
+    eclipse-reaper-crate-chance: 0.50
 
 # ------------------------------------------------------------------
 # Trading (v9): /trade <player>. Both players must confirm, and any
@@ -925,3 +927,133 @@ galactic:
   name: "Galactic Update"
   release: "2026-11-01 13:00"   # Sunday Nov 1 2026, 1:00 PM
   timezone: "America/Toronto"
+
+# ------------------------------------------------------------------
+# The quick switch (v10) + the slots at the TOP of the screen (v12).
+# Your two power slots show at the top of the screen on a bar, and also
+# above your hotbar. Set top-bar to false to hide the top one.
+# ------------------------------------------------------------------
+quick-switch:
+  top-bar: true
+
+# ------------------------------------------------------------------
+# The Lasso (v12): right-click to throw it at what you are looking at.
+# 1.5 hearts of damage, yanks the target toward you, 1 second cooldown.
+# Crafting: 4 string around a stick.
+# ------------------------------------------------------------------
+lasso:
+  cooldown-ms: 1000
+  damage-hearts: 1.5
+  range: 12
+  pull-strength: 1.15
+
+# ------------------------------------------------------------------
+# Item Shop (v12): /itemshop. The 14 legendary weapons from AltarSMP are
+# ALWAYS in stock (the weapons stay in the game forever). The daily deals
+# below are the rotating stock: a few are picked every day (Toronto time)
+# and each has a small stock that runs out.
+# Daily deal reward: item:MATERIAL:AMOUNT, power:NAME, reroll:AMOUNT,
+#                    crate:AMOUNT, cratekey:AMOUNT or galaxy:AMOUNT
+# ------------------------------------------------------------------
+itemshop:
+  daily-count: 6            # how many daily deals are picked each day
+  weapons:
+    hyperion: { price: 2500 }
+    nightpiercer: { price: 2200 }
+    frost-scythe: { price: 2000 }
+    illusion-wand: { price: 1800 }
+    bone-blade: { price: 1500 }
+    bloodlust: { price: 2600 }
+    vulcans-crossbow: { price: 2400 }
+    shadow-blade: { price: 2100 }
+    cutlass: { price: 1400 }
+    paladin-axe: { price: 2300 }
+    mindweaver: { price: 1700 }
+    pure-blade: { price: 1900 }
+    earth-gauntlet: { price: 1600 }
+    wither-reaper: { price: 2800 }
+  daily:
+    golden-apples:
+      name: "4 Golden Apples"
+      icon: GOLDEN_APPLE
+      blurb: "Crunchy and classic."
+      reward: "item:GOLDEN_APPLE:4"
+      price: 60
+      stock: 5
+    totem:
+      name: "Totem of Undying"
+      icon: TOTEM_OF_UNDYING
+      blurb: "A second chance, in your off hand."
+      reward: "item:TOTEM_OF_UNDYING:1"
+      price: 300
+      stock: 2
+    elytra:
+      name: "Elytra"
+      icon: ELYTRA
+      blurb: "Fly, in the daily deals? Rare treat."
+      reward: "item:ELYTRA:1"
+      price: 1500
+      stock: 1
+    crate-key:
+      name: "Power Crate Key"
+      icon: TRIPWIRE_HOOK
+      blurb: "For the crate chests at spawn."
+      reward: "cratekey:1"
+      price: 150
+      stock: 4
+    power-crate:
+      name: "Power Crate + Key"
+      icon: CHEST
+      blurb: "Spin for a power you do not own."
+      reward: "crate:1"
+      price: 400
+      stock: 2
+    reroll:
+      name: "Reroll Token"
+      icon: AMETHYST_SHARD
+      blurb: "A new random power. The old one is lost!"
+      reward: "reroll:1"
+      price: 250
+      stock: 3
+    diamonds:
+      name: "5 Diamonds"
+      icon: DIAMOND
+      blurb: "Shiny."
+      reward: "item:DIAMOND:5"
+      price: 120
+      stock: 5
+    netherite:
+      name: "Netherite Ingot"
+      icon: NETHERITE_INGOT
+      blurb: "The good stuff."
+      reward: "item:NETHERITE_INGOT:1"
+      price: 500
+      stock: 2
+    ender-pearls:
+      name: "8 Ender Pearls"
+      icon: ENDER_PEARL
+      blurb: "Throw and teleport."
+      reward: "item:ENDER_PEARL:8"
+      price: 80
+      stock: 5
+    xp-bottles:
+      name: "32 Bottles o' Enchanting"
+      icon: EXPERIENCE_BOTTLE
+      blurb: "Levels in a bottle."
+      reward: "item:EXPERIENCE_BOTTLE:32"
+      price: 90
+      stock: 4
+    galaxy-coins:
+      name: "10 Galaxy Coins"
+      icon: PRISMARINE_CRYSTALS
+      blurb: "Spend them in the Galaxy Shop (/gshop)."
+      reward: "galaxy:10"
+      price: 200
+      stock: 3
+    enchanted-apple:
+      name: "Enchanted Golden Apple"
+      icon: ENCHANTED_GOLDEN_APPLE
+      blurb: "The legendary notch apple."
+      reward: "item:ENCHANTED_GOLDEN_APPLE:1"
+      price: 600
+      stock: 1
