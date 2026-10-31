@@ -98,7 +98,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         STARLIGHT, COMET, METEOR, LUNAR, PULSAR, NEBULA, SOLAR_FLARE, ECLIPSE, ASTEROID,
         ZERO_GRAVITY, WORMHOLE, QUASAR, BLACK_HOLE, ANTIMATTER, ROCKET,
         // v12: unlocked by a 7-day quest streak, never sold or rolled
-        HACKER;
+        HACKER,
+        // v14: the 50 mixed powers - made in the Mixing Pot, hidden until owned,
+        MAGMA, WILDFIRE, STEAM, VOLTRUNNER, STORMWALL, STORM_HUNTER, SHADOWSTEP, NIGHTSHADE, BLOODMOON, SOUL_REAPER, PLAGUE, BONECHILL, WEBHUNTER, HARVEST, SUGAR_RUSH, WRAITHGUARD, MOONHOWL, STARFORGE, COMETFALL, SOLAR_STORM, VOIDWALKER, SINGULARITY, HYPERNOVA, GAMMARAY, AFTERBURNER, GLITCH, BLIZZARD, HEALING_TIDE, GUARDIAN_ANGEL, CYCLONE, DATA_THIEF, FORTRESS, TECTONIC_RIFT, ORBITAL, STARFALL, BULWARK, PYROCLASM, UMBRA, NIGHTFALL, POLTERGEIST, BLOOD_WITCH, DOOM_HERALD, GRIM_BONES, WEBFIELD, JACK_O_HEX, SWEET_RELIEF, SKY_HUNTER, WARP_DRIVE, ION_CANNON, CORONA;
 
         /** Galactic Update powers (v10). */
         boolean isGalaxy() {
@@ -108,6 +110,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                      ANTIMATTER, ROCKET -> true;
                 default -> false;
             };
+        }
+
+        /** Mixed powers (v14): everything after Hacker in this enum. */
+        boolean isMixed() {
+            return ordinal() > HACKER.ordinal();
         }
 
         /** Halloween powers: Ghost, Vampire and the ten v8 Halloween powers. */
@@ -121,6 +128,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
         /** Rarity (v9): shown in menus and shops, and it drives the Power Crate odds and shop prices. */
         Rarity rarity() {
+            if (isMixed()) return Fusions.rarityOf(this);
             return switch (this) {
                 case SPEED, FLAME, FEATHER, AQUA, CANDY, STARLIGHT, ROCKET -> Rarity.COMMON;
                 case HUNTER, HEALER, SHADOW, THOR, SKELETON, SPIDER, PUMPKIN,
@@ -130,6 +138,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 case TELEPORTER, VOID, REAPER, CURSE, SUPERNOVA, FROST,
                      ASTEROID, ZERO_GRAVITY, WORMHOLE, QUASAR -> Rarity.LEGENDARY;
                 case GHOST, VAMPIRE, EARTH, WIND, BLACK_HOLE, ANTIMATTER, HACKER -> Rarity.MYTHIC;
+                default -> Rarity.EPIC; // mixed powers return earlier, via Fusions
             };
         }
 
@@ -151,6 +160,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
     }
 
+    /** Powers a player can own toward "own everything": the 44 base powers minus Wind and Hacker. */
+    static final int OWNABLE_BASE = 42;
     private static final String DRAIN = "drain_";
     private static final String GAIN = "gain_";
     private static final String TANK_KEY = "tank_hearts";
@@ -185,10 +196,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     Ranked ranked;
     Rebirths rebirths;
     Spawn spawn;
-    Weapons weapons;
     ItemShop itemShop;
     Lasso lasso;
     Music music;
+    Fusions fusions;
+    MixingPot mixingPot;
+    SpaceBurst burst;
     private NamespacedKey activatorKey;
     private NamespacedKey dupedKey;
     /** The two power slots shown at the TOP of the screen (v12), one boss bar per player. */
@@ -230,10 +243,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         tutorial = new Tutorial(this);
         admin = new Admin(this);
         spawn = new Spawn(this);
-        weapons = new Weapons(this);
         itemShop = new ItemShop(this);
         lasso = new Lasso(this);
         music = new Music(this);
+        fusions = new Fusions(this);
+        mixingPot = new MixingPot(this);
+        burst = new SpaceBurst(this);
         lasso.registerRecipe();
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(tutorial, this);
@@ -250,9 +265,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(trading, this);
         Bukkit.getPluginManager().registerEvents(ranked, this);
         Bukkit.getPluginManager().registerEvents(spawn, this);
-        Bukkit.getPluginManager().registerEvents(weapons, this);
         Bukkit.getPluginManager().registerEvents(itemShop, this);
         Bukkit.getPluginManager().registerEvents(lasso, this);
+        Bukkit.getPluginManager().registerEvents(fusions, this);
+        Bukkit.getPluginManager().registerEvents(mixingPot, this);
+        Bukkit.getPluginManager().registerEvents(burst, this);
+        mixingPot.registerRecipe();
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
         // the quick-switch bar above the hotbar refreshes every 2 seconds, and so does
         // the power-slots bar at the TOP of the screen (v12) and the Activator's look
@@ -369,6 +387,18 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             // crate chests, RTP). The spawn section arrives via copyDefaults; the spawn
             // point itself is set in game with /setspawn or /spawnbuild.
             cfg.set("config-version", 11);
+        }
+        if (v < 14) {
+            // v14: the AltarSMP weapons are gone (the Item Shop is all daily
+            // items now), and mixed powers join the enabled list so they can
+            // be equipped - they are still never sold, crated or rolled.
+            cfg.set("itemshop.weapons", null);
+            List<String> en14 = new ArrayList<>(cfg.getStringList("powers.enabled"));
+            for (Power pw : Power.values()) {
+                if (pw.isMixed() && !en14.contains(pw.key())) en14.add(pw.key());
+            }
+            cfg.set("powers.enabled", en14);
+            cfg.set("config-version", 14);
         }
         if (v < 13) {
             // v13: hotbar-style power bar + /music - nothing to move; the HUD default
@@ -639,7 +669,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         double total = 0;
         for (Power p : Power.values()) {
             if (p == exclude || !isEnabled(p) || profile.owns(forWho, p)) continue;
-            if (p.isHalloween() || p == Power.WIND || p == Power.HACKER) continue; // v10/v12: retired Halloween powers, the one-of-a-kind Wind and the streak-only Hacker never roll
+            if (p.isHalloween() || p == Power.WIND || p == Power.HACKER || p.isMixed()) continue; // v10/v12/v14: retired Halloween powers, the one-of-a-kind Wind, the streak-only Hacker and mixed powers never roll
             double w = d("drops." + p.key(), 0);
             if (w <= 0) continue;
             if (isLimited(p) && isHeldByOther(p, forWho)) continue;
@@ -728,6 +758,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     // =====================================================================
 
     NamedTextColor colorFor(Power p) {
+        if (p.isMixed()) return Fusions.colorOf(p);
         return switch (p) {
             case FLAME -> NamedTextColor.GOLD;
             case SPEED -> NamedTextColor.AQUA;
@@ -773,6 +804,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case ANTIMATTER -> NamedTextColor.DARK_RED;
             case ROCKET -> NamedTextColor.GOLD;
             case HACKER -> NamedTextColor.GREEN;
+            default -> NamedTextColor.LIGHT_PURPLE; // mixed powers return earlier, via Fusions
         };
     }
 
@@ -903,6 +935,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             Power power = powerOf(p);
             if (power == null || !isEnabled(power) || p.getGameMode() == GameMode.SPECTATOR) continue;
+            if (power.isMixed()) { fusions.passive(p, power); continue; }
 
             switch (power) {
                 case FLAME -> effect(p, PotionEffectType.FIRE_RESISTANCE, 1);
@@ -976,6 +1009,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     private Particle particleFor(Power power) {
+        if (power.isMixed()) return Fusions.particleOf(power);
         return switch (power) {
             case FLAME -> Particle.FLAME;
             case SPEED, FEATHER -> Particle.CLOUD;
@@ -1020,6 +1054,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case ANTIMATTER -> Particle.EXPLOSION;
             case ROCKET -> Particle.FLAME;
             case HACKER -> Particle.HAPPY_VILLAGER;
+            default -> Particle.WITCH; // mixed powers return earlier, via Fusions
         };
     }
 
@@ -1086,6 +1121,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         return true;
     }
 
+    /** Cooldown with an explicit length (mixed powers carry theirs in the fusion table). */
+    void startCooldownSeconds(Player p, int seconds) {
+        long ms = (long) (seconds * 1000L * unbound.cooldownMult(p));
+        cooldowns.put(p.getUniqueId(), System.currentTimeMillis() + ms);
+    }
+
     private void startCooldown(Player p, Power power) {
         int seconds = i(power.key() + ".cooldown", 15);
         long ms = (long) (seconds * 1000L * unbound.cooldownMult(p)); // upgrades shorten cooldowns
@@ -1093,6 +1134,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     private void activate(Player p, Power power) {
+        if (power.isMixed()) { fusions.activate(p, power); return; }
         String k = power.key();
         switch (power) {
 
@@ -2406,7 +2448,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     /** One hotbar-slot picture from the Power Pack font (empty slot when the power is null). */
     private String slotGlyph(Power pw, boolean selected) {
-        if (pw == null) return String.valueOf((char) (selected ? 0xE159 : 0xE158));
+        if (pw == null) return String.valueOf((char) (selected ? 0xE201 : 0xE200));
         return String.valueOf((char) ((selected ? 0xE12C : 0xE100) + pw.ordinal()));
     }
 
@@ -2428,7 +2470,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
         Component name;
         if (mode.equals("font")) {
-            name = Component.text(slotGlyph(cur, true) + "\uE15A" + slotGlyph(st, false))
+            name = Component.text(slotGlyph(cur, true) + "\uE202" + slotGlyph(st, false))
                     .font(Key.key("abilitysmp", "hud"));
         } else {
             name = Component.text("[1] ", NamedTextColor.RED, TextDecoration.BOLD)
@@ -2704,8 +2746,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             if (sender instanceof Player ip) itemShop.open(ip);
             return true;
         }
-        if (name.equals("weapons")) {
-            if (sender instanceof Player wp) weapons.info(wp);
+        if (name.equals("burst")) {
+            if (sender instanceof Player bp) burst.command(bp, args);
+            return true;
+        }
+        if (name.equals("mixingpot")) {
+            if (sender instanceof Player mpp) mixingPot.info(mpp, args);
             return true;
         }
         if (name.equals("music")) {

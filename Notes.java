@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "13.0";
+    static final String VERSION = "14.0";
 
     private Notes() {
     }
@@ -28,7 +28,33 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
-        h(s, "===== Unbound SMP Patch Notes: v13.0 - Hotbar Power Bar, Animated Powers & Music =====");
+        h(s, "===== Unbound SMP Patch Notes: v14.0 - Mixed Powers, the Mixing Pot & the Galaxy Burst =====");
+        l(s, "\u2697\uFE0F THE MIXING POT - 50 SECRET MIXED POWERS");
+        how(s, "craft a MIXING POT (4 chains around a cauldron), place it and right-click it. Put in "
+                + "any 2 powers you own - if those two mix, you discover a MIXED power! There are 50 "
+                + "of them (Flame + Earth = Magma... what do Thor and the Hacker make?). They are "
+                + "HIDDEN in /powers until you mix them, they are never sold and never in crates, and "
+                + "mixing never eats your two powers - a new discovery just costs 250 Galaxy Coins.");
+        l(s, "\uD83C\uDF0C THE GALAXY BURST - A TRIP TO SPACE");
+        how(s, "when an admin starts the Galaxy Burst (in /panel, Server Events), a portal to a "
+                + "whole SPACE dimension opens for 5 minutes. Type /burst to fly up: a starry void, "
+                + "floating islands, Star Wraiths, Void Stalkers and Comet Phantoms - and EVERYTHING "
+                + "up there pays Galaxy Coins, even the purple crystals you can mine. Dying in space "
+                + "loses NOTHING. When the timer ends, everyone floats back home.");
+        l(s, "\uD83C\uDFC5 NEW GALAXY RANKS");
+        how(s, "8 new ranks in /locker: The Mixer, Fusionist, Master Mixer and the Grand Alchemist "
+                + "for mixing; Star Sailor, Burst Raider and Burst Baron for the Burst; and Galaxy "
+                + "Rich for holding 250 Galaxy Coins at once.");
+        l(s, "\uD83D\uDED2 THE ITEM SHOP IS A DAILY SURPRISE NOW");
+        how(s, "the legendary AltarSMP weapons have left the shop (and the game - old weapons are "
+                + "just souvenirs now). Instead, /itemshop rolls a brand new RANDOM shelf every day: "
+                + "mostly mid stuff, sometimes good stuff, and once in a while something OP - an "
+                + "elytra, a beacon, even a notch apple. Stock is limited, so check in daily!");
+        l(s, "\uD83C\uDFAE POWER PACK v3");
+        how(s, "update your Power Pack again! All 50 mixed powers have their own animated orb and "
+                + "their own hotbar slot picture, ready for the day you discover them.");
+
+        h(s, "===== v13.0 - Hotbar Power Bar, Animated Powers & Music =====");
         l(s, "\uD83C\uDFAE THE POWER BAR IS A HOTBAR NOW");
         how(s, "your two power slots at the top of the screen are real hotbar slots now - the same "
                 + "boxes as your item hotbar, with your power's orb sitting inside, and the equipped "

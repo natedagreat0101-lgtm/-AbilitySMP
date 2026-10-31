@@ -164,7 +164,7 @@ final class Crates implements Listener {
     AbilitySMP.Power rollPower(Player p) {
         List<AbilitySMP.Power> pool = new ArrayList<>();
         for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
-            if (pw.isHalloween() || pw == AbilitySMP.Power.WIND || pw == AbilitySMP.Power.HACKER) continue; // v10/v12: retired powers, the one-of-a-kind Wind and the streak-only Hacker never drop
+            if (pw.isHalloween() || pw == AbilitySMP.Power.WIND || pw == AbilitySMP.Power.HACKER || pw.isMixed()) continue; // v10/v12/v14: retired powers, the one-of-a-kind Wind, the streak-only Hacker and mixed powers never drop
             if (plugin.isEnabled(pw) && !plugin.profile.owns(p, pw)) pool.add(pw);
         }
         if (pool.isEmpty()) return null;

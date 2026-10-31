@@ -17,19 +17,17 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
 /**
- * The Item Shop (v12) - /itemshop. Two halves:
- *  - The legendary weapons from AltarSMP (see Weapons.java): ALWAYS in stock, forever.
- *    The weapons themselves never leave the game.
- *  - Daily deals: a rotating handful of normal items that restock every day
- *    (a fresh set is picked at midnight, America/Toronto). Stock counts down as
- *    players buy, then tomorrow brings a new set.
+ * The Item Shop (v14) - /itemshop. The whole shop is a random daily shelf:
+ * every day (midnight, America/Toronto) a fresh set of items is picked from
+ * the config pool by weight - mostly mid stuff, sometimes good stuff, and
+ * once in a while something OP (an elytra, a beacon, a notch apple...).
+ * Stock is limited and counts down; tomorrow is a brand new roll.
  * Everything is priced in Unbound Coins. State lives in itemshop.yml.
  */
 final class ItemShop implements Listener {
@@ -57,7 +55,7 @@ final class ItemShop implements Listener {
         return LocalDate.now(ZoneId.of("America/Toronto")).toString();
     }
 
-    /** Rolls a fresh set of daily deals whenever the (Toronto) date changes. */
+    /** Rolls a fresh weighted-random shelf whenever the (Toronto) date changes. */
     private void ensureDay() {
         String now = today();
         if (now.equals(day)) return;
@@ -66,19 +64,34 @@ final class ItemShop implements Listener {
         stock.clear();
         ConfigurationSection pool = plugin.getConfig().getConfigurationSection("itemshop.daily");
         if (pool != null) {
-            List<String> ids = new ArrayList<>(pool.getKeys(false));
-            Collections.shuffle(ids, random);
-            int want = plugin.getConfig().getInt("itemshop.daily-count", 6);
-            for (String id : ids) {
-                if (deals.size() >= want) break;
+            List<String> ids = new ArrayList<>();
+            List<Integer> weights = new ArrayList<>();
+            for (String id : pool.getKeys(false)) {
                 if (!pool.getBoolean(id + ".enabled", true)) continue;
+                ids.add(id);
+                weights.add(Math.max(1, pool.getInt(id + ".weight", 50)));
+            }
+            int want = plugin.getConfig().getInt("itemshop.daily-count", 8);
+            while (!ids.isEmpty() && deals.size() < want) {
+                int total = 0;
+                for (int w : weights) total += w;
+                int roll = random.nextInt(total);
+                int idx = 0;
+                while (roll >= weights.get(idx)) {
+                    roll -= weights.get(idx);
+                    idx++;
+                }
+                String id = ids.remove(idx);
+                weights.remove(idx);
                 deals.add(id);
-                stock.put(id, Math.max(1, pool.getInt(id + ".stock", 3)));
+                int lo = Math.max(1, pool.getInt(id + ".min-stock", 1));
+                int hi = Math.max(lo, pool.getInt(id + ".max-stock", pool.getInt(id + ".stock", 3)));
+                stock.put(id, lo + random.nextInt(hi - lo + 1));
             }
         }
         save();
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.sendActionBar(Component.text("The Item Shop has new daily deals! /itemshop", NamedTextColor.GOLD));
+            p.sendActionBar(Component.text("The Item Shop rolled a new shelf for today! /itemshop", NamedTextColor.GOLD));
         }
     }
 
@@ -99,6 +112,14 @@ final class ItemShop implements Listener {
         ensureDay();
     }
 
+    private static NamedTextColor tierColor(String tier) {
+        return switch (tier == null ? "mid" : tier.toLowerCase()) {
+            case "op" -> NamedTextColor.GOLD;
+            case "good" -> NamedTextColor.AQUA;
+            default -> NamedTextColor.GRAY;
+        };
+    }
+
     void open(Player p) {
         ensureDay();
         new Menus.Paged("Item Shop") {
@@ -107,28 +128,13 @@ final class ItemShop implements Listener {
                 List<Menus.Entry> out = new ArrayList<>();
                 out.add(new Menus.Entry(Menus.icon(Material.EMERALD,
                         "You have " + plugin.unbound.points(pl) + " Unbound Coins", false,
-                        "The legendary weapons are ALWAYS in stock.",
-                        "The daily deals restock every day (midnight Toronto time)."), null));
-
-                out.add(new Menus.Entry(Menus.icon(Material.NETHERITE_SWORD, "⚔ LEGENDARY WEAPONS ⚔", true,
-                        "From AltarSMP. They never leave the shop - or the game.",
-                        "Right-click = ability 1, crouch + right-click = ability 2."), null));
-                for (Weapons.WDef d : Weapons.WDef.values()) {
-                    int price = d.price(plugin);
-                    List<String> lore = new ArrayList<>();
-                    lore.add("✦ LEGENDARY WEAPON ✦");
-                    for (String l : d.lore) lore.add(l);
-                    lore.add("Price: " + price + " Unbound Coins");
-                    lore.add("Always in stock - click to buy");
-                    out.add(new Menus.Entry(Menus.icon(d.material, d.display, true, lore.toArray(new String[0])),
-                            (pp, t) -> buyWeapon(pp, d, price)));
-                }
-
-                out.add(new Menus.Entry(Menus.icon(Material.CLOCK, "📅 TODAY'S DEALS 📅", false,
-                        "Restocks tomorrow. When it's gone, it's gone (until it rotates back)."), null));
+                        "A brand new random shelf every day (midnight Toronto).",
+                        "Mostly mid stuff, sometimes good stuff,",
+                        "and once in a while something OP.",
+                        "Stock is limited - when it's gone, it's gone."), null));
                 ConfigurationSection pool = plugin.getConfig().getConfigurationSection("itemshop.daily");
                 if (pool == null || deals.isEmpty()) {
-                    out.add(new Menus.Entry(Menus.icon(Material.BARRIER, "No deals today", false), null));
+                    out.add(new Menus.Entry(Menus.icon(Material.BARRIER, "Nothing on the shelf today", false), null));
                 } else {
                     for (String id : new ArrayList<>(deals)) {
                         ConfigurationSection q = pool.getConfigurationSection(id);
@@ -138,11 +144,13 @@ final class ItemShop implements Listener {
                         Material icon = Material.matchMaterial(q.getString("icon", "PAPER"));
                         if (icon == null) icon = Material.PAPER;
                         String name = q.getString("name", id);
+                        String tier = q.getString("tier", "mid");
                         if (left <= 0) {
                             out.add(new Menus.Entry(Menus.icon(Material.BARRIER, name + "  [SOLD OUT]", false,
                                     "Price: " + price + " Unbound Coins", "Back in a future daily rotation"), null));
                         } else {
-                            out.add(new Menus.Entry(Menus.icon(icon, name, q.getBoolean("glint", false),
+                            out.add(new Menus.Entry(Menus.icon(icon,
+                                    "✦ " + tier.toUpperCase() + " ✦  " + name, tier.equalsIgnoreCase("op"),
                                     q.getString("blurb", ""), "Price: " + price + " Unbound Coins",
                                     "In stock today: " + left, "Click to buy"),
                                     (pp, t) -> buyDeal(pp, id, q, price)));
@@ -152,18 +160,6 @@ final class ItemShop implements Listener {
                 return out;
             }
         }.open(p);
-    }
-
-    private void buyWeapon(Player p, Weapons.WDef d, int price) {
-        if (!plugin.unbound.spend(p, price)) {
-            p.sendMessage(Component.text("You need " + price + " Unbound Coins. You have "
-                    + plugin.unbound.points(p) + ".", NamedTextColor.RED));
-            return;
-        }
-        plugin.give(p, plugin.weapons.create(d));
-        p.sendMessage(Component.text("You bought the " + d.display + "! It is yours forever.", d.color));
-        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.1f);
-        open(p);
     }
 
     private void buyDeal(Player p, String id, ConfigurationSection q, int price) {

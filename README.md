@@ -1,4 +1,4 @@
-# AbilitySMP (Unbound SMP) — v13.0 Hotbar Power Bar, Animated Powers & Music
+# AbilitySMP (Unbound SMP) — v14.0 Mixed Powers, the Mixing Pot & the Galaxy Burst
 
 A Paper 1.21 plugin: powers, Power Activator, quests, upgrades, duels, six galaxy bosses,
 legendary weapons from AltarSMP, an Item Shop, and a DonutSMP-style spawn.
@@ -19,6 +19,31 @@ mvn package
 ```
 
 The jar appears in `target/AbilitySMP.jar`.
+
+## What's new in v14.0 — Mixed Powers, the Mixing Pot & the Galaxy Burst
+
+- **50 mixed powers + the Mixing Pot.** Craft a Mixing Pot (4 chains around a cauldron), place
+  it, right-click it, and put in any two powers you own: 50 specific pairs fuse into a brand
+  new **mixed power** (Flame + Earth = Magma, Thor + Quasar = Ion Cannon, Hacker + Teleporter =
+  Glitch...). Fusions are defined in `Fusions.java` (archetype-driven passives + supers),
+  are **hidden in `/powers` until owned**, and are never sold, crated or rolled. Mixing never
+  consumes the parents; a new discovery costs Galaxy Coins (`mixing.cost-galaxy-coins`, 250).
+- **The Galaxy Burst + a space dimension.** A new `/panel` event: the plugin creates a void
+  End-sky world (`abilitysmp_space`, custom void generator) with a built platform and five
+  floating islands. While it runs (default 5 minutes) anyone can `/burst` up: special mobs
+  (Star Wraith, Meteor Husk, Comet Phantom, Void Stalker) and mineable burst crystals all pay
+  Galaxy Coins, keep-inventory is on in space, and when the timer ends everyone is sent home.
+- **New galaxy ranks.** The Mixer / Fusionist / Master Mixer / Grand Alchemist (mixing),
+  Star Sailor / Burst Raider / Burst Baron (the Burst), Galaxy Rich (hold 250 Galaxy Coins).
+  Completionist-style counters now count the original 44 base powers only.
+- **The Item Shop is random now.** The AltarSMP legendary weapons are **removed** (Weapons.java
+  is deleted; existing weapon items become inert souvenirs). `/itemshop` instead rolls a
+  weighted-random shelf from `itemshop.daily` every day (8 items): mostly `mid`, sometimes
+  `good`, rarely `op` (elytra, beacon, notch apple...), each with limited rolled stock.
+- **Power Pack v3.** All 94 powers (44 base + 50 mixed) have animated orbs, item models
+  (CustomModelData 2000–2093) and hotbar HUD slot glyphs. Note: the font's empty-slot and gap
+  characters moved (U+E200–E202) to make room for the fusion glyphs — pack and plugin must be
+  updated together.
 
 ## What's new in v13.0 — Hotbar Power Bar, Animated Powers & Music
 
@@ -218,7 +243,9 @@ The jar appears in `target/AbilitySMP.jar`.
 | `/staffrank <player> <rank>` | Give a staff rank: Mod, Tester or Co-Owner (OP only) |
 | `/spawn` / `/rtp` | Go to spawn / random teleport into the wild |
 | `/setspawn` / `/spawnnpc` / `/spawnbuild` | Set up the spawn: point, NPCs + countdown board, or the whole platform (admin) |
-| `/itemshop` / `/weapons` | The Item Shop (legendary weapons + daily deals) / the weapon list |
+| `/itemshop` | The Item Shop — a new random shelf every day (mid to OP) |
+| `/mixingpot` | About the Mixing Pot (OP: `/mixingpot give`) |
+| `/burst` | Join the Galaxy Burst space event (OP: `/burst start|stop`) |
 | `/music` | Your personal music player: `/music play <song>`, `/music list`, `/music stop` |
 | `/hud` | Power bar style: `/hud font` (hotbar pictures), `/hud text`, `/hud off` |
 | `/powers`, `/shop`, `/quests`, `/locker`, `/halloweenshop`, `/notes` | Menus, shops and patch notes |

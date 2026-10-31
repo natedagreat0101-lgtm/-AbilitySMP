@@ -152,7 +152,7 @@ final class Locker implements Listener {
                         "Reach 2400 ranked rating - the best rank there is", p -> plugin.profile.of(p).rankedRating >= 2400));
                 out.add(new Entry("the-completionist", "The Completionist", Material.DRAGON_EGG,
                         "Own every power (except the one-of-a-kind Wind)",
-                        p -> ownable(p) >= AbilitySMP.Power.values().length - 2));
+                        p -> ownable(p) >= AbilitySMP.OWNABLE_BASE));
                 out.add(new Entry("galaxy-guardian", "Galaxy Guardian", Material.END_CRYSTAL,
                         "Buy it in the Galaxy Shop (/gshop)", p -> false));
                 out.add(new Entry("star-traveler", "Star Traveler", Material.SPYGLASS,
@@ -186,7 +186,7 @@ final class Locker implements Listener {
                         "Own the Vampire power", p -> plugin.profile.owns(p, AbilitySMP.Power.VAMPIRE)));
                 out.add(new Entry("dragon-suit", "Dragon Costume", Material.DRAGON_HEAD,
                         "Own every power (except the one-of-a-kind Wind)",
-                        p -> ownable(p) >= AbilitySMP.Power.values().length - 2));
+                        p -> ownable(p) >= AbilitySMP.OWNABLE_BASE));
                 out.add(new Entry("astro-helmet", "Space Helmet", Material.LEATHER_HELMET,
                         "Buy it in the Galaxy Shop (/gshop)", p -> false));
                 out.add(new Entry("star-cloak", "Star Cloak", Material.LEATHER_CHESTPLATE,
@@ -269,10 +269,15 @@ final class Locker implements Listener {
         };
     }
 
-    /** Owned powers, not counting the one-of-a-kind Wind and the streak-only Hacker. */
+    /** Base powers owned (the original 44), not counting Wind, Hacker or any mixed power. */
     private int ownable(Player p) {
-        java.util.Set<String> owned = plugin.profile.of(p).owned;
-        return owned.size() - (owned.contains("WIND") ? 1 : 0) - (owned.contains("HACKER") ? 1 : 0);
+        int n = 0;
+        for (String name : plugin.profile.of(p).owned) {
+            AbilitySMP.Power pw = AbilitySMP.Power.parse(name);
+            if (pw == null || pw.isMixed() || pw == AbilitySMP.Power.WIND || pw == AbilitySMP.Power.HACKER) continue;
+            n++;
+        }
+        return n;
     }
 
     private String costumeTag(ItemStack it) {

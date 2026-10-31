@@ -160,7 +160,7 @@ final class Shops implements Listener {
         for (AbilitySMP.Power p : AbilitySMP.Power.values()) {
             // v10: retired Halloween powers are no longer sold (owners keep theirs), and the
             // one-of-a-kind Wind power is never sold - it only exists by admin command.
-            if (p.isHalloween() || p == AbilitySMP.Power.WIND || p == AbilitySMP.Power.HACKER) continue;
+            if (p.isHalloween() || p == AbilitySMP.Power.WIND || p == AbilitySMP.Power.HACKER || p.isMixed()) continue;
             if (plugin.isEnabled(p) && basePrice(p) > 0) out.add(p);
         }
         return out;

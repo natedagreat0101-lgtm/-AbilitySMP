@@ -1,4 +1,4 @@
-config-version: 13
+config-version: 14
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -391,6 +391,56 @@ powers:
     - antimatter
     - rocket
     - hacker
+    - magma
+    - wildfire
+    - steam
+    - voltrunner
+    - stormwall
+    - storm-hunter
+    - shadowstep
+    - nightshade
+    - bloodmoon
+    - soul-reaper
+    - plague
+    - bonechill
+    - webhunter
+    - harvest
+    - sugar-rush
+    - wraithguard
+    - moonhowl
+    - starforge
+    - cometfall
+    - solar-storm
+    - voidwalker
+    - singularity
+    - hypernova
+    - gammaray
+    - afterburner
+    - glitch
+    - blizzard
+    - healing-tide
+    - guardian-angel
+    - cyclone
+    - data-thief
+    - fortress
+    - tectonic-rift
+    - orbital
+    - starfall
+    - bulwark
+    - pyroclasm
+    - umbra
+    - nightfall
+    - poltergeist
+    - blood-witch
+    - doom-herald
+    - grim-bones
+    - webfield
+    - jack-o-hex
+    - sweet-relief
+    - sky-hunter
+    - warp-drive
+    - ion-cannon
+    - corona
 
 # ------------------------------------------------------------------
 # Who counts as an enemy for powers (targeting, glow, stun)
@@ -960,104 +1010,271 @@ lasso:
 #                    crate:AMOUNT, cratekey:AMOUNT or galaxy:AMOUNT
 # ------------------------------------------------------------------
 itemshop:
-  daily-count: 6            # how many daily deals are picked each day
-  weapons:
-    hyperion: { price: 2500 }
-    nightpiercer: { price: 2200 }
-    frost-scythe: { price: 2000 }
-    illusion-wand: { price: 1800 }
-    bone-blade: { price: 1500 }
-    bloodlust: { price: 2600 }
-    vulcans-crossbow: { price: 2400 }
-    shadow-blade: { price: 2100 }
-    cutlass: { price: 1400 }
-    paladin-axe: { price: 2300 }
-    mindweaver: { price: 1700 }
-    pure-blade: { price: 1900 }
-    earth-gauntlet: { price: 1600 }
-    wither-reaper: { price: 2800 }
+  daily-count: 8            # how many random items are picked for the shelf each day
+  # The pool: every day a weighted-random shelf is rolled from these.
+  # tier: mid shows up all the time, good sometimes, op rarely (weight does the odds).
   daily:
+    bread-basket:
+      name: "Basket of Bread (16)"
+      icon: BREAD
+      blurb: "Warm and filling."
+      reward: "item:BREAD:16"
+      price: 25
+      tier: mid
+      weight: 100
+      min-stock: 3
+      max-stock: 6
+    arrow-bundle:
+      name: "32 Arrows"
+      icon: ARROW
+      blurb: "For the bow people."
+      reward: "item:ARROW:32"
+      price: 30
+      tier: mid
+      weight: 100
+      min-stock: 3
+      max-stock: 6
+    beef-dinner:
+      name: "16 Cooked Beef"
+      icon: COOKED_BEEF
+      blurb: "A proper dinner."
+      reward: "item:COOKED_BEEF:16"
+      price: 35
+      tier: mid
+      weight: 100
+      min-stock: 3
+      max-stock: 6
+    fireworks:
+      name: "12 Firework Rockets"
+      icon: FIREWORK_ROCKET
+      blurb: "Elytra fuel, or a party."
+      reward: "item:FIREWORK_ROCKET:12"
+      price: 55
+      tier: mid
+      weight: 90
+      min-stock: 2
+      max-stock: 5
     golden-apples:
       name: "4 Golden Apples"
       icon: GOLDEN_APPLE
       blurb: "Crunchy and classic."
       reward: "item:GOLDEN_APPLE:4"
       price: 60
-      stock: 5
+      tier: mid
+      weight: 95
+      min-stock: 3
+      max-stock: 6
+    obsidian-pack:
+      name: "12 Obsidian"
+      icon: OBSIDIAN
+      blurb: "Portal? Vault? Yes."
+      reward: "item:OBSIDIAN:12"
+      price: 70
+      tier: mid
+      weight: 85
+      min-stock: 2
+      max-stock: 4
+    ender-pearls:
+      name: "6 Ender Pearls"
+      icon: ENDER_PEARL
+      blurb: "Throw responsibly."
+      reward: "item:ENDER_PEARL:6"
+      price: 80
+      tier: mid
+      weight: 90
+      min-stock: 3
+      max-stock: 6
+    xp-bottles:
+      name: "16 Bottles o' Enchanting"
+      icon: EXPERIENCE_BOTTLE
+      blurb: "levels in a bottle."
+      reward: "item:EXPERIENCE_BOTTLE:16"
+      price: 90
+      tier: mid
+      weight: 90
+      min-stock: 2
+      max-stock: 5
+    iron-blocks:
+      name: "2 Iron Blocks"
+      icon: IRON_BLOCK
+      blurb: "Heavy money."
+      reward: "item:IRON_BLOCK:2"
+      price: 110
+      tier: mid
+      weight: 80
+      min-stock: 2
+      max-stock: 4
+    diamonds:
+      name: "3 Diamonds"
+      icon: DIAMOND
+      blurb: "Shiny."
+      reward: "item:DIAMOND:3"
+      price: 120
+      tier: mid
+      weight: 85
+      min-stock: 2
+      max-stock: 5
+    galaxy-coins:
+      name: "15 Galaxy Coins"
+      icon: PRISMARINE_CRYSTALS
+      blurb: "Straight from space."
+      reward: "galaxy:15"
+      price: 220
+      tier: good
+      weight: 45
+      min-stock: 2
+      max-stock: 4
+    reroll-token:
+      name: "Reroll Token"
+      icon: NAME_TAG
+      blurb: "A second first impression."
+      reward: "reroll:1"
+      price: 250
+      tier: good
+      weight: 40
+      min-stock: 1
+      max-stock: 3
+    crate-keys:
+      name: "2 Power Crate Keys"
+      icon: TRIPWIRE_HOOK
+      blurb: "Spin the wheel twice."
+      reward: "cratekey:2"
+      price: 280
+      tier: good
+      weight: 45
+      min-stock: 2
+      max-stock: 4
     totem:
       name: "Totem of Undying"
       icon: TOTEM_OF_UNDYING
       blurb: "A second chance, in your off hand."
       reward: "item:TOTEM_OF_UNDYING:1"
       price: 300
-      stock: 2
-    elytra:
-      name: "Elytra"
-      icon: ELYTRA
-      blurb: "Fly, in the daily deals? Rare treat."
-      reward: "item:ELYTRA:1"
-      price: 1500
-      stock: 1
-    crate-key:
-      name: "Power Crate Key"
-      icon: TRIPWIRE_HOOK
-      blurb: "For the crate chests at spawn."
-      reward: "cratekey:1"
-      price: 150
-      stock: 4
+      tier: good
+      weight: 42
+      min-stock: 1
+      max-stock: 3
+    diamond-chestplate:
+      name: "Diamond Chestplate"
+      icon: DIAMOND_CHESTPLATE
+      blurb: "Solid protection."
+      reward: "item:DIAMOND_CHESTPLATE:1"
+      price: 380
+      tier: good
+      weight: 40
+      min-stock: 1
+      max-stock: 2
     power-crate:
       name: "Power Crate + Key"
       icon: CHEST
-      blurb: "Spin for a power you do not own."
+      blurb: "Maybe a new power?"
       reward: "crate:1"
       price: 400
-      stock: 2
-    reroll:
-      name: "Reroll Token"
-      icon: AMETHYST_SHARD
-      blurb: "A new random power. The old one is lost!"
-      reward: "reroll:1"
-      price: 250
-      stock: 3
-    diamonds:
-      name: "5 Diamonds"
-      icon: DIAMOND
-      blurb: "Shiny."
-      reward: "item:DIAMOND:5"
-      price: 120
-      stock: 5
-    netherite:
+      tier: good
+      weight: 40
+      min-stock: 1
+      max-stock: 3
+    netherite-scrap:
+      name: "2 Netherite Scrap"
+      icon: NETHERITE_SCRAP
+      blurb: "Halfway to an ingot, twice."
+      reward: "item:NETHERITE_SCRAP:2"
+      price: 450
+      tier: good
+      weight: 38
+      min-stock: 1
+      max-stock: 2
+    trident:
+      name: "Trident"
+      icon: TRIDENT
+      blurb: "Poseidon approved."
+      reward: "item:TRIDENT:1"
+      price: 500
+      tier: good
+      weight: 35
+      min-stock: 1
+      max-stock: 2
+    totem-trio:
+      name: "3 Totems of Undying"
+      icon: TOTEM_OF_UNDYING
+      blurb: "Die three times. Live anyway."
+      reward: "item:TOTEM_OF_UNDYING:3"
+      price: 750
+      tier: op
+      weight: 12
+      min-stock: 1
+      max-stock: 2
+    netherite-ingot:
       name: "Netherite Ingot"
       icon: NETHERITE_INGOT
       blurb: "The good stuff."
       reward: "item:NETHERITE_INGOT:1"
-      price: 500
-      stock: 2
-    ender-pearls:
-      name: "8 Ender Pearls"
-      icon: ENDER_PEARL
-      blurb: "Throw and teleport."
-      reward: "item:ENDER_PEARL:8"
-      price: 80
-      stock: 5
-    xp-bottles:
-      name: "32 Bottles o' Enchanting"
-      icon: EXPERIENCE_BOTTLE
-      blurb: "Levels in a bottle."
-      reward: "item:EXPERIENCE_BOTTLE:32"
-      price: 90
-      stock: 4
-    galaxy-coins:
-      name: "10 Galaxy Coins"
-      icon: PRISMARINE_CRYSTALS
-      blurb: "Spend them in the Galaxy Shop (/gshop)."
-      reward: "galaxy:10"
-      price: 200
-      stock: 3
-    enchanted-apple:
+      price: 800
+      tier: op
+      weight: 12
+      min-stock: 1
+      max-stock: 2
+    notch-apple:
       name: "Enchanted Golden Apple"
       icon: ENCHANTED_GOLDEN_APPLE
-      blurb: "The legendary notch apple."
+      blurb: "The legendary apple itself."
       reward: "item:ENCHANTED_GOLDEN_APPLE:1"
-      price: 600
-      stock: 1
+      price: 900
+      tier: op
+      weight: 11
+      min-stock: 1
+      max-stock: 2
+    crate-bundle:
+      name: "3 Power Crates + Keys"
+      icon: ENDER_CHEST
+      blurb: "A crate party."
+      reward: "crate:3"
+      price: 1000
+      tier: op
+      weight: 11
+      min-stock: 1
+      max-stock: 2
+    beacon:
+      name: "Beacon"
+      icon: BEACON
+      blurb: "Your base deserves it."
+      reward: "item:BEACON:1"
+      price: 1200
+      tier: op
+      weight: 10
+      min-stock: 1
+      max-stock: 1
+    elytra:
+      name: "Elytra"
+      icon: ELYTRA
+      blurb: "WINGS. Actual wings."
+      reward: "item:ELYTRA:1"
+      price: 1500
+      tier: op
+      weight: 10
+      min-stock: 1
+      max-stock: 1
+    dragon-head:
+      name: "Dragon Head"
+      icon: DRAGON_HEAD
+      blurb: "Pure flex. Zero regrets."
+      reward: "item:DRAGON_HEAD:1"
+      price: 700
+      tier: op
+      weight: 12
+      min-stock: 1
+      max-stock: 1
+
+# ------------------------------------------------------------------
+# The Mixing Pot (v14): craft 4 chains around a cauldron, place it,
+# right-click it, and mix any 2 powers you own into a MIXED power.
+# ------------------------------------------------------------------
+mixing:
+  cost-galaxy-coins: 250    # charged only when you discover a NEW mixed power
+
+# ------------------------------------------------------------------
+# The Galaxy Burst (v14): a /panel event that opens a space dimension.
+# ------------------------------------------------------------------
+galaxy-burst:
+  minutes: 5                # how long the portal stays open
+  coin-multiplier: 1        # multiply every Galaxy Coin the Burst pays

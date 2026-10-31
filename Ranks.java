@@ -191,16 +191,38 @@ final class Ranks implements Listener {
         ranks.add(ach("hoarder", "Power Hoarder", "Own 18 different powers", NamedTextColor.LIGHT_PURPLE,
                 p -> plugin.profile.of(p).owned.size() >= 18));
         ranks.add(ach("completionist", "Completionist", "Own every power (except the one-of-a-kind Wind)", NamedTextColor.GOLD,
-                p -> ownableOwned(p) >= AbilitySMP.Power.values().length - 2));
+                p -> ownableOwned(p) >= AbilitySMP.OWNABLE_BASE));
         // Rebirths
         ranks.add(ach("reborn", "The Reborn", "Rebirth at least once (use /rebirth)", NamedTextColor.DARK_PURPLE,
                 p -> plugin.profile.of(p).rebirths >= 1));
+        // Galaxy (v14): mixing + the Burst
+        ranks.add(ach("first-mix", "The Mixer", "Mix your first power in the Mixing Pot", NamedTextColor.LIGHT_PURPLE,
+                p -> Fusions.countOwned(plugin, p) >= 1));
+        ranks.add(ach("fusionist", "Fusionist", "Own 10 mixed powers", NamedTextColor.DARK_PURPLE,
+                p -> Fusions.countOwned(plugin, p) >= 10));
+        ranks.add(ach("master-mixer", "Master Mixer", "Own 25 mixed powers", NamedTextColor.RED,
+                p -> Fusions.countOwned(plugin, p) >= 25));
+        ranks.add(ach("grand-alchemist", "Grand Alchemist", "Own all 50 mixed powers", NamedTextColor.GOLD,
+                p -> Fusions.countOwned(plugin, p) >= Fusions.total()));
+        ranks.add(ach("star-sailor", "Star Sailor", "Visit space in the Galaxy Burst (/burst)", NamedTextColor.AQUA,
+                p -> plugin.burst.burstVisits(p) >= 1));
+        ranks.add(ach("burst-raider", "Burst Raider", "Earn 100 Galaxy Coins in the Galaxy Burst", NamedTextColor.LIGHT_PURPLE,
+                p -> plugin.burst.burstCoins(p) >= 100));
+        ranks.add(ach("burst-baron", "Burst Baron", "Earn 500 Galaxy Coins in the Galaxy Burst", NamedTextColor.GOLD,
+                p -> plugin.burst.burstCoins(p) >= 500));
+        ranks.add(ach("galaxy-rich", "Galaxy Rich", "Hold 250 Galaxy Coins at once", NamedTextColor.GOLD,
+                p -> plugin.shops.countGalaxyCoins(p) >= 250));
     }
 
-    /** How many powers this player owns, not counting the one-of-a-kind Wind and the streak-only Hacker. */
+    /** Base powers owned (the original 44), not counting Wind, Hacker or any mixed power. */
     private int ownableOwned(Player p) {
-        java.util.Set<String> owned = plugin.profile.of(p).owned;
-        return owned.size() - (owned.contains("WIND") ? 1 : 0) - (owned.contains("HACKER") ? 1 : 0);
+        int n = 0;
+        for (String name : plugin.profile.of(p).owned) {
+            AbilitySMP.Power pw = AbilitySMP.Power.parse(name);
+            if (pw == null || pw.isMixed() || pw == AbilitySMP.Power.WIND || pw == AbilitySMP.Power.HACKER) continue;
+            n++;
+        }
+        return n;
     }
 
     private Rank ach(String id, String name, String req, NamedTextColor color, Predicate<Player> cond) {

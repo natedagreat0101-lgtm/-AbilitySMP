@@ -20,6 +20,7 @@ final class PowerMenus {
     }
 
     static String describe(AbilitySMP.Power p) {
+        if (p.isMixed()) return Fusions.describe(p);
         return switch (p) {
             case FLAME -> "Idle: fire resistance. Super: shoots a fireball.";
             case SPEED -> "Idle: Speed I. Super: Speed III burst.";
@@ -65,6 +66,7 @@ final class PowerMenus {
             case ANTIMATTER -> "Galactic. Super: charge up, then a huge explosion centred on you (it never hurts you).";
             case ROCKET -> "Galactic. Super: blast off into the sky!";
             case HACKER -> "Unlocked by a 7-day quest streak. Super: dupe the best sword of the nearest player - the copy is yours for 30 seconds. Cooldown: 1 minute.";
+            default -> "A mixed power.";
         };
     }
 
@@ -79,6 +81,7 @@ final class PowerMenus {
     }
 
     private String priceText(AbilitySMP.Power p) {
+        if (p.isMixed()) return "Made in the Mixing Pot - it is never sold";
         if (p == AbilitySMP.Power.WIND) return "One of a kind - only an admin command can give it";
         if (p == AbilitySMP.Power.HACKER) return "Finish a quest 7 days in a row to unlock it (quest streak)";
         if (p.isHalloween()) return "Retired: owners keep it, but it is not sold anymore";
@@ -106,6 +109,7 @@ final class PowerMenus {
                 out.add(new Menus.Entry(slotIcon(pl, 2, st), null));
                 for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
                     if (!plugin.isEnabled(pw)) continue;
+                    if (pw.isMixed() && !plugin.profile.owns(pl, pw)) continue; // v14: mixed powers are hidden until you mix one
                     boolean owned = plugin.profile.owns(pl, pw);
                     boolean equipped = pw == cur;
                     boolean inSlot2 = pw == st;
