@@ -87,6 +87,10 @@ final class Profile {
         return null;
     }
 
+    void removeOwned(UUID id, AbilitySMP.Power power) {
+        if (of(id).owned.remove(power.name())) dirty = true;
+    }
+
     void addOwned(UUID id, AbilitySMP.Power power) {
         if (of(id).owned.add(power.name())) dirty = true;
     }

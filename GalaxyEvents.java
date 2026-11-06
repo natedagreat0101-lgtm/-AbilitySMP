@@ -137,10 +137,6 @@ final class GalaxyEvents implements Listener {
                 "Jump Boost and slow falling for everyone. Boing."));
         inv.setItem(15, item(Material.PRISMARINE_CRYSTALS, "Star Rain", NamedTextColor.DARK_PURPLE, on(starRainOn),
                 "Galaxy Coins, shards and pearls fall from the sky!"));
-        inv.setItem(16, item(Material.END_STONE, "Galaxy Burst", NamedTextColor.LIGHT_PURPLE,
-                plugin.burst.isRunning() ? "RUNNING - click to end it early" : "A portal to a SPACE dimension opens!",
-                plugin.burst.isRunning() ? "" : "Players type /burst to fly up: star mobs, crystals,",
-                plugin.burst.isRunning() ? "" : "Galaxy Coins everywhere - and dying there loses nothing."));
         inv.setItem(31, item(Material.REDSTONE_BLOCK, "Stop all events", NamedTextColor.RED));
         inv.setItem(45, item(Material.ARROW, "Back", NamedTextColor.WHITE));
     }
@@ -159,7 +155,6 @@ final class GalaxyEvents implements Listener {
             case 13 -> toggleMeteor();
             case 14 -> toggleMoon();
             case 15 -> toggleStarRain();
-            case 16 -> plugin.burst.toggleFromPanel(p);
             case 31 -> stopAllEvents();
             case 45 -> {
                 admin.openMain(p);

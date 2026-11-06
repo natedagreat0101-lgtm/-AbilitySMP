@@ -254,9 +254,9 @@ final class MixingPot implements Listener {
         } else {
             inv.setItem(4, pane("Pick two powers to mix"));
         }
-        ItemStack info = new ItemStack(Material.PRISMARINE_CRYSTALS);
+        ItemStack info = new ItemStack(Material.EMERALD);
         ItemMeta im = info.getItemMeta();
-        im.displayName(Component.text("Your Galaxy Coins: " + plugin.shops.countGalaxyCoins(p), NamedTextColor.AQUA)
+        im.displayName(Component.text("Your Unbound Coins: " + plugin.unbound.points(p), NamedTextColor.AQUA)
                 .decoration(TextDecoration.ITALIC, false));
         im.lore(List.of(Component.text("Mixed powers discovered: " + Fusions.countOwned(plugin, p) + "/" + Fusions.total(),
                 NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
@@ -317,13 +317,13 @@ final class MixingPot implements Listener {
             render(h);
             return;
         }
-        int cost = plugin.getConfig().getInt("mixing.cost-galaxy-coins", 250);
-        if (plugin.shops.countGalaxyCoins(p) < cost) {
-            p.sendMessage(Component.text("Mixing costs " + cost + " Galaxy Coins - you have "
-                    + plugin.shops.countGalaxyCoins(p) + ". Galaxy bosses and the Galaxy Burst pay them!", NamedTextColor.RED));
+        int cost = plugin.getConfig().getInt("mixing.cost-unbound-coins",
+                plugin.getConfig().getInt("mixing.cost-galaxy-coins", 250) * 2);
+        if (!plugin.unbound.spend(p, cost)) {
+            p.sendMessage(Component.text("Mixing costs " + cost + " Unbound Coins - you have "
+                    + plugin.unbound.points(p) + ". Sell junk with /sell or beat a boss!", NamedTextColor.RED));
             return;
         }
-        plugin.shops.removeGalaxyCoins(p, cost);
         plugin.profile.addOwned(p.getUniqueId(), result);
         plugin.profile.save();
         plugin.ranks.evaluate(p);

@@ -1,4 +1,4 @@
-config-version: 14
+config-version: 17
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -757,128 +757,6 @@ shop:
 #         cratekey:AMOUNT, galaxy:AMOUNT, or unlock:category:id (a Locker unlock)
 # limit: how many times one player can buy it (0 = unlimited)
 # ------------------------------------------------------------------
-galaxy-shop:
-  timezone: "America/Toronto"
-  items:
-    golden-apples:
-      name: "4 Golden Apples"
-      icon: GOLDEN_APPLE
-      reward: "item:GOLDEN_APPLE:4"
-      price: 6
-    ender-pearls:
-      name: "4 Ender Pearls"
-      icon: ENDER_PEARL
-      reward: "item:ENDER_PEARL:4"
-      price: 8
-    xp-bottles:
-      name: "16 Bottles o' Enchanting"
-      icon: EXPERIENCE_BOTTLE
-      reward: "item:EXPERIENCE_BOTTLE:16"
-      price: 5
-    diamonds:
-      name: "3 Diamonds"
-      icon: DIAMOND
-      reward: "item:DIAMOND:3"
-      price: 12
-    netherite-scrap:
-      name: "2 Netherite Scrap"
-      icon: NETHERITE_SCRAP
-      reward: "item:NETHERITE_SCRAP:2"
-      price: 35
-    totem:
-      name: "Totem of Undying"
-      icon: TOTEM_OF_UNDYING
-      reward: "item:TOTEM_OF_UNDYING:1"
-      price: 30
-    reroll:
-      name: "Reroll Token"
-      icon: AMETHYST_SHARD
-      reward: "reroll:1"
-      price: 40
-    power-crate:
-      name: "Power Crate + Key"
-      icon: CHEST
-      reward: "crate:1"
-      price: 60
-    crate-key:
-      name: "Power Crate Key"
-      icon: TRIPWIRE_HOOK
-      reward: "cratekey:1"
-      price: 25
-    netherite-ingot:
-      name: "Netherite Ingot"
-      icon: NETHERITE_INGOT
-      reward: "item:NETHERITE_INGOT:1"
-      price: 80
-    enchanted-apple:
-      name: "Enchanted Golden Apple"
-      icon: ENCHANTED_GOLDEN_APPLE
-      reward: "item:ENCHANTED_GOLDEN_APPLE:1"
-      price: 50
-    elytra:
-      name: "Elytra"
-      icon: ELYTRA
-      reward: "item:ELYTRA:1"
-      price: 250
-      limit: 1
-  limited:                    # only sold until this date and time, then they disappear
-    until: "2026-11-16 00:00"
-    items:
-      supernova-power:
-        name: "Supernova Power"
-        icon: NETHER_STAR
-        reward: "power:SUPERNOVA"
-        price: 150
-        limit: 1
-      frost-power:
-        name: "Frost Power"
-        icon: NETHER_STAR
-        reward: "power:FROST"
-        price: 130
-        limit: 1
-      blackhole-power:
-        name: "Black Hole Power"
-        icon: NETHER_STAR
-        reward: "power:BLACK_HOLE"
-        price: 220
-        limit: 1
-      astro-helmet:
-        name: "Space Helmet (cosmetic)"
-        icon: LEATHER_HELMET
-        reward: "unlock:cosmetic:astro-helmet"
-        price: 40
-        limit: 1
-      star-cloak:
-        name: "Star Cloak (cosmetic)"
-        icon: LEATHER_CHESTPLATE
-        reward: "unlock:cosmetic:star-cloak"
-        price: 45
-        limit: 1
-      title-galaxy-guardian:
-        name: "Title: Galaxy Guardian"
-        icon: OAK_SIGN
-        reward: "unlock:title:galaxy-guardian"
-        price: 60
-        limit: 1
-      nebula-trail:
-        name: "Nebula Trail (cosmetic)"
-        icon: DRAGON_BREATH
-        reward: "unlock:trail:nebula"
-        price: 50
-        limit: 1
-      double-crate:
-        name: "2 Power Crates + 2 Keys"
-        icon: CHEST
-        reward: "crate:2"
-        price: 100
-        limit: 2
-
-# ------------------------------------------------------------------
-# Power Crates (v9): /crate. Right-click a crate with a key in your
-# inventory to spin for a random power you do not own yet.
-# weights: the rarity odds. boss-drops: your chance of a key (or a
-# whole crate) when you beat each boss.
-# ------------------------------------------------------------------
 crates:
   weights:
     common: 50
@@ -1270,11 +1148,87 @@ itemshop:
 # right-click it, and mix any 2 powers you own into a MIXED power.
 # ------------------------------------------------------------------
 mixing:
+  cost-unbound-coins: 500   # v16: mixing costs Unbound Coins now (Galaxy Coins retired)
   cost-galaxy-coins: 250    # charged only when you discover a NEW mixed power
 
 # ------------------------------------------------------------------
 # The Galaxy Burst (v14): a /panel event that opens a space dimension.
 # ------------------------------------------------------------------
-galaxy-burst:
-  minutes: 5                # how long the portal stays open
-  coin-multiplier: 1        # multiply every Galaxy Coin the Burst pays
+sidebar:
+  enabled: true
+
+# ==== PLAYER SHOP (v15) ====
+playershop:
+  # How many things one player can have for sale at once.
+  max-listings: 10
+
+# ==== /sell PRICES (v15) ====
+# What the sell box pays per item. Only plain vanilla stacks can be sold.
+# Add or change lines freely - the material name, then the price.
+sell:
+  # Anything NOT listed below still sells for this many Unbound Coins each.
+  default-price: 1
+  # Galaxy fallback for unlisted items (0 = unlisted items don't pay Galaxy).
+  galaxy-default-price: 0
+  unbound:
+    COBBLESTONE: 1
+    DIRT: 1
+    OAK_LOG: 1
+    WHEAT: 1
+    CARROT: 1
+    POTATO: 1
+    SUGAR_CANE: 1
+    COAL: 1
+    COPPER_INGOT: 1
+    STRING: 1
+    ROTTEN_FLESH: 1
+    BONE: 1
+    SPIDER_EYE: 1
+    FEATHER: 1
+    LEATHER: 2
+    GUNPOWDER: 2
+    LAPIS_LAZULI: 2
+    QUARTZ: 2
+    IRON_INGOT: 3
+    AMETHYST_SHARD: 3
+    MAGMA_CREAM: 3
+    SLIME_BALL: 2
+    HONEY_BOTTLE: 4
+    GOLD_INGOT: 5
+    BLAZE_ROD: 6
+    ENDER_PEARL: 8
+    GHAST_TEAR: 8
+    EMERALD: 25
+    DIAMOND: 30
+    NETHERITE_SCRAP: 60
+  galaxy:
+    EMERALD: 1
+    DIAMOND: 1
+    DRAGON_BREATH: 2
+    NETHERITE_SCRAP: 2
+    ECHO_SHARD: 3
+    TOTEM_OF_UNDYING: 3
+    ANCIENT_DEBRIS: 4
+    WITHER_SKELETON_SKULL: 5
+    HEART_OF_THE_SEA: 6
+    NETHERITE_INGOT: 12
+
+# ==== WIND RULES (v15) ====
+wind:
+  # The Wind owner must play at least this many minutes in every 7-day
+  # week, or Wind passes to the most-played other player that week.
+  weekly-minutes: 60
+
+# ==== AFK (v15.2) ====
+afk:
+  # Unbound Coins paid for every minute a player stays /afk.
+  coins-per-minute: 10
+
+# === 1 Month Celebration season (v16) ===
+# The season starts the first day v16 boots (the date is kept in data.yml).
+# Week 1 Iron Age, Week 2 Diamond Age, Week 3 Netherite Age,
+# Week 4 Advances Week (enchanting), Week 5 Fight Week + celebration.
+celebration:
+  border-size: 2000          # world border - the server plays smaller this season
+  chunk-bases: true          # every NEW chunk hides a little underground base with week loot
+  pvp-until-fight-week: true # PvP stays off until Week 5 (ranked duels still work)

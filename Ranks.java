@@ -195,7 +195,7 @@ final class Ranks implements Listener {
         // Rebirths
         ranks.add(ach("reborn", "The Reborn", "Rebirth at least once (use /rebirth)", NamedTextColor.DARK_PURPLE,
                 p -> plugin.profile.of(p).rebirths >= 1));
-        // Galaxy (v14): mixing + the Burst
+        // Mixing (v14)
         ranks.add(ach("first-mix", "The Mixer", "Mix your first power in the Mixing Pot", NamedTextColor.LIGHT_PURPLE,
                 p -> Fusions.countOwned(plugin, p) >= 1));
         ranks.add(ach("fusionist", "Fusionist", "Own 10 mixed powers", NamedTextColor.DARK_PURPLE,
@@ -204,13 +204,7 @@ final class Ranks implements Listener {
                 p -> Fusions.countOwned(plugin, p) >= 25));
         ranks.add(ach("grand-alchemist", "Grand Alchemist", "Own all 50 mixed powers", NamedTextColor.GOLD,
                 p -> Fusions.countOwned(plugin, p) >= Fusions.total()));
-        ranks.add(ach("star-sailor", "Star Sailor", "Visit space in the Galaxy Burst (/burst)", NamedTextColor.AQUA,
-                p -> plugin.burst.burstVisits(p) >= 1));
-        ranks.add(ach("burst-raider", "Burst Raider", "Earn 100 Galaxy Coins in the Galaxy Burst", NamedTextColor.LIGHT_PURPLE,
-                p -> plugin.burst.burstCoins(p) >= 100));
-        ranks.add(ach("burst-baron", "Burst Baron", "Earn 500 Galaxy Coins in the Galaxy Burst", NamedTextColor.GOLD,
-                p -> plugin.burst.burstCoins(p) >= 500));
-        ranks.add(ach("galaxy-rich", "Galaxy Rich", "Hold 250 Galaxy Coins at once", NamedTextColor.GOLD,
+        ranks.add(ach("galaxy-rich", "Galaxy Rich", "Hold 250 Galaxy Coins at once (souvenirs now!)", NamedTextColor.GOLD,
                 p -> plugin.shops.countGalaxyCoins(p) >= 250));
     }
 

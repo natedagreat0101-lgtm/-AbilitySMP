@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "14.0";
+    static final String VERSION = "16.0";
 
     private Notes() {
     }
@@ -28,6 +28,38 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
+        h(s, "===== Unbound SMP Patch Notes: v16.0 - THE 1 MONTH CELEBRATION =====");
+        h(s, "- Galaxy is retired: no more Galaxy Coins, no Galaxy Shop, no Galaxy Burst. Old galaxy payouts (bosses, quests, events) now pay Unbound Coins instead, and mixing a power costs 500 Unbound. Coins already in your inventory are souvenirs - you can still trade them.");
+        h(s, "- THE SEASON: five weeks, and the whole server levels up together. Week 1 IRON AGE (nothing better than iron can be crafted, swung, mined with or worn), Week 2 DIAMOND AGE, Week 3 NETHERITE AGE, Week 4 ADVANCES WEEK (enchanting unlocks), Week 5 FIGHT WEEK (PvP turns on!) and the celebration.");
+        how(s, "type /season any time to see the current week, what is unlocked and what comes next. The sidebar shows the week too.");
+        h(s, "- BALANCED BY DESIGN: until Fight Week, PvP is off (ranked duels still work) and everyone's gear is capped at the same tier - no week-one netherite bullies.");
+        h(s, "- A SMALLER WORLD: the world border is 2000 blocks so everyone runs into each other more.");
+        h(s, "- SECRET BASES: every NEW chunk hides a tiny underground base with one chest - and the loot matches the week you find it in (iron-age scraps early, debris and templates in the Netherite Age, books in Advances Week, totems and TNT in Fight Week). Dig around!");
+        s.sendMessage(Component.text(""));
+        h(s, "===== Unbound SMP Patch Notes: v15.3 - Better Items, Better Prices =====");
+        h(s, "- /sell now prices by QUALITY: netherite gear pays the most, then diamond, gold, iron and down. Enchantments add +10 per level, and damaged gear pays less than mint gear. Rare stuff (elytra, beacon, mace, dragon egg) has its own big price.");
+        h(s, "- The really good stuff pays on the Galaxy button too: anything worth 100+ Unbound also sells for Galaxy Coins.");
+        h(s, "- NEW in the Galaxy Shop: the Netherite Upgrade Template (60 Galaxy Coins) and the Villager Spawn Egg (25 Galaxy Coins).");
+        s.sendMessage(Component.text(""));
+        h(s, "===== Unbound SMP Patch Notes: v15.2 - AFK Coins & Sell Everything =====");
+        h(s, "- NEW /afk: go AFK and earn 10 Unbound Coins for every minute you're away. Moving or typing /afk again brings you back.");
+        h(s, "- /sell now sells LITERALLY anything - even power stars and legendary weapons, if you're sure. (Listed prices still pay best.)");
+        h(s, "- Trading tip: /trade is ours, and /tradeplayer does the exact same thing - handy if another plugin grabbed /trade first.");
+        s.sendMessage(Component.text(""));
+        h(s, "===== Unbound SMP Patch Notes: v15.1 - Sell Anything Fix =====");
+        h(s, "- /sell FIXED: on servers that updated from v14 the sell prices never arrived, so nothing could be sold. They are added automatically now.");
+        h(s, "- /sell now sells ANYTHING: items without a listed price sell for 1 Unbound Coin each, enchanted and renamed gear included. Only the plugin's own items (power stars, Galaxy Coins, weapons, keys) still can't be sold.");
+        s.sendMessage(Component.text(""));
+        h(s, "===== Unbound SMP Patch Notes: v15.0 - Sidebar, Player Shops & the Wind Rules =====");
+        h(s, "- NEW SIDEBAR (DonutSMP style): your Unbound Coins, Galaxy Coins, deaths, kills and PLAYTIME, always on screen. /sidebar hides it.");
+        h(s, "- ONE POWER AGAIN: the 2 power slots are gone, by request. /powers is click-to-equip, and the F key is just the F key again.");
+        h(s, "- /pay <player> <amount> <unbound|galaxy>: send your coins to anyone.");
+        h(s, "- /sell: a sell box. Plain items sell for Unbound Coins, and the rare stuff (diamonds, ancient debris, echo shards) can sell for Galaxy Coins too.");
+        h(s, "- /playershop: sell your own stuff to other players. /playershop sell <price> [galaxy], /playershop mine to manage. Sales pay out even while you're offline.");
+        h(s, "- THE WEAPONS ARE BACK in /itemshop - but rationed: ONE random legendary weapon a day, stock of 1 for the whole server. First come, first served. (Old weapons work again too!)");
+        h(s, "- WIND RULES: the Wind star can NEVER go in a chest, ender chest, shulker or any container. And the Wind owner must play 60 minutes a week or Wind passes to the most-played player that week.");
+        h(s, "- SPAWN LEVELLED UP: run /spawnbuild - a bigger galaxy disc, a crystal monument, 8 lamp posts, two floating rings, 5 crate chests and a giant UNBOUND SMP sign.");
+        s.sendMessage(Component.text(""));
         h(s, "===== Unbound SMP Patch Notes: v14.0 - Mixed Powers, the Mixing Pot & the Galaxy Burst =====");
         l(s, "\u2697\uFE0F THE MIXING POT - 50 SECRET MIXED POWERS");
         how(s, "craft a MIXING POT (4 chains around a cauldron), place it and right-click it. Put in "

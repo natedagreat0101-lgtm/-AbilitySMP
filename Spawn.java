@@ -216,7 +216,7 @@ final class Spawn implements Listener {
         switch (type) {
             case "rtp" -> rtp(p);
             case "shop" -> plugin.powerMenus.openShop(p);
-            case "event" -> plugin.shops.openGalaxyShop(p); // the current event shop
+            case "event" -> plugin.ages.command(p, new String[0]); // the celebration season board
             case "ranked" -> plugin.ranked.command(p, new String[0]);
             case "duels" -> openDuelPicker(p);
             default -> {
@@ -472,8 +472,8 @@ final class Spawn implements Listener {
         NamespacedKey labelKey = new NamespacedKey(plugin, "spawn_label");
 
         // unregister any crate chests from an older, smaller spawn so they don't linger
-        for (int dx = -14; dx <= 14; dx++) {
-            for (int dz = -14; dz <= 14; dz++) {
+        for (int dx = -20; dx <= 20; dx++) {
+            for (int dz = -20; dz <= 20; dz++) {
                 for (int dy = 0; dy <= 2; dy++) {
                     Block b = w.getBlockAt(cx + dx, cy + dy, cz + dz);
                     if (b.getType() == Material.CHEST) plugin.crates.removeCrateChest(b);
@@ -481,28 +481,31 @@ final class Spawn implements Listener {
             }
         }
 
-        // the floor: a bigger round platform (radius 13) with a stepped rim one block
-        // lower, glowing accents, and clear air above it all
-        for (int dx = -16; dx <= 16; dx++) {
-            for (int dz = -16; dz <= 16; dz++) {
+        // v15: the floor got BIGGER - a radius-17 galaxy disc with two stepped
+        // rims below it, and clear air above it all
+        for (int dx = -22; dx <= 22; dx++) {
+            for (int dz = -22; dz <= 22; dz++) {
                 double dist = Math.sqrt((double) dx * dx + (double) dz * dz);
-                if (dist <= 13.5) {
+                if (dist <= 17.5) {
                     Block floor = w.getBlockAt(cx + dx, cy - 1, cz + dz);
                     if (floor.getType() != Material.BEDROCK) {
                         Material m;
                         if (dist < 2.5) m = Material.GOLD_BLOCK;                       // the golden middle
-                        else if (dist <= 5.5) m = Material.SMOOTH_QUARTZ;
-                        else if (dist <= 9.5) m = (dx * 7 + dz * 13) % 6 == 0 ? Material.SEA_LANTERN : Material.POLISHED_ANDESITE;
-                        else if (dist <= 12.5) m = Material.STONE_BRICKS;
-                        else m = (dx + dz) % 4 == 0 ? Material.SEA_LANTERN : Material.POLISHED_ANDESITE; // glowing rim
+                        else if (dist <= 6.5) m = (dx * 7 + dz * 13) % 9 == 0 ? Material.AMETHYST_BLOCK : Material.SMOOTH_QUARTZ;
+                        else if (dist <= 11.5) m = (dx * 7 + dz * 13) % 6 == 0 ? Material.SEA_LANTERN : Material.POLISHED_ANDESITE;
+                        else if (dist <= 15.5) m = Material.STONE_BRICKS;
+                        else m = (dx + dz) % 4 == 0 ? Material.SEA_LANTERN : Material.PURPUR_BLOCK; // glowing galaxy rim
                         floor.setType(m, false);
                     }
-                } else if (dist <= 15.5) {
+                } else if (dist <= 19.5) {
                     Block rim = w.getBlockAt(cx + dx, cy - 2, cz + dz);
                     if (rim.getType() != Material.BEDROCK) rim.setType(Material.SMOOTH_STONE, false);
+                } else if (dist <= 21.5) {
+                    Block rim = w.getBlockAt(cx + dx, cy - 3, cz + dz);
+                    if (rim.getType() != Material.BEDROCK) rim.setType(Material.STONE_BRICKS, false);
                 }
-                if (dist <= 15.5) {
-                    for (int dy = 0; dy <= 10; dy++) {
+                if (dist <= 21.5) {
+                    for (int dy = 0; dy <= 14; dy++) {
                         Block air = w.getBlockAt(cx + dx, cy + dy, cz + dz);
                         if (air.getType() != Material.BEDROCK) air.setType(Material.AIR, false);
                     }
@@ -510,42 +513,64 @@ final class Spawn implements Listener {
             }
         }
         // carpet paths from the golden middle out to the good stuff
-        path(w, cx, cy, cz, 0, -1, 12, Material.PURPLE_CARPET);   // north: the countdown board
-        path(w, cx, cy, cz, 0, 1, 11, Material.CYAN_CARPET);      // south: the RTP wizard
-        path(w, cx, cy, cz, -1, 0, 10, Material.ORANGE_CARPET);   // west: the crates
-        path(w, cx, cy, cz, 1, 0, 10, Material.MAGENTA_CARPET);   // east: towards the event shop side
-        // lamp posts on the diagonals: quartz pillars with a glowing top
-        int[][] lamps = {{9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
+        path(w, cx, cy, cz, 0, -1, 15, Material.PURPLE_CARPET);   // north: the countdown board
+        path(w, cx, cy, cz, 0, 1, 14, Material.CYAN_CARPET);      // south: the RTP wizard
+        path(w, cx, cy, cz, -1, 0, 13, Material.ORANGE_CARPET);   // west: the crates
+        path(w, cx, cy, cz, 1, 0, 13, Material.MAGENTA_CARPET);   // east: towards the event shop side
+        // THE MONUMENT: a galaxy crystal tower standing in the golden middle
+        w.getBlockAt(cx - 1, cy, cz - 1).setType(Material.CRYING_OBSIDIAN, false);
+        w.getBlockAt(cx + 1, cy, cz - 1).setType(Material.CRYING_OBSIDIAN, false);
+        w.getBlockAt(cx - 1, cy, cz + 1).setType(Material.CRYING_OBSIDIAN, false);
+        w.getBlockAt(cx + 1, cy, cz + 1).setType(Material.CRYING_OBSIDIAN, false);
+        w.getBlockAt(cx, cy, cz).setType(Material.OBSIDIAN, false);
+        w.getBlockAt(cx, cy + 1, cz).setType(Material.OBSIDIAN, false);
+        w.getBlockAt(cx, cy + 2, cz).setType(Material.PURPUR_PILLAR, false);
+        w.getBlockAt(cx, cy + 3, cz).setType(Material.PURPUR_PILLAR, false);
+        w.getBlockAt(cx, cy + 4, cz).setType(Material.AMETHYST_BLOCK, false);
+        w.getBlockAt(cx, cy + 5, cz).setType(Material.SEA_LANTERN, false);
+        int[][] rods = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}};
+        for (int[] r : rods) w.getBlockAt(cx + r[0], cy, cz + r[1]).setType(Material.END_ROD, false);
+        // eight lamp posts (cardinals + diagonals): quartz pillars, glowing top, end rod spike
+        int[][] lamps = {{12, 0}, {-12, 0}, {0, 12}, {0, -12}, {9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
         for (int[] l : lamps) {
             for (int h = 0; h <= 2; h++) w.getBlockAt(cx + l[0], cy + h, cz + l[1]).setType(Material.QUARTZ_PILLAR, false);
             w.getBlockAt(cx + l[0], cy + 3, cz + l[1]).setType(Material.SEA_LANTERN, false);
+            w.getBlockAt(cx + l[0], cy + 4, cz + l[1]).setType(Material.END_ROD, false);
         }
         // potted flowers between the paths, for a bit of life
-        Material[] pots = {Material.POTTED_POPPY, Material.POTTED_ALLIUM, Material.POTTED_BLUE_ORCHID, Material.POTTED_DANDELION};
-        int[][] spots = {{5, 5}, {5, -5}, {-5, 5}, {-5, -5}};
+        Material[] pots = {Material.POTTED_POPPY, Material.POTTED_ALLIUM, Material.POTTED_BLUE_ORCHID, Material.POTTED_DANDELION,
+                Material.POTTED_AZURE_BLUET, Material.POTTED_RED_TULIP, Material.POTTED_OXEYE_DAISY, Material.POTTED_CORNFLOWER};
+        int[][] spots = {{5, 5}, {5, -5}, {-5, 5}, {-5, -5}, {11, 5}, {11, -5}, {-11, 5}, {-11, -5}};
         for (int i = 0; i < spots.length; i++) {
             w.getBlockAt(cx + spots[i][0], cy, cz + spots[i][1]).setType(pots[i], false);
         }
-        // the floating donut ring above the middle - the DonutSMP nod - with a lantern
-        // chandelier hanging in its centre
-        for (int dx = -6; dx <= 6; dx++) {
-            for (int dz = -6; dz <= 6; dz++) {
+        // amethyst clusters growing on the rim
+        int[][] crystals = {{16, 4}, {16, -4}, {-16, 4}, {-16, -4}, {4, 16}, {-4, 16}, {4, -16}, {-4, -16}};
+        for (int[] c : crystals) w.getBlockAt(cx + c[0], cy, cz + c[1]).setType(Material.AMETHYST_CLUSTER, false);
+        // TWO floating rings now: the classic donut plus a bigger purpur galaxy
+        // ring above it, with a lantern chandelier hanging in the centre
+        for (int dx = -10; dx <= 10; dx++) {
+            for (int dz = -10; dz <= 10; dz++) {
                 double dist = Math.sqrt((double) dx * dx + (double) dz * dz);
                 if (Math.abs(dist - 4.6) <= 0.8) {
                     Material m = (dx * 3 + dz * 5) % 4 == 0 ? Material.SEA_LANTERN : Material.STONE_BRICKS;
-                    w.getBlockAt(cx + dx, cy + 8, cz + dz).setType(m, false);
+                    w.getBlockAt(cx + dx, cy + 9, cz + dz).setType(m, false);
+                }
+                if (Math.abs(dist - 8.6) <= 0.8) {
+                    Material m = (dx * 3 + dz * 5) % 5 == 0 ? Material.AMETHYST_BLOCK : Material.PURPUR_BLOCK;
+                    w.getBlockAt(cx + dx, cy + 13, cz + dz).setType(m, false);
                 }
             }
         }
-        w.getBlockAt(cx, cy + 7, cz).setType(Material.IRON_CHAIN, false);
-        w.getBlockAt(cx, cy + 6, cz).setType(Material.SEA_LANTERN, false);
-        // 3 crate chests on the west side in a little quartz alcove, facing the middle
-        for (int dz = -3; dz <= 3; dz++) {
-            w.getBlockAt(cx - 12, cy, cz + dz).setType(Material.QUARTZ_PILLAR, false);
-            w.getBlockAt(cx - 12, cy + 1, cz + dz).setType(Material.QUARTZ_PILLAR, false);
+        w.getBlockAt(cx, cy + 8, cz).setType(Material.IRON_CHAIN, false);
+        w.getBlockAt(cx, cy + 7, cz).setType(Material.SEA_LANTERN, false);
+        // 5 crate chests on the west side in a quartz alcove, facing the middle
+        for (int dz = -5; dz <= 5; dz++) {
+            w.getBlockAt(cx - 15, cy, cz + dz).setType(Material.QUARTZ_PILLAR, false);
+            w.getBlockAt(cx - 15, cy + 1, cz + dz).setType(Material.QUARTZ_PILLAR, false);
         }
-        for (int dz : new int[]{-2, 0, 2}) {
-            Block chest = w.getBlockAt(cx - 10, cy, cz + dz);
+        for (int dz : new int[]{-4, -2, 0, 2, 4}) {
+            Block chest = w.getBlockAt(cx - 13, cy, cz + dz);
             chest.setType(Material.CHEST, false);
             if (chest.getBlockData() instanceof Directional dir) {
                 dir.setFacing(BlockFace.EAST);
@@ -554,7 +579,7 @@ final class Spawn implements Listener {
             plugin.crates.addCrateChest(chest);
         }
         // wipe any old spawn NPCs, board and labels standing nearby, then place fresh ones
-        for (Entity en : w.getNearbyEntities(center, 18, 12, 18)) {
+        for (Entity en : w.getNearbyEntities(center, 24, 16, 24)) {
             if ((en instanceof Villager && en.getPersistentDataContainer().has(npcKey, PersistentDataType.STRING))
                     || (en instanceof ArmorStand && (en.getPersistentDataContainer().has(boardKey, PersistentDataType.STRING)
                     || en.getPersistentDataContainer().has(labelKey, PersistentDataType.STRING)))) {
@@ -562,8 +587,20 @@ final class Spawn implements Listener {
             }
         }
         board.clear();
+        // a big floating name over the monument
+        w.spawn(new Location(w, cx + 0.5, cy + 7.0, cz + 0.5), ArmorStand.class, a -> {
+            a.setInvisible(true);
+            a.setGravity(false);
+            a.setMarker(true);
+            a.setInvulnerable(true);
+            a.setPersistent(true);
+            a.setCustomNameVisible(true);
+            a.customName(Component.text("✦ UNBOUND SMP ✦", NamedTextColor.GOLD)
+                    .decoration(TextDecoration.BOLD, true));
+            a.getPersistentDataContainer().set(labelKey, PersistentDataType.STRING, "title");
+        });
         // a floating label over the crates
-        w.spawn(new Location(w, cx - 10 + 0.5, cy + 2.4, cz + 0.5), ArmorStand.class, a -> {
+        w.spawn(new Location(w, cx - 13 + 0.5, cy + 2.4, cz + 0.5), ArmorStand.class, a -> {
             a.setInvisible(true);
             a.setGravity(false);
             a.setMarker(true);
@@ -575,22 +612,21 @@ final class Spawn implements Listener {
             a.getPersistentDataContainer().set(labelKey, PersistentDataType.STRING, "crates");
         });
         // the countdown board on the north side, NPCs spread around the bigger platform
-        placeBoard(new Location(w, cx + 0.5, cy, cz - 10.5));
-        placeNpc(new Location(w, cx - 9.5, cy, cz - 2.5), "ranked", center);
-        placeNpc(new Location(w, cx + 9.5, cy, cz - 2.5), "event", center);
-        placeNpc(new Location(w, cx - 7.5, cy, cz + 6.5), "duels", center);
-        placeNpc(new Location(w, cx + 7.5, cy, cz + 6.5), "shop", center);
-        placeNpc(new Location(w, cx + 0.5, cy, cz + 10.0), "rtp", center);
-        // the spawn point itself: middle of the platform, facing the board
-        Location spawnAt = new Location(w, cx + 0.5, cy, cz + 0.5, 180f, 0f);
+        placeBoard(new Location(w, cx + 0.5, cy, cz - 13.5));
+        placeNpc(new Location(w, cx - 12.5, cy, cz - 3.5), "ranked", center);
+        placeNpc(new Location(w, cx + 12.5, cy, cz - 3.5), "event", center);
+        placeNpc(new Location(w, cx - 10.5, cy, cz + 8.5), "duels", center);
+        placeNpc(new Location(w, cx + 10.5, cy, cz + 8.5), "shop", center);
+        placeNpc(new Location(w, cx + 0.5, cy, cz + 13.0), "rtp", center);
+        // the spawn point itself: south of the monument, facing it and the board
+        Location spawnAt = new Location(w, cx + 0.5, cy, cz + 4.5, 180f, 0f);
         setSpawn(spawnAt);
         w.setSpawnLocation(spawnAt);
         p.teleport(spawnAt);
-        s.sendMessage(Component.text("Your prettier DonutSMP-style spawn is built! Bigger platform with carpet "
-                + "paths, lamp posts, flowers, a floating donut ring, countdown board, 5 NPCs and 3 crate "
-                + "chests - and /spawn now brings players here.", NamedTextColor.GREEN));
-        s.sendMessage(Component.text("Right-click the NPCs to use them. The crate chests open with a "
-                + "Power Crate Key.", NamedTextColor.YELLOW));
+        s.sendMessage(Component.text("Your spawn just levelled up: a radius-17 galaxy disc, a crystal "
+                + "monument in the middle, eight lamp posts, amethyst clusters, TWO floating rings, "
+                + "5 crate chests, the countdown board, 5 NPCs and a giant UNBOUND SMP sign.", NamedTextColor.GREEN));
+        s.sendMessage(Component.text("Run /spawnbuild again any time to rebuild it. Right-click the NPCs to use them.", NamedTextColor.YELLOW));
     }
 
     /** A one-block-wide carpet path from just outside the golden middle to a target. */

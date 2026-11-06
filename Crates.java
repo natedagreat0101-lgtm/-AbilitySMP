@@ -541,7 +541,7 @@ final class Crates implements Listener {
                 + weight(AbilitySMP.Rarity.RARE) + " / Epic " + weight(AbilitySMP.Rarity.EPIC) + " / Legendary "
                 + weight(AbilitySMP.Rarity.LEGENDARY) + " / Mythic " + weight(AbilitySMP.Rarity.MYTHIC),
                 NamedTextColor.GRAY));
-        p.sendMessage(Component.text("Get them from: boss fights, the Galaxy Shop (/gshop), rebirths (/rebirth).",
+        p.sendMessage(Component.text("Get them from: boss fights, quests and rebirths (/rebirth).",
                 NamedTextColor.GRAY));
     }
 }

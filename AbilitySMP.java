@@ -62,6 +62,9 @@ import org.bukkit.util.Vector;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -168,7 +171,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     private final Map<UUID, Power> powers = new HashMap<>();
     /** The quick switch (v10): each player's second loadout power ("slot 2"). Slot 1 is the equipped power. */
-    private final Map<UUID, Power> standby = new HashMap<>();
     private final Map<UUID, Long> cooldowns = new HashMap<>();
     /** haunter UUID -> players whose hearts that haunter is holding */
     private final Map<UUID, Set<UUID>> drained = new HashMap<>();
@@ -199,13 +201,18 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     ItemShop itemShop;
     Lasso lasso;
     Music music;
+    Weapons weapons;
+    Sidebar sidebar;
+    PlayerShop playerShop;
+    SellShop sellShop;
+    WindGuard windGuard;
+    Afk afk;
     Fusions fusions;
     MixingPot mixingPot;
-    SpaceBurst burst;
+    Ages ages;
     private NamespacedKey activatorKey;
     private NamespacedKey dupedKey;
     /** The two power slots shown at the TOP of the screen (v12), one boss bar per player. */
-    final Map<UUID, BossBar> slotBars = new HashMap<>();
     private final Set<UUID> needsActivator = new HashSet<>();
 
     // =====================================================================
@@ -246,9 +253,15 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         itemShop = new ItemShop(this);
         lasso = new Lasso(this);
         music = new Music(this);
+        weapons = new Weapons(this);
+        sidebar = new Sidebar(this);
+        playerShop = new PlayerShop(this);
+        sellShop = new SellShop(this);
+        windGuard = new WindGuard(this);
+        afk = new Afk(this);
         fusions = new Fusions(this);
         mixingPot = new MixingPot(this);
-        burst = new SpaceBurst(this);
+        ages = new Ages(this);
         lasso.registerRecipe();
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(tutorial, this);
@@ -269,17 +282,19 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(lasso, this);
         Bukkit.getPluginManager().registerEvents(fusions, this);
         Bukkit.getPluginManager().registerEvents(mixingPot, this);
-        Bukkit.getPluginManager().registerEvents(burst, this);
+        Bukkit.getPluginManager().registerEvents(ages, this);
+        Bukkit.getPluginManager().registerEvents(weapons, this);
+        Bukkit.getPluginManager().registerEvents(sidebar, this);
+        Bukkit.getPluginManager().registerEvents(playerShop, this);
+        Bukkit.getPluginManager().registerEvents(sellShop, this);
+        Bukkit.getPluginManager().registerEvents(windGuard, this);
+        Bukkit.getPluginManager().registerEvents(afk, this);
         mixingPot.registerRecipe();
+        ages.startTasks();
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
-        // the quick-switch bar above the hotbar refreshes every 2 seconds, and so does
-        // the power-slots bar at the TOP of the screen (v12) and the Activator's look
+        // the Activator's held look (resource pack) refreshes every 2 seconds
         Bukkit.getScheduler().runTaskTimer(this, () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                showSwitcher(p);
-                refreshSlotBar(p);
-                refreshActivator(p);
-            }
+            for (Player p : Bukkit.getOnlinePlayers()) refreshActivator(p);
         }, 23L, 40L);
         // duped swords (Hacker, v12) vanish 30 seconds after they were copied
         Bukkit.getScheduler().runTaskTimer(this, this::cleanDupedSwords, 27L, 20L);
@@ -388,6 +403,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             // point itself is set in game with /setspawn or /spawnbuild.
             cfg.set("config-version", 11);
         }
+        if (v < 15) {
+            // v15: the quick switch is retired (one power per player again);
+            // nothing to move - old standby entries in players.yml are ignored.
+            cfg.set("config-version", 15);
+        }
         if (v < 14) {
             // v14: the AltarSMP weapons are gone (the Item Shop is all daily
             // items now), and mixed powers join the enabled list so they can
@@ -420,13 +440,47 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             cfg.set("boss.cooldown-seconds.ghost", null);
             cfg.set("config-version", 12);
         }
+        if (v < 16) {
+            cfg.set("config-version", 16);
+        }
+        if (v < 17) {
+            cfg.set("config-version", 18);
+        }
+        // Backfill any sections this server's config predates (v15.1 lesson:
+        // an old config.yml never gains new sections on its own). Runs every
+        // boot; sections that already exist are left exactly as they are.
+        // v15.1: servers that updated from v14 kept their OLD config.yml,
+        // which has no sell prices in it at all - so /sell sold nothing.
+        // Copy any missing v15 sections from the config bundled in the jar.
+        try (InputStream in = getResource("config.yml")) {
+            if (in != null) {
+                YamlConfiguration bundled = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(in, StandardCharsets.UTF_8));
+                for (String section : new String[]{"sidebar", "playershop", "sell", "wind", "afk", "celebration"}) {
+                if (cfg.getConfigurationSection(section) == null
+                        && bundled.getConfigurationSection(section) != null) {
+                    cfg.set(section, bundled.getConfigurationSection(section).getValues(true));
+                    getLogger().info("Added the missing '" + section + "' section to your config.yml (v15.1 fix).");
+                }
+                }
+                // v15.3: single shop entries added later get backfilled the same way
+                for (String key : new String[]{"galaxy-shop.items.netherite-upgrade", "galaxy-shop.items.villager-egg"}) {
+                    if (cfg.getConfigurationSection(key) == null
+                            && bundled.getConfigurationSection(key) != null) {
+                        cfg.set(key, bundled.getConfigurationSection(key).getValues(true));
+                        getLogger().info("Added the missing '" + key + "' to your config.yml.");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            getLogger().warning("Could not backfill config sections: " + e.getMessage());
+        }
         cfg.options().copyDefaults(true);
         saveConfig();
     }
 
     private void loadData() {
         powers.clear();
-        standby.clear();
         data = YamlConfiguration.loadConfiguration(dataFile);
         ConfigurationSection sec = data.getConfigurationSection("players");
         if (sec == null) return;
@@ -435,96 +489,13 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 UUID uuid = UUID.fromString(id);
                 Power p = Power.parse(sec.getString(id + ".power"));
                 if (p != null) powers.put(uuid, p);
-                Power s = Power.parse(sec.getString(id + ".standby"));
-                if (s != null) standby.put(uuid, s);
             } catch (IllegalArgumentException ignored) {
             }
         }
     }
 
-    // =====================================================================
-    // The quick switch (v10): TWO powers equipped at once. Slot 1 is your
-    // active power; slot 2 waits. Press F (swap hands) or crouch +
-    // right-click your Power Activator to switch. The two slots are shown
-    // above your hotbar in the action bar, like a little [1] [2] bar.
-    // =====================================================================
-
-    Power standbyOf(Player p) {
-        return standby.get(p.getUniqueId());
-    }
-
-    /** Put a power you own into slot 2 (used by the /powers menu). */
-    boolean setStandby(Player p, Power pw) {
-        if (!profile.owns(p, pw)) {
-            bar(p, "You don't own that power yet. Check /shop.", NamedTextColor.RED);
-            return false;
-        }
-        if (!isEnabled(pw)) {
-            bar(p, "That power is disabled.", NamedTextColor.RED);
-            return false;
-        }
-        if (powerOf(p) == pw) {
-            bar(p, "That power is already in slot 1.", NamedTextColor.GRAY);
-            return false;
-        }
-        if (standbyOf(p) == pw) {
-            bar(p, "That power is already in slot 2.", NamedTextColor.GRAY);
-            return false;
-        }
-        standby.put(p.getUniqueId(), pw);
-        data.set("players." + p.getUniqueId() + ".standby", pw.name());
-        saveData();
-        p.sendMessage(Component.text(pretty(pw.key()) + " is now in slot 2. Switch with F or crouch + right-click!",
-                colorFor(pw)));
-        p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_DIAMOND, 1f, 1.4f);
-        showSwitcher(p);
-        return true;
-    }
-
-    /** Swap slot 1 and slot 2. */
-    void switchPower(Player p) {
-        Power cur = powerOf(p);
-        Power st = standbyOf(p);
-        if (st == null) {
-            bar(p, "No power in slot 2. Open /powers and right-click a power to fill slot 2.", NamedTextColor.GRAY);
-            return;
-        }
-        UUID id = p.getUniqueId();
-        if (cur == null) {
-            standby.remove(id);
-            data.set("players." + id + ".standby", "NONE");
-        } else {
-            standby.put(id, cur);
-            data.set("players." + id + ".standby", cur.name());
-        }
-        setPower(p, st); // saves players.yml, tank hearts, rank checks
-        p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.7f, 1.5f);
-        puff(p.getLocation().add(0, 1, 0), particleFor(st), 18);
-        showSwitcher(p);
-    }
-
-    /** The little [1] [2] bar above the hotbar (the action bar), like the picture of the quick switch. */
-    void showSwitcher(Player p) {
-        if (!hudMode(p).equals("text")) return;
-        Power cur = powerOf(p);
-        Power st = standbyOf(p);
-        if (cur == null || st == null) return;
-        p.sendActionBar(Component.text("[1] ", NamedTextColor.RED, TextDecoration.BOLD)
-                .append(Component.text(pretty(cur.key()), colorFor(cur), TextDecoration.BOLD))
-                .append(Component.text("   [2] ", NamedTextColor.DARK_GRAY, TextDecoration.BOLD))
-                .append(Component.text(pretty(st.key()), NamedTextColor.GRAY))
-                .append(Component.text("   switch: F / crouch+click", NamedTextColor.DARK_GRAY)));
-    }
-
-    @EventHandler
-    public void onSwapHands(PlayerSwapHandItemsEvent e) {
-        Player p = e.getPlayer();
-        if (standbyOf(p) == null) return; // no loadout: the swap key works normally
-        if (fightTotem.isProtected(p)) return; // FightTotem owns the swap during fights
-        if (fightTotem.isFightTotem(e.getMainHandItem()) || fightTotem.isFightTotem(e.getOffHandItem())) return;
-        e.setCancelled(true); // the swap key switches powers instead of swapping items
-        switchPower(p);
-    }
+    // v15: the quick switch is GONE - one player, one power again, like Nathan
+    // asked. (The sidebar shows your stats now instead of the slot bar.)
 
     void saveData() {
         try {
@@ -686,7 +657,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         return pool.get(pool.size() - 1);
     }
 
-    private void setPower(Player p, Power power) {
+    void setPower(Player p, Power power) {
         removePowerEffects(p);
         UUID id = p.getUniqueId();
         if (power == null) {
@@ -701,7 +672,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         saveData();
         if (ranks != null) ranks.evaluate(p);
         refreshActivator(p); // the Activator sword shows the new power (resource pack)
-        refreshSlotBar(p);
     }
 
     private void removePowerEffects(Player p) {
@@ -1100,11 +1070,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (!canActivate(hand)) return;
         if (duel.blocksPowers(p)) {
             bar(p, "Powers are disabled in duels.", NamedTextColor.GRAY);
-            return;
-        }
-
-        if (p.isSneaking()) { // crouch + right-click the Activator = the quick switch (Bedrock-friendly)
-            switchPower(p);
             return;
         }
 
@@ -2432,62 +2397,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
     }
 
-    /** The player's power-bar style: their own /hud choice, else the config default. */
-    String hudMode(Player p) {
-        String own = data.getString("players." + p.getUniqueId() + ".hud");
-        if (own != null && (own.equals("font") || own.equals("text") || own.equals("off"))) return own;
-        String d = getConfig().getString("quick-switch.hud-default", "font");
-        return d.equals("text") || d.equals("off") ? d : "font";
-    }
-
-    void setHudMode(Player p, String mode) {
-        data.set("players." + p.getUniqueId() + ".hud", mode);
-        saveData();
-        refreshSlotBar(p);
-    }
-
-    /** One hotbar-slot picture from the Power Pack font (empty slot when the power is null). */
-    private String slotGlyph(Power pw, boolean selected) {
-        if (pw == null) return String.valueOf((char) (selected ? 0xE201 : 0xE200));
-        return String.valueOf((char) ((selected ? 0xE12C : 0xE100) + pw.ordinal()));
-    }
-
-    /** The two power slots at the TOP of the screen: hotbar pictures (font mode,
-     *  needs the Power Pack) or plain text, as a boss bar. */
-    void refreshSlotBar(Player p) {
-        Power cur = powerOf(p);
-        Power st = standbyOf(p);
-        BossBar bar = slotBars.get(p.getUniqueId());
-        String mode = hudMode(p);
-        boolean show = getConfig().getBoolean("quick-switch.top-bar", true) && !mode.equals("off")
-                && (mode.equals("font") ? cur != null : cur != null && st != null);
-        if (!show) {
-            if (bar != null) {
-                p.hideBossBar(bar);
-                slotBars.remove(p.getUniqueId());
-            }
-            return;
-        }
-        Component name;
-        if (mode.equals("font")) {
-            name = Component.text(slotGlyph(cur, true) + "\uE202" + slotGlyph(st, false))
-                    .font(Key.key("abilitysmp", "hud"));
-        } else {
-            name = Component.text("[1] ", NamedTextColor.RED, TextDecoration.BOLD)
-                    .append(Component.text(pretty(cur.key()), colorFor(cur), TextDecoration.BOLD))
-                    .append(Component.text("    [2] ", NamedTextColor.WHITE, TextDecoration.BOLD))
-                    .append(Component.text(pretty(st.key()), colorFor(st), TextDecoration.BOLD))
-                    .append(Component.text("    switch: F / crouch+click", NamedTextColor.GRAY));
-        }
-        if (bar == null) {
-            bar = BossBar.bossBar(name, 1f, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
-            slotBars.put(p.getUniqueId(), bar);
-            p.showBossBar(bar);
-        } else {
-            bar.name(name);
-        }
-    }
-
     boolean isDupedSword(ItemStack it) {
         return it != null && it.hasItemMeta()
                 && it.getItemMeta().getPersistentDataContainer().has(dupedKey, PersistentDataType.LONG);
@@ -2647,8 +2556,6 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Player p = e.getPlayer();
         UUID id = p.getUniqueId();
         if (party != null) party.onQuit(p);
-        BossBar topBar = slotBars.remove(id);
-        if (topBar != null) p.hideBossBar(topBar);
         clearHeartSteals(p);
         drained.remove(id);
         for (Set<UUID> s : drained.values()) s.remove(id);
@@ -2685,6 +2592,62 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     // =====================================================================
     // Commands: /power, /reroll, /pass
     // =====================================================================
+
+    /** Which power a power-star item holds (null when it is not a power star). */
+    Power powerOfStar(ItemStack it) {
+        return powerFromItem(it);
+    }
+
+    /** /pay <player> <amount> <unbound|galaxy> - send your coins to another player. */
+    private void payCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player p)) {
+            sender.sendMessage("Players only.");
+            return;
+        }
+        if (args.length < 3) {
+            p.sendMessage(Component.text("Usage: /pay <player> <amount> <unbound|galaxy>", NamedTextColor.RED));
+            return;
+        }
+        Player t = Bukkit.getPlayerExact(args[0]);
+        if (t == null) {
+            p.sendMessage(Component.text("That player is not online.", NamedTextColor.RED));
+            return;
+        }
+        if (t == p) {
+            p.sendMessage(Component.text("You can't pay yourself.", NamedTextColor.RED));
+            return;
+        }
+        int amount = parseInt(args[1], 0);
+        if (amount <= 0) {
+            p.sendMessage(Component.text("The amount has to be at least 1.", NamedTextColor.RED));
+            return;
+        }
+        String cur = args[2].toLowerCase(Locale.ROOT);
+        if (cur.startsWith("unbound")) {
+            if (!unbound.spend(p, amount)) {
+                p.sendMessage(Component.text("You don't have " + amount + " Unbound Coins (you have "
+                        + unbound.points(p) + ").", NamedTextColor.RED));
+                return;
+            }
+            unbound.addPoints(t, amount, "pay");
+            p.sendMessage(Component.text("You paid " + t.getName() + " " + amount + " Unbound Coins.", NamedTextColor.GREEN));
+            t.sendMessage(Component.text(p.getName() + " paid you " + amount + " Unbound Coins!", NamedTextColor.GREEN));
+            t.playSound(t.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
+        } else if (cur.startsWith("galaxy")) {
+            if (shops.countGalaxyCoins(p) < amount) {
+                p.sendMessage(Component.text("You don't have " + amount + " Galaxy Coins in your inventory (you have "
+                        + shops.countGalaxyCoins(p) + ").", NamedTextColor.RED));
+                return;
+            }
+            shops.removeGalaxyCoins(p, amount);
+            shops.giveGalaxyCoins(t, amount);
+            p.sendMessage(Component.text("You paid " + t.getName() + " " + amount + " Galaxy Coins.", NamedTextColor.GREEN));
+            t.sendMessage(Component.text(p.getName() + " paid you " + amount + " Galaxy Coins!", NamedTextColor.AQUA));
+            t.playSound(t.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
+        } else {
+            p.sendMessage(Component.text("Pick a currency: unbound or galaxy.", NamedTextColor.RED));
+        }
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
@@ -2738,16 +2701,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             bosses.command(sender, args);
             return true;
         }
-        if (name.equals("gshop")) {
-            if (sender instanceof Player hp) shops.openGalaxyShop(hp);
-            return true;
-        }
         if (name.equals("itemshop")) {
             if (sender instanceof Player ip) itemShop.open(ip);
             return true;
         }
-        if (name.equals("burst")) {
-            if (sender instanceof Player bp) burst.command(bp, args);
+        if (name.equals("season")) {
+            if (sender instanceof Player sp2) ages.command(sp2, args);
             return true;
         }
         if (name.equals("mixingpot")) {
@@ -2758,21 +2717,28 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             if (sender instanceof Player mup) music.handle(mup, args);
             return true;
         }
-        if (name.equals("hud")) {
-            if (sender instanceof Player hp2) {
-                String cur2 = hudMode(hp2);
-                String next = args.length > 0 ? args[0].toLowerCase(Locale.ROOT)
-                        : cur2.equals("font") ? "text" : cur2.equals("text") ? "off" : "font";
-                if (!next.equals("font") && !next.equals("text") && !next.equals("off")) {
-                    hp2.sendMessage(Component.text("Use /hud font, /hud text or /hud off.", NamedTextColor.RED));
-                } else {
-                    setHudMode(hp2, next);
-                    if (next.equals("font")) hp2.sendMessage(Component.text(
-                            "Power bar: hotbar pictures (needs the Power Pack on). Seeing boxes instead? The pack is off - use /hud text.", NamedTextColor.GREEN));
-                    else if (next.equals("text")) hp2.sendMessage(Component.text("Power bar: text style.", NamedTextColor.GREEN));
-                    else hp2.sendMessage(Component.text("Power bar: hidden.", NamedTextColor.GREEN));
-                }
-            }
+        if (name.equals("weapons")) {
+            if (sender instanceof Player wp2) weapons.info(wp2);
+            return true;
+        }
+        if (name.equals("pay")) {
+            payCommand(sender, args);
+            return true;
+        }
+        if (name.equals("playershop")) {
+            if (sender instanceof Player psp) playerShop.command(psp, args);
+            return true;
+        }
+        if (name.equals("sell")) {
+            if (sender instanceof Player slp) sellShop.open(slp);
+            return true;
+        }
+        if (name.equals("afk")) {
+            if (sender instanceof Player afp) afk.toggle(afp);
+            return true;
+        }
+        if (name.equals("sidebar")) {
+            if (sender instanceof Player sbp) sidebar.toggle(sbp);
             return true;
         }
         if (name.equals("staffrank")) {
@@ -2791,7 +2757,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             crates.command(sender, args);
             return true;
         }
-        if (name.equals("trade")) {
+        if (name.equals("trade") || name.equals("tradeplayer")) {
             trading.command(sender, args);
             return true;
         }

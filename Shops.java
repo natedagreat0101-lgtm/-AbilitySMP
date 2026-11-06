@@ -351,7 +351,7 @@ final class Shops implements Listener {
         ItemMeta m = it.getItemMeta();
         m.displayName(Component.text("Galaxy Coin", NamedTextColor.LIGHT_PURPLE)
                 .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
-        m.lore(List.of(Component.text("Spend them in the Galaxy Shop: /gshop", NamedTextColor.GRAY)
+        m.lore(List.of(Component.text("A souvenir from the Galactic Update", NamedTextColor.GRAY)
                 .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)));
         m.setEnchantmentGlintOverride(true);
         m.getPersistentDataContainer().set(galaxyCoinKey, PersistentDataType.STRING, "1");
@@ -373,11 +373,11 @@ final class Shops implements Listener {
     }
 
     void giveGalaxyCoins(Player p, int amount) {
-        while (amount > 0) {
-            int n = Math.min(amount, 64);
-            plugin.give(p, galaxyCoinItem(n));
-            amount -= n;
-        }
+        // v16: Galaxy Coins were retired with the Galactic Update. Every old
+        // galaxy payout (bosses, quests, events, rebirths) now pays the same
+        // number of Unbound Coins instead; coins already sitting in
+        // inventories are souvenirs that can still be traded player to player.
+        if (amount > 0) plugin.unbound.addPoints(p, amount, "galaxy-coins-converted");
     }
 
     void removeGalaxyCoins(Player p, int amount) {
@@ -532,7 +532,9 @@ final class Shops implements Listener {
         if (kind == null) return;
         e.setCancelled(true); // no villager trading menu
         if (e.getHand() != EquipmentSlot.HAND) return;
-        if (kind.equals("galaxy") || kind.equals("halloween")) openGalaxyShop(e.getPlayer()); // old Halloween keepers open the Galaxy Shop now
+        if (kind.equals("galaxy") || kind.equals("halloween")) {
+            e.getPlayer().sendMessage(Component.text("The Galaxy Shop closed with the Galactic Update - Galaxy Coins are souvenirs now. Everything runs on Unbound Coins!", NamedTextColor.LIGHT_PURPLE));
+        }
         else openPowerShop(e.getPlayer());
     }
 

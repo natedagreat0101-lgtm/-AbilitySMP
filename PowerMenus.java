@@ -97,45 +97,32 @@ final class PowerMenus {
             List<Menus.Entry> entries(Player pl) {
                 List<Menus.Entry> out = new ArrayList<>();
                 AbilitySMP.Power cur = plugin.powerOf(pl);
-                AbilitySMP.Power st = plugin.standbyOf(pl);
                 out.add(new Menus.Entry(Menus.icon(Material.EMERALD, "Your Unbound Coins: " + plugin.unbound.points(pl),
                         false, "Earn them from quests and playtime.",
-                        "QUICK SWITCH: equip TWO powers - slot 1 and slot 2.",
-                        "In game, press F or crouch + right-click to switch.",
-                        atStation ? "Right-click a power to upgrade it." : "Right-click a power to put it in slot 2."), null));
-                // v12: your two power slots are pinned at the TOP of the menu (they also
-                // show at the top of your screen in game, above everything else)
-                out.add(new Menus.Entry(slotIcon(pl, 1, cur), null));
-                out.add(new Menus.Entry(slotIcon(pl, 2, st), null));
+                        "One power at a time - click a power to equip it.",
+                        atStation ? "Right-click a power to upgrade it." : "Your stats are on the sidebar."), null));
                 for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
                     if (!plugin.isEnabled(pw)) continue;
                     if (pw.isMixed() && !plugin.profile.owns(pl, pw)) continue; // v14: mixed powers are hidden until you mix one
                     boolean owned = plugin.profile.owns(pl, pw);
                     boolean equipped = pw == cur;
-                    boolean inSlot2 = pw == st;
                     int lvl = plugin.unbound.level(pl, pw);
                     int max = plugin.unbound.maxLevel();
-                    String name = AbilitySMP.pretty(pw.key()) + (equipped ? "  [SLOT 1]" : inSlot2 ? "  [SLOT 2]" : "");
+                    String name = AbilitySMP.pretty(pw.key()) + (equipped ? "  [EQUIPPED]" : "");
                     if (owned) {
                         List<String> lore = new ArrayList<>();
                         lore.add(describe(pw));
                         lore.add("Rarity: " + pw.rarity().display.toUpperCase());
                         lore.add("Level " + lvl + " / " + max);
-                        lore.add(equipped ? "Currently in slot 1" : "Left-click to equip (slot 1)");
+                        lore.add(equipped ? "This is your power right now" : "Click to equip it");
                         if (atStation) {
                             lore.add(lvl >= max ? "Max level" : "Right-click to upgrade: "
                                     + plugin.unbound.costFor(lvl) + " points");
-                        } else {
-                            lore.add(inSlot2 ? "Currently in slot 2" : "Right-click to put in slot 2");
                         }
-                        out.add(new Menus.Entry(Menus.icon(Material.NETHER_STAR, name, equipped || inSlot2, lore.toArray(new String[0])),
+                        out.add(new Menus.Entry(Menus.icon(Material.NETHER_STAR, name, equipped, lore.toArray(new String[0])),
                                 (pp, type) -> {
-                                    if (type.isRightClick()) {
-                                        if (atStation) plugin.unbound.upgrade(pp, pw);
-                                        else plugin.setStandby(pp, pw);
-                                    } else {
-                                        plugin.equipPower(pp, pw);
-                                    }
+                                    if (type.isRightClick() && atStation) plugin.unbound.upgrade(pp, pw);
+                                    else plugin.equipPower(pp, pw);
                                 }));
                     } else {
                         out.add(new Menus.Entry(Menus.icon(Material.BARRIER, name, false, describe(pw),
@@ -208,29 +195,4 @@ final class PowerMenus {
         plugin.shops.openPowerShop(p);
     }
 
-    /** The pinned slot icons at the top of /powers: the Activator sword showing the power's orb. */
-    private org.bukkit.inventory.ItemStack slotIcon(Player pl, int slot, AbilitySMP.Power pw) {
-        if (pw == null) {
-            return Menus.icon(Material.BARRIER, "SLOT " + slot + " - empty", false,
-                    slot == 1 ? "Equip a power below to fill slot 1." : "Right-click a power below to fill slot 2.",
-                    "Your two slots also show at the TOP of your screen in game.");
-        }
-        org.bukkit.inventory.ItemStack it = plugin.activatorItem();
-        org.bukkit.inventory.meta.ItemMeta m = it.getItemMeta();
-        m.setCustomModelData(AbilitySMP.modelDataFor(pw));
-        m.displayName(net.kyori.adventure.text.Component.text("SLOT " + slot + ": " + AbilitySMP.pretty(pw.key()),
-                pw == null ? net.kyori.adventure.text.format.NamedTextColor.GRAY : plugin.colorFor(pw))
-                .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
-        m.lore(java.util.List.of(
-                net.kyori.adventure.text.Component.text(describe(pw), net.kyori.adventure.text.format.NamedTextColor.GRAY)
-                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false),
-                net.kyori.adventure.text.Component.text("Your two slots also show at the TOP of your screen in game.",
-                        net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
-                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false),
-                net.kyori.adventure.text.Component.text("Switch with F or crouch + right-click.",
-                        net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
-                        .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)));
-        it.setItemMeta(m);
-        return it;
-    }
 }

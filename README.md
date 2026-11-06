@@ -1,4 +1,4 @@
-# AbilitySMP (Unbound SMP) — v14.0 Mixed Powers, the Mixing Pot & the Galaxy Burst
+# AbilitySMP (Unbound SMP) — v15.0 Sidebar, Player Shops & the Wind Rules
 
 A Paper 1.21 plugin: powers, Power Activator, quests, upgrades, duels, six galaxy bosses,
 legendary weapons from AltarSMP, an Item Shop, and a DonutSMP-style spawn.
@@ -19,6 +19,16 @@ mvn package
 ```
 
 The jar appears in `target/AbilitySMP.jar`.
+
+## What's new in v15.0 — Sidebar, Player Shops & the Wind Rules
+- **The sidebar**: a DonutSMP-style scoreboard with Unbound Coins, Galaxy Coins, deaths, kills and playtime. Deaths and PvP kills are counted from now on. `/sidebar` toggles it per player; `sidebar.enabled` in config is the master switch.
+- **The 2 power slots are GONE** (Nathan's call): one equipped power per player again, click-to-equip in `/powers`, F no longer switches powers, `/hud` and the top slot bar are retired (the Power Pack v3 font glyphs simply go unused).
+- **/pay <player> <amount> <unbound|galaxy>** — send coins to another player. Galaxy Coins move as the physical items; Unbound Coins move as balance.
+- **/sell** — a sell box GUI: put in plain items, sell for Unbound Coins, or sell the rare list (diamonds, ancient debris, echo shards, ...) for Galaxy Coins. Prices in config under `sell.`. Items with custom data (stars, weapons, coins, enchanted/renamed gear) can never be sold.
+- **/playershop** — player-run market: `/playershop sell <price> [unbound|galaxy]` lists the item in your hand (held in escrow in `playershop.yml`), `/playershop mine` manages your listings (max in config), clicking your own listing takes it back, and sellers get paid even while offline (payout on next join).
+- **Legendary weapons are back in /itemshop** — exactly ONE random weapon per day with a server-wide stock of 1; the buy is broadcast. Weapons bought before v14 work again (Weapons.java restored, `/weapons` is back).
+- **Wind rules**: the Wind power star is blocked from every storage inventory (chests, ender chests, shulkers, barrels, hoppers, furnaces...) by click, shift-click, drag and hopper; taking it out is fine. And a weekly keeper counts everyone's online minutes: if the Wind owner played less than `wind.weekly-minutes` (60) in a 7-day week, Wind is taken and given to the most-played other player, with a broadcast.
+- **Spawn levelled up**: `/spawnbuild` now builds a radius-17 galaxy disc with stepped rims, a central crystal monument (crying obsidian, purpur, amethyst, sea lantern), 8 lamp posts, amethyst clusters, TWO floating rings, 5 crate chests, the NPCs/board in their new spots, and a floating ✦ UNBOUND SMP ✦ sign. Spawn point moved just south of the monument.
 
 ## What's new in v14.0 — Mixed Powers, the Mixing Pot & the Galaxy Burst
 
@@ -260,3 +270,32 @@ pieces: Notazombiemc is a giant green-armored zombie, the Astronout wears a glas
 a white space suit, the Eclipse Reaper is a tall wither skeleton with a scythe. The one piece
 of truly custom art in v12 is the **Power Pack** resource pack: a hand-drawn orb texture for
 every power, shown on the Power Activator.
+
+## v16.0 - The 1 Month Celebration
+
+Galaxy is retired and the server runs a five-week celebration season (`Ages.java`):
+
+- **Galaxy removed**: Galaxy Coins are no longer minted - every old galaxy payout
+  (bosses, quests, panel events, rebirths, the old galaxy sell button) pays the
+  same number of Unbound Coins instead. `/gshop` and the Galaxy Burst
+  (`SpaceBurst`, `/burst`) are deleted; the three Burst ranks went with them.
+  Coins already in inventories are souvenirs - `/pay galaxy` and player-shop
+  galaxy listings still move them between players. Mixing a power now costs
+  `mixing.cost-unbound-coins` (500; old configs fall back to 2x their galaxy cost).
+- **The five ages** (`/season`): Week 1 Iron Age, Week 2 Diamond Age,
+  Week 3 Netherite Age, Week 4 Advances Week, Week 5 Fight Week + celebration.
+  The season starts the first day v16 boots (stored in data.yml as
+  `celebration.start`); OPs can `/season set <1-5>`, `/season clear` and
+  `/season start <yyyy-mm-dd>`. The sidebar's second line shows the week.
+- **Balance**: gear above the week's cap cannot be crafted, smithed, swung,
+  mined with or worn (a 5-second sweep removes it); enchanting and anvil
+  combining are locked until Week 4; PvP is off until Week 5 (duels exempt).
+- **Smaller server**: a world border (`celebration.border-size`, default 2000)
+  is applied to the main world on boot.
+- **Chunk bases**: every newly generated overworld chunk hides one small
+  underground base (5x5, one chest, one soul lantern) whose loot pool matches
+  the week it generates in (`celebration.chunk-bases`).
+
+Config: new `celebration` section (backfilled into old configs on boot);
+`galaxy-shop` and `galaxy-burst` sections removed from the shipped config.
+

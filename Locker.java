@@ -154,7 +154,7 @@ final class Locker implements Listener {
                         "Own every power (except the one-of-a-kind Wind)",
                         p -> ownable(p) >= AbilitySMP.OWNABLE_BASE));
                 out.add(new Entry("galaxy-guardian", "Galaxy Guardian", Material.END_CRYSTAL,
-                        "Buy it in the Galaxy Shop (/gshop)", p -> false));
+                        "Was sold in the Galaxy Shop (closed in v16)", p -> false));
                 out.add(new Entry("star-traveler", "Star Traveler", Material.SPYGLASS,
                         "Own 30 different powers", p -> ownable(p) >= 30));
                 return out;
@@ -188,9 +188,9 @@ final class Locker implements Listener {
                         "Own every power (except the one-of-a-kind Wind)",
                         p -> ownable(p) >= AbilitySMP.OWNABLE_BASE));
                 out.add(new Entry("astro-helmet", "Space Helmet", Material.LEATHER_HELMET,
-                        "Buy it in the Galaxy Shop (/gshop)", p -> false));
+                        "Was sold in the Galaxy Shop (closed in v16)", p -> false));
                 out.add(new Entry("star-cloak", "Star Cloak", Material.LEATHER_CHESTPLATE,
-                        "Buy it in the Galaxy Shop (/gshop)", p -> false));
+                        "Was sold in the Galaxy Shop (closed in v16)", p -> false));
                 return out;
             }
             public void onChange(Player p) { applyCosmetics(p); }
