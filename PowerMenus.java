@@ -65,6 +65,7 @@ final class PowerMenus {
             case BLACK_HOLE -> "Galactic. Super: a black hole drags every enemy in, then bursts.";
             case ANTIMATTER -> "Galactic. Super: charge up, then a huge explosion centred on you (it never hurts you).";
             case ROCKET -> "Galactic. Super: blast off into the sky!";
+            case CAVE -> "Cave Update. Idle: night vision deep down, Haste while you are low. Super: Seismic Echo - a shockwave that launches everything around you, and nearby monsters glow through the dark.";
             case HACKER -> "Unlocked by a 7-day quest streak. Super: dupe the best sword of the nearest player - the copy is yours for 30 seconds. Cooldown: 1 minute.";
             default -> "A mixed power.";
         };
@@ -99,8 +100,8 @@ final class PowerMenus {
                 AbilitySMP.Power cur = plugin.powerOf(pl);
                 out.add(new Menus.Entry(Menus.icon(Material.EMERALD, "Your Unbound Coins: " + plugin.unbound.points(pl),
                         false, "Earn them from quests and playtime.",
-                        "Click a power to equip it (needle slot 1).",
-                        "SHIFT-click a power to put it in needle slot 2.",
+                        "Click a power to equip it as your ACTIVE power.",
+                        "SHIFT-click a power to load it as the SECOND power in your vaccination.",
                         atStation ? "Right-click a power to upgrade it." : "Your stats are on the sidebar."), null));
                 for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
                     if (!plugin.isEnabled(pw)) continue;
@@ -110,16 +111,16 @@ final class PowerMenus {
                     int lvl = plugin.unbound.level(pl, pw);
                     int max = plugin.unbound.maxLevel();
                     boolean inSlot2 = pw == plugin.standbyOf(pl);
-                    String name = AbilitySMP.pretty(pw.key()) + (equipped ? "  [SLOT 1]" : inSlot2 ? "  [SLOT 2]" : "");
+                    String name = AbilitySMP.pretty(pw.key()) + (equipped ? "  [ACTIVE]" : inSlot2 ? "  [SECOND]" : "");
                     if (owned) {
                         List<String> lore = new ArrayList<>();
                         lore.add(describe(pw));
                         lore.add("Rarity: " + pw.rarity().display.toUpperCase());
                         lore.add("Level " + lvl + " / " + max);
-                        lore.add(equipped ? "This is your power right now (needle 1)"
-                                : inSlot2 ? "In needle slot 2 - press F or right-click a needle to switch"
+                        lore.add(equipped ? "This is your ACTIVE power right now"
+                                : inSlot2 ? "Second power in your vaccination - press F or right-click it to switch"
                                 : "Click to equip it");
-                        if (!equipped && !inSlot2) lore.add("Shift-click to put it in needle slot 2");
+                        if (!equipped && !inSlot2) lore.add("Shift-click to load it as the vaccination's second power");
                         if (atStation) {
                             lore.add(lvl >= max ? "Max level" : "Right-click to upgrade: "
                                     + plugin.unbound.costFor(lvl) + " points");

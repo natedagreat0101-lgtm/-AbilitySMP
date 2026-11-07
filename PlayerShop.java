@@ -85,8 +85,12 @@ final class PlayerShop implements Listener {
             p.sendMessage(Component.text("Hold the item you want to sell in your hand first.", NamedTextColor.RED));
             return;
         }
+        if (plugin.isNeedle(hand) || plugin.isScythe(hand) || plugin.isActivator(hand)) {
+            p.sendMessage(Component.text("Soulbound gear can't be sold in the Player Shop.", NamedTextColor.RED));
+            return;
+        }
         if (plugin.powerOfStar(hand) != null) {
-            p.sendMessage(Component.text("Power stars can't be sold in the Player Shop.", NamedTextColor.RED));
+            p.sendMessage(Component.text("Power needles can't be sold in the Player Shop.", NamedTextColor.RED));
             return;
         }
         int max = plugin.getConfig().getInt("playershop.max-listings", 10);

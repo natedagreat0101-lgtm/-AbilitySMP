@@ -347,7 +347,7 @@ final class Trading implements Listener {
 
     private boolean hasForbidden(List<ItemStack> items) {
         for (ItemStack it : items) {
-            if (plugin.isActivator(it) || plugin.fightTotem.isFightTotem(it) || plugin.locker.isCostume(it)) return true;
+            if (plugin.isActivator(it) || plugin.isNeedle(it) || plugin.isScythe(it) || plugin.fightTotem.isFightTotem(it) || plugin.locker.isCostume(it)) return true;
         }
         return false;
     }

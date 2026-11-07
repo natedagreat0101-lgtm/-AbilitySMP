@@ -161,6 +161,10 @@ final class SellShop implements Listener {
         for (int i = 0; i < 18; i++) {
             ItemStack it = inv.getItem(i);
             if (it == null) continue; // v15.2: anything sells. Anything.
+            // v18: ...except the soulbound gear the plugin re-creates for free
+            // every 2 seconds (switch needles) or on respawn (the scythe) -
+            // selling those would be an infinite-coin machine.
+            if (plugin.isNeedle(it) || plugin.isScythe(it) || plugin.isActivator(it)) continue;
             int unit = valueOf(it);
             if (unit <= 0) continue;
             total += unit * it.getAmount();

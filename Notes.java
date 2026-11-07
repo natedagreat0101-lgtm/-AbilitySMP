@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "17.0";
+    static final String VERSION = "20.0";
 
     private Notes() {
     }
@@ -28,6 +28,22 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
+        h(s, "===== Unbound SMP Patch Notes: v20.0 - THE CAVE UPDATE =====");
+        h(s, "- THE CAVE UPDATE IS HERE, on the golden-slots version: Cave Coins are back! Mine ores below Y=20, finish /cavequests, beat /caveboss and claim /daily to earn them.");
+        h(s, "- /caveshop: spend Cave Coins on the 5 custom cave weapons - Echo Blaster, Crystal Spear, Deepslate Hammer, Luminous Blade and the Magma Bow - plus cave loot. Power Pack v8 gives every cave weapon its own texture!");
+        h(s, "- NEW POWER: CAVE (Epic)! Deep down you see in the dark and mine faster. Super: SEISMIC ECHO - a shockwave that launches everything around you, and every monster nearby lights up through the walls.");
+        h(s, "- Power Pack v8 is out: the Cave power's orb and needle, and a texture for every cave weapon.");
+        s.sendMessage(Component.text(""));
+        h(s, "===== Unbound SMP Patch Notes: v19.0 - GOLDEN SLOTS =====");
+        h(s, "- GOLDEN SLOTS: the last 3 slots of your hotbar are now golden and locked in place forever. Slot 7 = the Power Scythe, slot 8 = your Power Activator, slot 9 = the Power Vaccination. They can't be moved, dropped or lost - and Power Pack v7 paints the three slots GOLD so you can see them.");
+        h(s, "- THE POWER VACCINATION replaces the two switch needles: ONE syringe that holds TWO powers at once. Its liquid shows your ACTIVE power's colour.");
+        how(s, "open /powers - click a power to make it your active power, SHIFT-click a power to load it as the second power. Right-click the vaccination (or press F) to switch between the two.");
+        s.sendMessage(Component.text(""));
+        h(s, "===== Unbound SMP Patch Notes: v18.0 - Power Needles & the Power Scythe =====");
+        h(s, "- POWERS ARE NEEDLES NOW: the nether star you used to get for a power is now a Power Needle - a syringe with the power's colour inside it. Right-click it to inject the power, same as before. Stars you already have still work exactly the same.");
+        h(s, "- NEW: THE POWER SCYTHE! Everyone gets a diamond axe that looks like a scythe (Power Pack v6). It's for killing mobs the normal way - swinging it NEVER triggers your power, only the Activator does that. It's soulbound: it can't be dropped and it comes back when you die. Lost it somehow? /scythe gets you a new one.");
+        h(s, "- Power Pack v6 is out: it adds the scythe look. Your power needles and orbs are in there too - one pack does everything now.");
+        s.sendMessage(Component.text(""));
         h(s, "===== Unbound SMP Patch Notes: v17.0 - Power Needles, Sky & Cave Events =====");
         h(s, "- THE QUICK SWITCH IS BACK - as POWER NEEDLES! Two syringes now live in hotbar slots 8 and 9. Needle 1 shows your ACTIVE power, needle 2 your standby power - and the liquid inside takes your power's colour, just like the Activator orb (Flame glows orange, Frost icy blue...).");
         how(s, "open /powers and SHIFT-click a power to put it in slot 2. Switch with the F key, by right-clicking either needle, or by crouching + right-clicking your Activator. The needles are soulbound and can never leave slots 8 and 9.");

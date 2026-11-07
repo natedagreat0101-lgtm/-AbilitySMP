@@ -100,6 +100,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         // ...and fifteen more galaxy powers
         STARLIGHT, COMET, METEOR, LUNAR, PULSAR, NEBULA, SOLAR_FLARE, ECLIPSE, ASTEROID,
         ZERO_GRAVITY, WORMHOLE, QUASAR, BLACK_HOLE, ANTIMATTER, ROCKET,
+        // v20: the Cave power, dug up with the Cave Update. It sits BEFORE
+        // Hacker on purpose: isMixed() means "after Hacker", and inserting
+        // here shifts Hacker + the mixed powers by one CustomModelData -
+        // Power Pack v8 carries the shifted mapping.
+        CAVE,
         // v12: unlocked by a 7-day quest streak, never sold or rolled
         HACKER,
         // v14: the 50 mixed powers - made in the Mixing Pot, hidden until owned,
@@ -137,7 +142,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 case HUNTER, HEALER, SHADOW, THOR, SKELETON, SPIDER, PUMPKIN,
                      COMET, LUNAR, METEOR -> Rarity.RARE;
                 case STEALER, TANK, WITCH, SCARECROW, PHANTOM, WEREWOLF,
-                     PULSAR, NEBULA, SOLAR_FLARE, ECLIPSE -> Rarity.EPIC;
+                     PULSAR, NEBULA, SOLAR_FLARE, ECLIPSE, CAVE -> Rarity.EPIC;
                 case TELEPORTER, VOID, REAPER, CURSE, SUPERNOVA, FROST,
                      ASTEROID, ZERO_GRAVITY, WORMHOLE, QUASAR -> Rarity.LEGENDARY;
                 case GHOST, VAMPIRE, EARTH, WIND, BLACK_HOLE, ANTIMATTER, HACKER -> Rarity.MYTHIC;
@@ -209,14 +214,20 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     WindGuard windGuard;
     Afk afk;
     SkyEvents skyEvents;
+    Cave cave;
+    CaveShop caveShop;
+    CaveBosses caveBosses;
+    CaveWeapons caveWeapons;
     Fusions fusions;
     MixingPot mixingPot;
     Ages ages;
     private NamespacedKey activatorKey;
     private NamespacedKey dupedKey;
     private NamespacedKey needleKey;
+    private NamespacedKey scytheKey;
     /** The two power slots shown at the TOP of the screen (v12), one boss bar per player. */
     private final Set<UUID> needsActivator = new HashSet<>();
+    private final Set<UUID> needsScythe = new HashSet<>();
 
     // =====================================================================
     // Lifecycle
@@ -231,6 +242,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         activatorKey = new NamespacedKey(this, "power_activator");
         dupedKey = new NamespacedKey(this, "duped_sword");
         needleKey = new NamespacedKey(this, "power_needle");
+        scytheKey = new NamespacedKey(this, "power_scythe");
         registerRerollRecipe();
 
         dataFile = new File(getDataFolder(), "players.yml");
@@ -267,6 +279,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         mixingPot = new MixingPot(this);
         ages = new Ages(this);
         skyEvents = new SkyEvents(this);
+        cave = new Cave(this);
+        caveWeapons = new CaveWeapons(this);
+        caveShop = new CaveShop(this);
+        caveBosses = new CaveBosses(this);
         lasso.registerRecipe();
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(tutorial, this);
@@ -288,6 +304,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(fusions, this);
         Bukkit.getPluginManager().registerEvents(mixingPot, this);
         Bukkit.getPluginManager().registerEvents(ages, this);
+        Bukkit.getPluginManager().registerEvents(cave, this);
+        Bukkit.getPluginManager().registerEvents(caveWeapons, this);
+        Bukkit.getPluginManager().registerEvents(caveShop, this);
+        Bukkit.getPluginManager().registerEvents(caveBosses, this);
         Bukkit.getPluginManager().registerEvents(weapons, this);
         Bukkit.getPluginManager().registerEvents(sidebar, this);
         Bukkit.getPluginManager().registerEvents(playerShop, this);
@@ -300,7 +320,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
         // the Activator's held look (resource pack) refreshes every 2 seconds
         Bukkit.getScheduler().runTaskTimer(this, () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) { refreshActivator(p); refreshNeedles(p); }
+            for (Player p : Bukkit.getOnlinePlayers()) { refreshActivator(p); refreshGoldenSlots(p); }
         }, 23L, 40L);
         // duped swords (Hacker, v12) vanish 30 seconds after they were copied
         Bukkit.getScheduler().runTaskTimer(this, this::cleanDupedSwords, 27L, 20L);
@@ -319,6 +339,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (unbound != null) unbound.save();
         if (profile != null) profile.save();
         if (skyEvents != null) skyEvents.shutdown();
+        if (cave != null) cave.save();
         for (Player p : Bukkit.getOnlinePlayers()) clearHeartSteals(p);
     }
 
@@ -458,6 +479,24 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             // transplanted below, so live configs gain them automatically.
             cfg.set("config-version", 19);
         }
+        if (v < 20) {
+            // v18: power stars become power needles, and everyone gets a
+            // Power Scythe - nothing to move in the config itself.
+            cfg.set("config-version", 20);
+        }
+        if (v < 21) {
+            // v19: GOLDEN SLOTS - the two needles become one vaccination
+            // holding both powers; nothing to move in the config itself.
+            cfg.set("config-version", 21);
+        }
+        if (v < 22) {
+            // v20: THE CAVE UPDATE joins this branch - the cave section is
+            // transplanted below, and the Cave power joins the enabled list.
+            List<String> en20 = new ArrayList<>(cfg.getStringList("powers.enabled"));
+            if (!en20.contains("cave")) en20.add("cave");
+            cfg.set("powers.enabled", en20);
+            cfg.set("config-version", 22);
+        }
         // Backfill any sections this server's config predates (v15.1 lesson:
         // an old config.yml never gains new sections on its own). Runs every
         // boot; sections that already exist are left exactly as they are.
@@ -468,7 +507,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             if (in != null) {
                 YamlConfiguration bundled = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(in, StandardCharsets.UTF_8));
-                for (String section : new String[]{"sidebar", "playershop", "sell", "wind", "afk", "celebration", "needles", "sky-events"}) {
+                for (String section : new String[]{"sidebar", "playershop", "sell", "wind", "afk", "celebration", "needles", "sky-events", "cave"}) {
                 if (cfg.getConfigurationSection(section) == null
                         && bundled.getConfigurationSection(section) != null) {
                     cfg.set(section, bundled.getConfigurationSection(section).getValues(true));
@@ -535,19 +574,19 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
         if (pw == Power.WIND && !windFree(p)) return false;
         if (powerOf(p) == pw) {
-            bar(p, "That power is already in slot 1.", NamedTextColor.GRAY);
+            bar(p, "That power is already your active power.", NamedTextColor.GRAY);
             return false;
         }
         if (standbyOf(p) == pw) {
-            bar(p, "That power is already in slot 2.", NamedTextColor.GRAY);
+            bar(p, "That power is already the second power in your vaccination.", NamedTextColor.GRAY);
             return false;
         }
         standby.put(p.getUniqueId(), pw);
         data.set("players." + p.getUniqueId() + ".standby", pw.name());
         saveData();
-        refreshNeedles(p);
-        p.sendMessage(Component.text(pretty(pw.key()) + " is now in slot 2 (needle 2). "
-                + "Switch with F, or right-click a needle!", colorFor(pw)));
+        refreshGoldenSlots(p);
+        p.sendMessage(Component.text(pretty(pw.key()) + " is now the SECOND power in your vaccination. "
+                + "Switch with F, or right-click the vaccination!", colorFor(pw)));
         p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_DIAMOND, 1f, 1.4f);
         return true;
     }
@@ -557,7 +596,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Power cur = powerOf(p);
         Power st = standbyOf(p);
         if (st == null) {
-            bar(p, "No power in slot 2 yet - open /powers and SHIFT-click a power to fill needle 2.",
+            bar(p, "No second power yet - open /powers and SHIFT-click a power to load it into your vaccination.",
                     NamedTextColor.GRAY);
             return;
         }
@@ -570,17 +609,22 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             data.set("players." + id + ".standby", cur.name());
         }
         setPower(p, st); // saves players.yml, tank hearts, rank checks
-        refreshNeedles(p);
+        refreshGoldenSlots(p);
         p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.7f, 1.5f);
         puff(p.getLocation().add(0, 1, 0), particleFor(st), 18);
-        bar(p, "Switched to " + pretty(st.key()) + "! Slot 2 now holds "
-                + (cur == null ? "nothing" : pretty(cur.key())) + ".", colorFor(st));
+        bar(p, "Switched to " + pretty(st.key()) + "! The vaccination's second power is now "
+                + (cur == null ? "empty" : pretty(cur.key())) + ".", colorFor(st));
     }
 
     @EventHandler
     public void onSwapHands(PlayerSwapHandItemsEvent e) {
         Player p = e.getPlayer();
         if (fightTotem.isFightTotem(e.getMainHandItem()) || fightTotem.isFightTotem(e.getOffHandItem())) return;
+        if (isVaccination(e.getMainHandItem())) {
+            e.setCancelled(true); // the vaccination never rides in the off hand
+            if (!fightTotem.isProtected(p)) switchPower(p);
+            return;
+        }
         if (isNeedle(e.getMainHandItem()) || isNeedle(e.getOffHandItem())) {
             e.setCancelled(true); // needles never ride in the off hand
             return;
@@ -593,28 +637,31 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     // ------------------------------------------------------------ Power Needles
 
-    /** The needle for one switch slot; its CustomModelData makes the pack draw that power's syringe. */
-    ItemStack needleItem(int slot, Power pw) {
+    /**
+     * The Power Vaccination (v19): ONE syringe that holds BOTH powers - it
+     * replaces the two switch needles of v17-18. The pack draws the ACTIVE
+     * power's syringe. It still carries the needle PDC (slot 3), so every
+     * soulbound guard written for the needles covers it too.
+     */
+    ItemStack vaccinationItem(Player p) {
+        Power active = powerOf(p);
+        Power second = standbyOf(p);
         ItemStack it = new ItemStack(Material.BLAZE_ROD);
         ItemMeta m = it.getItemMeta();
-        if (pw == null) {
-            m.displayName(line("Power Needle " + slot + " - EMPTY", NamedTextColor.GRAY));
-            m.lore(List.of(
-                    line("No power in this slot yet.", NamedTextColor.GRAY),
-                    line("Open /powers and SHIFT-click a power for slot 2.", NamedTextColor.DARK_GRAY),
-                    line("Right-click a needle (or press F) to switch powers.", NamedTextColor.DARK_GRAY)));
-            m.setCustomModelData(1999);
-        } else {
-            m.displayName(line("Power Needle " + slot + " - " + pretty(pw.key()), colorFor(pw)));
-            m.lore(List.of(
-                    line(slot == 1 ? "Your ACTIVE power." : "Your standby power.", NamedTextColor.GRAY),
-                    line("Right-click to switch powers (or press F).", NamedTextColor.DARK_GRAY),
-                    line("Soulbound: it lives in hotbar slot " + (slot + 7) + ".", NamedTextColor.DARK_GRAY)));
-            m.setCustomModelData(modelDataFor(pw));
-            m.setEnchantmentGlintOverride(true);
-        }
+        m.displayName(line("Power Vaccination", NamedTextColor.GOLD));
+        m.lore(List.of(
+                line("Holds TWO powers at once.", NamedTextColor.GRAY),
+                line("Active: " + (active == null ? "none" : pretty(active.key())),
+                        active == null ? NamedTextColor.GRAY : colorFor(active)),
+                line("Second: " + (second == null ? "none" : pretty(second.key())),
+                        second == null ? NamedTextColor.DARK_GRAY : colorFor(second)),
+                line(second == null ? "SHIFT-click a power in /powers to load a second one."
+                        : "Right-click (or press F) to switch powers.", NamedTextColor.DARK_GRAY),
+                line("Soulbound: it lives in golden slot 9.", NamedTextColor.DARK_GRAY)));
+        m.setCustomModelData(active == null ? 1999 : modelDataFor(active));
+        if (active != null) m.setEnchantmentGlintOverride(true);
         m.setUnbreakable(true);
-        m.getPersistentDataContainer().set(needleKey, PersistentDataType.INTEGER, slot);
+        m.getPersistentDataContainer().set(needleKey, PersistentDataType.INTEGER, 3);
         it.setItemMeta(m);
         return it;
     }
@@ -638,43 +685,64 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         return java.util.Objects.equals(ca, cb);
     }
 
-    /** Keeps the two needles pinned to hotbar slots 8 and 9, showing the right powers. */
-    void refreshNeedles(Player p) {
+    boolean isVaccination(ItemStack item) {
+        return isNeedle(item) && needleSlot(item) == 3;
+    }
+
+    /** The soulbound golden-slot gear: the vaccination/needles, the scythe, the Activator. */
+    boolean isGolden(ItemStack item) {
+        return isNeedle(item) || isScythe(item) || isActivator(item);
+    }
+
+    /**
+     * GOLDEN SLOTS (v19, Nathan's layout): hotbar slots 7, 8 and 9 are the
+     * locked golden homes - 7 = Power Scythe, 8 = Power Activator, 9 = the
+     * Power Vaccination. (Minecraft's hotbar is hard-capped at 9 slots - no
+     * plugin can add a 10th, 11th or 12th - so the last three slots ARE the
+     * extra golden ones.) Golden gear found anywhere else is a stray or a
+     * dupe and is removed; the homes are refilled here every 2 seconds.
+     */
+    void refreshGoldenSlots(Player p) {
         if (!getConfig().getBoolean("needles.enabled", true)) return;
         org.bukkit.inventory.PlayerInventory inv = p.getInventory();
         ItemStack[] storage = inv.getStorageContents();
         for (int s = 0; s < storage.length; s++) {
-            if (s == 7 || s == 8) continue;
-            if (isNeedle(storage[s])) inv.setItem(s, null); // stray needle (old slot, dupe)
+            if (s == 6 || s == 7 || s == 8) continue;
+            if (isGolden(storage[s])) inv.setItem(s, null); // stray golden gear (dupes, old needles)
         }
-        if (isNeedle(inv.getItemInOffHand())) inv.setItemInOffHand(null);
-        placeNeedle(p, 7, needleItem(1, powerOf(p)));
-        placeNeedle(p, 8, needleItem(2, standbyOf(p)));
+        if (isGolden(inv.getItemInOffHand())) inv.setItemInOffHand(null);
+        placeGolden(p, 6, scytheItem(), this::isScythe);
+        placeGolden(p, 7, activatorItem(), this::isActivator);
+        ItemStack vacc = vaccinationItem(p);
+        placeGolden(p, 8, vacc, it -> isVaccination(it) && sameNeedle(it, vacc)
+                && java.util.Objects.equals(it.getItemMeta().lore(), vacc.getItemMeta().lore()));
     }
 
-    private void placeNeedle(Player p, int slot, ItemStack needle) {
+    private void placeGolden(Player p, int slot, ItemStack want,
+                             java.util.function.Predicate<ItemStack> rightKind) {
         org.bukkit.inventory.PlayerInventory inv = p.getInventory();
         ItemStack cur = inv.getItem(slot);
-        if (sameNeedle(cur, needle)) return;
-        if (cur != null && !isNeedle(cur)) {
-            // somebody's stuff is living in the needle's home: move it somewhere safe
+        if (cur != null && rightKind.test(cur)) return;
+        if (cur != null && !isGolden(cur)) {
+            // somebody's stuff is living in a golden home: move it somewhere safe
             Map<Integer, ItemStack> left = inv.addItem(cur.clone());
             if (!left.isEmpty()) p.getWorld().dropItemNaturally(p.getLocation(), cur.clone());
         }
-        inv.setItem(slot, needle);
+        inv.setItem(slot, want);
     }
 
-    /** The needles can't be picked up, moved, dragged or number-key swapped out of their slots. */
+
+    /** Golden gear can't be picked up, moved, dragged or number-key swapped out of its slot. */
     @EventHandler
     public void onNeedleClick(InventoryClickEvent e) {
-        if (isNeedle(e.getCurrentItem()) || isNeedle(e.getCursor())) {
+        if (isGolden(e.getCurrentItem()) || isGolden(e.getCursor())) {
             e.setCancelled(true);
             return;
         }
         if (e.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
             int hb = e.getHotbarButton();
-            if ((hb == 7 || hb == 8) && e.getWhoClicked() instanceof Player hp
-                    && isNeedle(hp.getInventory().getItem(hb))) {
+            if ((hb == 6 || hb == 7 || hb == 8) && e.getWhoClicked() instanceof Player hp
+                    && isGolden(hp.getInventory().getItem(hb))) {
                 e.setCancelled(true);
             }
         }
@@ -682,8 +750,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onNeedleDrag(InventoryDragEvent e) {
-        if (isNeedle(e.getOldCursor())) e.setCancelled(true);
+        if (isGolden(e.getOldCursor())) e.setCancelled(true);
     }
+
 
     void saveData() {
         try {
@@ -892,9 +961,12 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             data.set("players." + id + ".activator-given", true);
             saveData();
             give(p, activatorItem());
-            refreshNeedles(p);
+            give(p, scytheItem());
+            refreshGoldenSlots(p);
             p.sendMessage(Component.text("You start with the " + pretty(starter.key())
-                    + " power and a Power Activator sword. Hold the sword and right-click to use your power!",
+                    + " power! Your last 3 hotbar slots are GOLDEN: slot 7 = Power Scythe, "
+                    + "slot 8 = Power Activator (hold it and right-click to use your power), "
+                    + "slot 9 = your Power Vaccination, which holds TWO powers.",
                     NamedTextColor.GOLD));
             applyTankHearts(p);
             tutorial.onFirstJoin(p);
@@ -904,7 +976,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (powerOf(p) != null) profile.addOwned(id, powerOf(p));
         applyTankHearts(p);
         giveActivatorOnce(p);
-        refreshNeedles(p);
+        giveScytheOnce(p);
+        refreshGoldenSlots(p);
         Notes.joinHint(this, p);
     }
 
@@ -919,7 +992,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     // =====================================================================
-    // Power items (nether stars)
+    // Power items (v18: needles now - they were nether stars before)
     // =====================================================================
 
     NamedTextColor colorFor(Power p) {
@@ -968,17 +1041,23 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case BLACK_HOLE -> NamedTextColor.DARK_GRAY;
             case ANTIMATTER -> NamedTextColor.DARK_RED;
             case ROCKET -> NamedTextColor.GOLD;
+            case CAVE -> NamedTextColor.DARK_GREEN;
             case HACKER -> NamedTextColor.GREEN;
             default -> NamedTextColor.LIGHT_PURPLE; // mixed powers return earlier, via Fusions
         };
     }
 
     ItemStack powerItem(Power p) {
-        ItemStack it = new ItemStack(Material.NETHER_STAR);
+        // v18: a power is a NEEDLE now (Nathan's call) - you inject the power.
+        // It rides on a blaze rod so the pack draws that power's syringe; the
+        // power_item PDC is still what makes it a power, so the nether stars
+        // players already hold keep working too (see powerFromItem).
+        ItemStack it = new ItemStack(Material.BLAZE_ROD);
         ItemMeta m = it.getItemMeta();
-        m.displayName(line(pretty(p.key()) + " Power", colorFor(p)));
+        m.displayName(line(pretty(p.key()) + " Power Needle", colorFor(p)));
         m.lore(List.of(line("Right-click to gain this power.", NamedTextColor.GRAY),
-                line("Your old power comes back as a star.", NamedTextColor.DARK_GRAY)));
+                line("Your old power comes back as a needle.", NamedTextColor.DARK_GRAY)));
+        m.setCustomModelData(modelDataFor(p));
         m.setEnchantmentGlintOverride(true);
         m.getPersistentDataContainer().set(powerItemKey, PersistentDataType.STRING, p.name());
         it.setItemMeta(m);
@@ -986,7 +1065,9 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     private Power powerFromItem(ItemStack item) {
-        if (item == null || item.getType() != Material.NETHER_STAR || !item.hasItemMeta()) return null;
+        // v18: the PDC tag is the identity, not the material - old nether-star
+        // powers in players' chests and the new needle powers both count.
+        if (item == null || !item.hasItemMeta()) return null;
         String v = item.getItemMeta().getPersistentDataContainer().get(powerItemKey, PersistentDataType.STRING);
         return Power.parse(v);
     }
@@ -1119,6 +1200,14 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                     glowNearby(p, d("ghost.glow-radius", 30));
                 }
                 case TELEPORTER -> effect(p, PotionEffectType.SPEED, i("passives.teleporter-speed-level", 3));
+                case CAVE -> {
+                    if (p.getLocation().getY() <= i("cave.night-vision-y", 40)) {
+                        effect(p, PotionEffectType.NIGHT_VISION, 1);
+                    }
+                    if (p.getLocation().getY() <= i("cave.haste-y", 20)) {
+                        effect(p, PotionEffectType.HASTE, 1);
+                    }
+                }
                 case VOID -> effect(p, PotionEffectType.STRENGTH, i("passives.void-strength-level", 3));
                 case WEREWOLF -> {
                     effect(p, PotionEffectType.SPEED, i("passives.werewolf-speed-level", 1));
@@ -1218,6 +1307,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             case BLACK_HOLE -> Particle.SQUID_INK;
             case ANTIMATTER -> Particle.EXPLOSION;
             case ROCKET -> Particle.FLAME;
+            case CAVE -> Particle.SCULK_SOUL;
             case HACKER -> Particle.HAPPY_VILLAGER;
             default -> Particle.WITCH; // mixed powers return earlier, via Fusions
         };
@@ -1245,7 +1335,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Player p = e.getPlayer();
         ItemStack hand = p.getInventory().getItemInMainHand();
 
-        // Power Needles (v17): right-clicking either needle switches powers
+        // The Power Vaccination (v19; two needles in v17-18): right-clicking it switches powers
         if (isNeedle(hand)) {
             e.setCancelled(true);
             switchPower(p);
@@ -1844,8 +1934,37 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 }.runTaskTimer(this, 0L, 2L);
             }
 
+            case CAVE -> caveSuper(p);
             case HACKER -> hackerSuper(p);
         }
+    }
+
+    // =====================================================================
+    // Cave (v20): SEISMIC ECHO - a shockwave that hurts and launches
+    // everything around you, and an echo that lights up nearby monsters
+    // through the dark.
+    // =====================================================================
+
+    private void caveSuper(Player p) {
+        startCooldown(p, Power.CAVE);
+        Location at = p.getLocation();
+        double range = d("cave.super-range", 6) * um(p);
+        p.getWorld().playSound(at, Sound.ENTITY_WARDEN_SONIC_BOOM, 0.8f, 0.7f);
+        p.getWorld().playSound(at, Sound.BLOCK_DEEPSLATE_BREAK, 1f, 0.6f);
+        puff(at.clone().add(0, 0.5, 0), Particle.SCULK_SOUL, 30);
+        puff(at.clone().add(0, 0.5, 0), Particle.CRIT, 20);
+        for (LivingEntity le : at.getNearbyLivingEntities(range)) {
+            if (le == p) continue;
+            le.damage(d("cave.super-damage", 8) * um(p), p);
+            le.setVelocity(le.getLocation().toVector().subtract(at.toVector())
+                    .normalize().multiply(1.1).setY(0.8));
+        }
+        int echo = i("cave.echo-range", 20);
+        for (LivingEntity le : at.getNearbyLivingEntities(echo)) {
+            if (le instanceof Player) continue;
+            le.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 100, 0));
+        }
+        bar(p, "Seismic Echo!", NamedTextColor.DARK_GREEN);
     }
 
     /** A line of particles from A to B (starlight beams, quasar beams). */
@@ -2564,6 +2683,51 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 NamedTextColor.GOLD));
     }
 
+    // =====================================================================
+    // The Power Scythe (v18): a diamond axe that looks like a scythe in the
+    // pack. It is the "just kill mobs" weapon - powers only ever fire from
+    // the Activator, so the scythe never triggers one. Soulbound, like the
+    // Activator: it never drops and it comes back when you die.
+    // =====================================================================
+
+    ItemStack scytheItem() {
+        ItemStack it = new ItemStack(Material.DIAMOND_AXE);
+        ItemMeta m = it.getItemMeta();
+        m.displayName(line("Power Scythe", NamedTextColor.LIGHT_PURPLE));
+        m.lore(List.of(line("For killing mobs the normal way.", NamedTextColor.GRAY),
+                line("It never triggers your power.", NamedTextColor.GRAY),
+                line("Soulbound: it comes back when you die.", NamedTextColor.DARK_GRAY)));
+        m.setUnbreakable(true);
+        m.setEnchantmentGlintOverride(true);
+        m.setCustomModelData(3000); // the pack draws the scythe for CMD 3000
+        m.getPersistentDataContainer().set(scytheKey, PersistentDataType.STRING, "1");
+        it.setItemMeta(m);
+        return it;
+    }
+
+    boolean isScythe(ItemStack item) {
+        return item != null && item.getType() == Material.DIAMOND_AXE && item.hasItemMeta()
+                && item.getItemMeta().getPersistentDataContainer().has(scytheKey, PersistentDataType.STRING);
+    }
+
+    private boolean hasScythe(Player p) {
+        for (ItemStack it : p.getInventory().getContents()) {
+            if (isScythe(it)) return true;
+        }
+        return false;
+    }
+
+    /** Players who joined before v18 get their scythe once. */
+    private void giveScytheOnce(Player p) {
+        String path = "players." + p.getUniqueId() + ".scythe-given";
+        if (data.getBoolean(path, false)) return;
+        data.set(path, true);
+        saveData();
+        if (!hasScythe(p)) give(p, scytheItem());
+        p.sendMessage(Component.text("You got a Power Scythe! It's a diamond axe for killing mobs "
+                + "the normal way - it never uses your power.", NamedTextColor.LIGHT_PURPLE));
+    }
+
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
         if (isDupedSword(e.getItemDrop().getItemStack())) {
@@ -2571,9 +2735,14 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             bar(e.getPlayer(), "The duped sword can't be dropped - it vanishes on its own.", NamedTextColor.GRAY);
             return;
         }
+        if (isScythe(e.getItemDrop().getItemStack())) {
+            e.setCancelled(true);
+            bar(e.getPlayer(), "The Power Scythe is soulbound.", NamedTextColor.GRAY);
+            return;
+        }
         if (isNeedle(e.getItemDrop().getItemStack())) {
             e.setCancelled(true);
-            bar(e.getPlayer(), "The Power Needles are soulbound - they live in hotbar slots 8 and 9.", NamedTextColor.GRAY);
+            bar(e.getPlayer(), "The Power Vaccination is soulbound - it lives in golden slot 9.", NamedTextColor.GRAY);
             return;
         }
         if (isActivator(e.getItemDrop().getItemStack())) {
@@ -2786,6 +2955,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         // the Power Activator is soulbound: it never drops, and comes back on respawn
         e.getDrops().removeIf(this::isActivator);
         e.getDrops().removeIf(this::isNeedle); // Power Needles are soulbound too (v17)
+        e.getDrops().removeIf(this::isScythe); // ...and so is the Power Scythe (v18)
+        needsScythe.add(id);
         e.getDrops().removeIf(this::isDupedSword); // duped swords (Hacker) vanish instead of dropping
         needsActivator.add(id);
 
@@ -2803,6 +2974,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (needsActivator.remove(rp.getUniqueId())) {
             Bukkit.getScheduler().runTask(this, () -> {
                 if (rp.isOnline() && !hasActivator(rp)) give(rp, activatorItem());
+            });
+        }
+        if (needsScythe.remove(rp.getUniqueId())) {
+            Bukkit.getScheduler().runTask(this, () -> {
+                if (rp.isOnline() && !hasScythe(rp)) give(rp, scytheItem());
             });
         }
     }
@@ -2898,6 +3074,17 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
             return true;
         }
+        if (name.equals("scythe")) {
+            if (sender instanceof Player scp) {
+                if (hasScythe(scp)) {
+                    scp.sendMessage(Component.text("You already have your Power Scythe.", NamedTextColor.GRAY));
+                } else {
+                    give(scp, scytheItem());
+                    scp.sendMessage(Component.text("Here is a new Power Scythe.", NamedTextColor.LIGHT_PURPLE));
+                }
+            }
+            return true;
+        }
         if (name.equals("powers") || name.equals("shop") || name.equals("quests") || name.equals("locker")) {
             if (!(sender instanceof Player mp)) {
                 sender.sendMessage("Players only.");
@@ -2929,6 +3116,34 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
         if (name.equals("skyevent")) {
             skyEvents.command(sender, args);
+            return true;
+        }
+        if (name.equals("cave")) {
+            if (sender instanceof Player cvp) cave.hubCommand(cvp);
+            return true;
+        }
+        if (name.equals("cavecoins")) {
+            if (sender instanceof Player ccp) cave.coinsCommand(ccp);
+            return true;
+        }
+        if (name.equals("caveshop")) {
+            if (sender instanceof Player cshp) caveShop.open(cshp);
+            return true;
+        }
+        if (name.equals("caveboss")) {
+            if (sender instanceof Player cbp) caveBosses.command(cbp, args);
+            return true;
+        }
+        if (name.equals("cavequests")) {
+            if (sender instanceof Player cqp) cave.questsCommand(cqp);
+            return true;
+        }
+        if (name.equals("caveweapons")) {
+            if (sender instanceof Player cwp) caveWeapons.info(cwp);
+            return true;
+        }
+        if (name.equals("daily")) {
+            if (sender instanceof Player dyp) cave.dailyCommand(dyp);
             return true;
         }
         if (name.equals("mixingpot")) {
