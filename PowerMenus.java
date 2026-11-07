@@ -99,7 +99,8 @@ final class PowerMenus {
                 AbilitySMP.Power cur = plugin.powerOf(pl);
                 out.add(new Menus.Entry(Menus.icon(Material.EMERALD, "Your Unbound Coins: " + plugin.unbound.points(pl),
                         false, "Earn them from quests and playtime.",
-                        "One power at a time - click a power to equip it.",
+                        "Click a power to equip it (needle slot 1).",
+                        "SHIFT-click a power to put it in needle slot 2.",
                         atStation ? "Right-click a power to upgrade it." : "Your stats are on the sidebar."), null));
                 for (AbilitySMP.Power pw : AbilitySMP.Power.values()) {
                     if (!plugin.isEnabled(pw)) continue;
@@ -108,20 +109,25 @@ final class PowerMenus {
                     boolean equipped = pw == cur;
                     int lvl = plugin.unbound.level(pl, pw);
                     int max = plugin.unbound.maxLevel();
-                    String name = AbilitySMP.pretty(pw.key()) + (equipped ? "  [EQUIPPED]" : "");
+                    boolean inSlot2 = pw == plugin.standbyOf(pl);
+                    String name = AbilitySMP.pretty(pw.key()) + (equipped ? "  [SLOT 1]" : inSlot2 ? "  [SLOT 2]" : "");
                     if (owned) {
                         List<String> lore = new ArrayList<>();
                         lore.add(describe(pw));
                         lore.add("Rarity: " + pw.rarity().display.toUpperCase());
                         lore.add("Level " + lvl + " / " + max);
-                        lore.add(equipped ? "This is your power right now" : "Click to equip it");
+                        lore.add(equipped ? "This is your power right now (needle 1)"
+                                : inSlot2 ? "In needle slot 2 - press F or right-click a needle to switch"
+                                : "Click to equip it");
+                        if (!equipped && !inSlot2) lore.add("Shift-click to put it in needle slot 2");
                         if (atStation) {
                             lore.add(lvl >= max ? "Max level" : "Right-click to upgrade: "
                                     + plugin.unbound.costFor(lvl) + " points");
                         }
                         out.add(new Menus.Entry(Menus.icon(Material.NETHER_STAR, name, equipped, lore.toArray(new String[0])),
                                 (pp, type) -> {
-                                    if (type.isRightClick() && atStation) plugin.unbound.upgrade(pp, pw);
+                                    if (type.isShiftClick()) plugin.setStandby(pp, pw);
+                                    else if (type.isRightClick() && atStation) plugin.unbound.upgrade(pp, pw);
                                     else plugin.equipPower(pp, pw);
                                 }));
                     } else {

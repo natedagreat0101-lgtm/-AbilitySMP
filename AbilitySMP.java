@@ -170,7 +170,8 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     private static final String TANK_KEY = "tank_hearts";
 
     private final Map<UUID, Power> powers = new HashMap<>();
-    /** The quick switch (v10): each player's second loadout power ("slot 2"). Slot 1 is the equipped power. */
+    /** The quick switch, back in v17 as Power Needles: each player's second loadout power ("slot 2"). */
+    private final Map<UUID, Power> standby = new HashMap<>();
     private final Map<UUID, Long> cooldowns = new HashMap<>();
     /** haunter UUID -> players whose hearts that haunter is holding */
     private final Map<UUID, Set<UUID>> drained = new HashMap<>();
@@ -207,11 +208,13 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     SellShop sellShop;
     WindGuard windGuard;
     Afk afk;
+    SkyEvents skyEvents;
     Fusions fusions;
     MixingPot mixingPot;
     Ages ages;
     private NamespacedKey activatorKey;
     private NamespacedKey dupedKey;
+    private NamespacedKey needleKey;
     /** The two power slots shown at the TOP of the screen (v12), one boss bar per player. */
     private final Set<UUID> needsActivator = new HashSet<>();
 
@@ -227,6 +230,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         rerollKey = new NamespacedKey(this, "reroll_token");
         activatorKey = new NamespacedKey(this, "power_activator");
         dupedKey = new NamespacedKey(this, "duped_sword");
+        needleKey = new NamespacedKey(this, "power_needle");
         registerRerollRecipe();
 
         dataFile = new File(getDataFolder(), "players.yml");
@@ -262,6 +266,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         fusions = new Fusions(this);
         mixingPot = new MixingPot(this);
         ages = new Ages(this);
+        skyEvents = new SkyEvents(this);
         lasso.registerRecipe();
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(tutorial, this);
@@ -291,10 +296,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(afk, this);
         mixingPot.registerRecipe();
         ages.startTasks();
+        skyEvents.startTasks();
         Bukkit.getScheduler().runTaskTimer(this, this::passiveTick, 20L, 20L);
         // the Activator's held look (resource pack) refreshes every 2 seconds
         Bukkit.getScheduler().runTaskTimer(this, () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) refreshActivator(p);
+            for (Player p : Bukkit.getOnlinePlayers()) { refreshActivator(p); refreshNeedles(p); }
         }, 23L, 40L);
         // duped swords (Hacker, v12) vanish 30 seconds after they were copied
         Bukkit.getScheduler().runTaskTimer(this, this::cleanDupedSwords, 27L, 20L);
@@ -312,6 +318,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (shops != null) shops.save();
         if (unbound != null) unbound.save();
         if (profile != null) profile.save();
+        if (skyEvents != null) skyEvents.shutdown();
         for (Player p : Bukkit.getOnlinePlayers()) clearHeartSteals(p);
     }
 
@@ -446,6 +453,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (v < 17) {
             cfg.set("config-version", 18);
         }
+        if (v < 19) {
+            // v17: Power Needles + sky/snow/cave events - their sections are
+            // transplanted below, so live configs gain them automatically.
+            cfg.set("config-version", 19);
+        }
         // Backfill any sections this server's config predates (v15.1 lesson:
         // an old config.yml never gains new sections on its own). Runs every
         // boot; sections that already exist are left exactly as they are.
@@ -456,7 +468,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             if (in != null) {
                 YamlConfiguration bundled = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(in, StandardCharsets.UTF_8));
-                for (String section : new String[]{"sidebar", "playershop", "sell", "wind", "afk", "celebration"}) {
+                for (String section : new String[]{"sidebar", "playershop", "sell", "wind", "afk", "celebration", "needles", "sky-events"}) {
                 if (cfg.getConfigurationSection(section) == null
                         && bundled.getConfigurationSection(section) != null) {
                     cfg.set(section, bundled.getConfigurationSection(section).getValues(true));
@@ -481,6 +493,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
     private void loadData() {
         powers.clear();
+        standby.clear();
         data = YamlConfiguration.loadConfiguration(dataFile);
         ConfigurationSection sec = data.getConfigurationSection("players");
         if (sec == null) return;
@@ -489,13 +502,188 @@ public class AbilitySMP extends JavaPlugin implements Listener {
                 UUID uuid = UUID.fromString(id);
                 Power p = Power.parse(sec.getString(id + ".power"));
                 if (p != null) powers.put(uuid, p);
+                Power s = Power.parse(sec.getString(id + ".standby"));
+                if (s != null) standby.put(uuid, s);
             } catch (IllegalArgumentException ignored) {
             }
         }
     }
 
-    // v15: the quick switch is GONE - one player, one power again, like Nathan
-    // asked. (The sidebar shows your stats now instead of the slot bar.)
+    // =====================================================================
+    // The quick switch is BACK (v17), as Power Needles. Slot 1 is your
+    // active power, slot 2 waits in players.yml as "standby". Two needle
+    // items live in hotbar slots 8 and 9 and show the two powers - the
+    // needle's liquid takes the power's look from the resource pack, the
+    // same CustomModelData trick as the Activator's orb. Switch with the
+    // F key, by right-clicking either needle, or by crouching and
+    // right-clicking the Activator (the v10 way).
+    // =====================================================================
+
+    Power standbyOf(Player p) {
+        return standby.get(p.getUniqueId());
+    }
+
+    /** Put a power you own into slot 2 (used by the /powers menu, shift-click). */
+    boolean setStandby(Player p, Power pw) {
+        if (!profile.owns(p, pw)) {
+            bar(p, "You don't own that power yet. Check /shop.", NamedTextColor.RED);
+            return false;
+        }
+        if (!isEnabled(pw)) {
+            bar(p, "That power is disabled.", NamedTextColor.RED);
+            return false;
+        }
+        if (pw == Power.WIND && !windFree(p)) return false;
+        if (powerOf(p) == pw) {
+            bar(p, "That power is already in slot 1.", NamedTextColor.GRAY);
+            return false;
+        }
+        if (standbyOf(p) == pw) {
+            bar(p, "That power is already in slot 2.", NamedTextColor.GRAY);
+            return false;
+        }
+        standby.put(p.getUniqueId(), pw);
+        data.set("players." + p.getUniqueId() + ".standby", pw.name());
+        saveData();
+        refreshNeedles(p);
+        p.sendMessage(Component.text(pretty(pw.key()) + " is now in slot 2 (needle 2). "
+                + "Switch with F, or right-click a needle!", colorFor(pw)));
+        p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_DIAMOND, 1f, 1.4f);
+        return true;
+    }
+
+    /** Swap slot 1 and slot 2. */
+    void switchPower(Player p) {
+        Power cur = powerOf(p);
+        Power st = standbyOf(p);
+        if (st == null) {
+            bar(p, "No power in slot 2 yet - open /powers and SHIFT-click a power to fill needle 2.",
+                    NamedTextColor.GRAY);
+            return;
+        }
+        UUID id = p.getUniqueId();
+        if (cur == null) {
+            standby.remove(id);
+            data.set("players." + id + ".standby", "NONE");
+        } else {
+            standby.put(id, cur);
+            data.set("players." + id + ".standby", cur.name());
+        }
+        setPower(p, st); // saves players.yml, tank hearts, rank checks
+        refreshNeedles(p);
+        p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.7f, 1.5f);
+        puff(p.getLocation().add(0, 1, 0), particleFor(st), 18);
+        bar(p, "Switched to " + pretty(st.key()) + "! Slot 2 now holds "
+                + (cur == null ? "nothing" : pretty(cur.key())) + ".", colorFor(st));
+    }
+
+    @EventHandler
+    public void onSwapHands(PlayerSwapHandItemsEvent e) {
+        Player p = e.getPlayer();
+        if (fightTotem.isFightTotem(e.getMainHandItem()) || fightTotem.isFightTotem(e.getOffHandItem())) return;
+        if (isNeedle(e.getMainHandItem()) || isNeedle(e.getOffHandItem())) {
+            e.setCancelled(true); // needles never ride in the off hand
+            return;
+        }
+        if (standbyOf(p) == null) return; // no loadout: the swap key works normally
+        if (fightTotem.isProtected(p)) return; // FightTotem owns the swap during fights
+        e.setCancelled(true); // the swap key switches powers instead of swapping items
+        switchPower(p);
+    }
+
+    // ------------------------------------------------------------ Power Needles
+
+    /** The needle for one switch slot; its CustomModelData makes the pack draw that power's syringe. */
+    ItemStack needleItem(int slot, Power pw) {
+        ItemStack it = new ItemStack(Material.BLAZE_ROD);
+        ItemMeta m = it.getItemMeta();
+        if (pw == null) {
+            m.displayName(line("Power Needle " + slot + " - EMPTY", NamedTextColor.GRAY));
+            m.lore(List.of(
+                    line("No power in this slot yet.", NamedTextColor.GRAY),
+                    line("Open /powers and SHIFT-click a power for slot 2.", NamedTextColor.DARK_GRAY),
+                    line("Right-click a needle (or press F) to switch powers.", NamedTextColor.DARK_GRAY)));
+            m.setCustomModelData(1999);
+        } else {
+            m.displayName(line("Power Needle " + slot + " - " + pretty(pw.key()), colorFor(pw)));
+            m.lore(List.of(
+                    line(slot == 1 ? "Your ACTIVE power." : "Your standby power.", NamedTextColor.GRAY),
+                    line("Right-click to switch powers (or press F).", NamedTextColor.DARK_GRAY),
+                    line("Soulbound: it lives in hotbar slot " + (slot + 7) + ".", NamedTextColor.DARK_GRAY)));
+            m.setCustomModelData(modelDataFor(pw));
+            m.setEnchantmentGlintOverride(true);
+        }
+        m.setUnbreakable(true);
+        m.getPersistentDataContainer().set(needleKey, PersistentDataType.INTEGER, slot);
+        it.setItemMeta(m);
+        return it;
+    }
+
+    boolean isNeedle(ItemStack item) {
+        return item != null && item.getType() == Material.BLAZE_ROD && item.hasItemMeta()
+                && item.getItemMeta().getPersistentDataContainer().has(needleKey, PersistentDataType.INTEGER);
+    }
+
+    private int needleSlot(ItemStack item) {
+        if (!isNeedle(item)) return 0;
+        return item.getItemMeta().getPersistentDataContainer()
+                .getOrDefault(needleKey, PersistentDataType.INTEGER, 0);
+    }
+
+    private boolean sameNeedle(ItemStack a, ItemStack b) {
+        if (!isNeedle(a) || !isNeedle(b) || needleSlot(a) != needleSlot(b)) return false;
+        ItemMeta ma = a.getItemMeta(), mb = b.getItemMeta();
+        Integer ca = ma.hasCustomModelData() ? ma.getCustomModelData() : null;
+        Integer cb = mb.hasCustomModelData() ? mb.getCustomModelData() : null;
+        return java.util.Objects.equals(ca, cb);
+    }
+
+    /** Keeps the two needles pinned to hotbar slots 8 and 9, showing the right powers. */
+    void refreshNeedles(Player p) {
+        if (!getConfig().getBoolean("needles.enabled", true)) return;
+        org.bukkit.inventory.PlayerInventory inv = p.getInventory();
+        ItemStack[] storage = inv.getStorageContents();
+        for (int s = 0; s < storage.length; s++) {
+            if (s == 7 || s == 8) continue;
+            if (isNeedle(storage[s])) inv.setItem(s, null); // stray needle (old slot, dupe)
+        }
+        if (isNeedle(inv.getItemInOffHand())) inv.setItemInOffHand(null);
+        placeNeedle(p, 7, needleItem(1, powerOf(p)));
+        placeNeedle(p, 8, needleItem(2, standbyOf(p)));
+    }
+
+    private void placeNeedle(Player p, int slot, ItemStack needle) {
+        org.bukkit.inventory.PlayerInventory inv = p.getInventory();
+        ItemStack cur = inv.getItem(slot);
+        if (sameNeedle(cur, needle)) return;
+        if (cur != null && !isNeedle(cur)) {
+            // somebody's stuff is living in the needle's home: move it somewhere safe
+            Map<Integer, ItemStack> left = inv.addItem(cur.clone());
+            if (!left.isEmpty()) p.getWorld().dropItemNaturally(p.getLocation(), cur.clone());
+        }
+        inv.setItem(slot, needle);
+    }
+
+    /** The needles can't be picked up, moved, dragged or number-key swapped out of their slots. */
+    @EventHandler
+    public void onNeedleClick(InventoryClickEvent e) {
+        if (isNeedle(e.getCurrentItem()) || isNeedle(e.getCursor())) {
+            e.setCancelled(true);
+            return;
+        }
+        if (e.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
+            int hb = e.getHotbarButton();
+            if ((hb == 7 || hb == 8) && e.getWhoClicked() instanceof Player hp
+                    && isNeedle(hp.getInventory().getItem(hb))) {
+                e.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onNeedleDrag(InventoryDragEvent e) {
+        if (isNeedle(e.getOldCursor())) e.setCancelled(true);
+    }
 
     void saveData() {
         try {
@@ -667,6 +855,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             powers.put(id, power);
             data.set("players." + id + ".power", power.name());
         }
+        // v17: a power can't sit in both needle slots at once
+        if (power != null && standby.get(id) == power) {
+            standby.remove(id);
+            data.set("players." + id + ".standby", "NONE");
+        }
         if (power != null) profile.addOwned(id, power);
         applyTankHearts(p);
         saveData();
@@ -699,6 +892,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             data.set("players." + id + ".activator-given", true);
             saveData();
             give(p, activatorItem());
+            refreshNeedles(p);
             p.sendMessage(Component.text("You start with the " + pretty(starter.key())
                     + " power and a Power Activator sword. Hold the sword and right-click to use your power!",
                     NamedTextColor.GOLD));
@@ -710,6 +904,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         if (powerOf(p) != null) profile.addOwned(id, powerOf(p));
         applyTankHearts(p);
         giveActivatorOnce(p);
+        refreshNeedles(p);
         Notes.joinHint(this, p);
     }
 
@@ -1049,6 +1244,20 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
         Player p = e.getPlayer();
         ItemStack hand = p.getInventory().getItemInMainHand();
+
+        // Power Needles (v17): right-clicking either needle switches powers
+        if (isNeedle(hand)) {
+            e.setCancelled(true);
+            switchPower(p);
+            return;
+        }
+
+        // Crouch + right-click the Activator switches too (the v10 way)
+        if (isActivator(hand) && p.isSneaking()) {
+            e.setCancelled(true);
+            switchPower(p);
+            return;
+        }
 
         // Power star: gain that power
         Power starPower = powerFromItem(hand);
@@ -2362,6 +2571,11 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             bar(e.getPlayer(), "The duped sword can't be dropped - it vanishes on its own.", NamedTextColor.GRAY);
             return;
         }
+        if (isNeedle(e.getItemDrop().getItemStack())) {
+            e.setCancelled(true);
+            bar(e.getPlayer(), "The Power Needles are soulbound - they live in hotbar slots 8 and 9.", NamedTextColor.GRAY);
+            return;
+        }
         if (isActivator(e.getItemDrop().getItemStack())) {
             e.setCancelled(true);
             bar(e.getPlayer(), "The Power Activator is soulbound.", NamedTextColor.GRAY);
@@ -2391,7 +2605,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         for (ItemStack it : p.getInventory().getContents()) {
             if (!isActivator(it)) continue;
             ItemMeta m = it.getItemMeta();
-            if (java.util.Objects.equals(m.getCustomModelData(), want)) continue;
+            // getCustomModelData() THROWS on items that have none set (fresh
+            // Activators) on current Paper - always check hasCustomModelData first.
+            Integer current = m.hasCustomModelData() ? m.getCustomModelData() : null;
+            if (java.util.Objects.equals(current, want)) continue;
             m.setCustomModelData(want);
             it.setItemMeta(m);
         }
@@ -2568,6 +2785,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
 
         // the Power Activator is soulbound: it never drops, and comes back on respawn
         e.getDrops().removeIf(this::isActivator);
+        e.getDrops().removeIf(this::isNeedle); // Power Needles are soulbound too (v17)
         e.getDrops().removeIf(this::isDupedSword); // duped swords (Hacker) vanish instead of dropping
         needsActivator.add(id);
 
@@ -2707,6 +2925,10 @@ public class AbilitySMP extends JavaPlugin implements Listener {
         }
         if (name.equals("season")) {
             if (sender instanceof Player sp2) ages.command(sp2, args);
+            return true;
+        }
+        if (name.equals("skyevent")) {
+            skyEvents.command(sender, args);
             return true;
         }
         if (name.equals("mixingpot")) {

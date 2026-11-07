@@ -1,4 +1,4 @@
-config-version: 17
+config-version: 19
 
 # ------------------------------------------------------------------
 # Powers: right-click with a sword to use your power.
@@ -1232,3 +1232,16 @@ celebration:
   border-size: 2000          # world border - the server plays smaller this season
   chunk-bases: true          # every NEW chunk hides a little underground base with week loot
   pvp-until-fight-week: true # PvP stays off until Week 5 (ranked duels still work)
+
+# v17: the two Power Needles in hotbar slots 8 and 9 (the quick switch, as syringes)
+needles:
+  enabled: true
+
+# v17: sky, snow and cave world events (they also start on their own)
+sky-events:
+  enabled: true
+  minutes-between-events: 30
+  duration-seconds: 240
+  crystal-surge-max-y: 20
+  crystal-surge-bonus-coins: 3
+  deep-rumble-max-y: 40

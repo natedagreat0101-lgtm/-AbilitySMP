@@ -1,8 +1,8 @@
 name: AbilitySMP
-version: 16.0
+version: 17.0
 main: me.abilitysmp.AbilitySMP
 api-version: '1.21'
-description: Unbound SMP - powers, 50 hidden mixed powers and the Mixing Pot, the Galaxy Burst space event, the hotbar-style power bar, a DonutSMP-style spawn, six galaxy bosses, a random daily Item Shop, music, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel and galaxy events
+description: Unbound SMP - powers, 50 hidden mixed powers and the Mixing Pot, the Galaxy Burst space event, the hotbar-style power bar, a DonutSMP-style spawn, six galaxy bosses, a random daily Item Shop, music, crates, ranked duels, trading, rebirths, quests, tutorial, admin panel, galaxy events, the two Power Needles in hotbar slots 8-9, and sky, snow and cave events
 commands:
   power:
     description: Give or remove a power (admin)
@@ -119,6 +119,10 @@ commands:
   tradeplayer:
     description: Trade with another player (same as /trade, use this if /trade is taken by another plugin)
     usage: /tradeplayer <player>
+  skyevent:
+    description: Start or stop a sky, snow or cave event (admin)
+    usage: /skyevent <aurora|blood|golden|blizzard|crystal|rumble|stop>
+    permission: abilitysmp.admin
   staffrank:
     description: Give a staff rank (Mod, Tester, Co-Owner) - only an OP can do this
     usage: /staffrank <player> <mod|tester|co-owner|none>

@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "16.0";
+    static final String VERSION = "17.0";
 
     private Notes() {
     }
@@ -28,6 +28,15 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
+        h(s, "===== Unbound SMP Patch Notes: v17.0 - Power Needles, Sky & Cave Events =====");
+        h(s, "- THE QUICK SWITCH IS BACK - as POWER NEEDLES! Two syringes now live in hotbar slots 8 and 9. Needle 1 shows your ACTIVE power, needle 2 your standby power - and the liquid inside takes your power's colour, just like the Activator orb (Flame glows orange, Frost icy blue...).");
+        how(s, "open /powers and SHIFT-click a power to put it in slot 2. Switch with the F key, by right-clicking either needle, or by crouching + right-clicking your Activator. The needles are soulbound and can never leave slots 8 and 9.");
+        h(s, "- NEW SKY EVENTS: AURORA SKY (a green and purple night), BLOOD SKY (a red sunset - monsters hit harder) and GOLDEN SKY (warm light that heals everyone). One starts on its own every so often; OPs can start one with /skyevent.");
+        h(s, "- NEW SNOW EVENT: BLIZZARD! A snowstorm covers the whole world - stand outside with no roof and you will slowly FREEZE.");
+        h(s, "- NEW CAVE EVENTS: CRYSTAL SURGE (ores mined deep down pay bonus Unbound Coins) and DEEP RUMBLE (the caves shake and sparkle - something is down there...).");
+        h(s, "- POWER PACK v5 is out: it draws the needle for every power. On the old pack the needles just look like plain sticks - everything still works.");
+        h(s, "- FIXED: the console spam about CustomModelData is fixed in the source for good this time, not just patched.");
+        s.sendMessage(Component.text(""));
         h(s, "===== Unbound SMP Patch Notes: v16.0 - THE 1 MONTH CELEBRATION =====");
         h(s, "- Galaxy is retired: no more Galaxy Coins, no Galaxy Shop, no Galaxy Burst. Old galaxy payouts (bosses, quests, events) now pay Unbound Coins instead, and mixing a power costs 500 Unbound. Coins already in your inventory are souvenirs - you can still trade them.");
         h(s, "- THE SEASON: five weeks, and the whole server levels up together. Week 1 IRON AGE (nothing better than iron can be crafted, swung, mined with or worn), Week 2 DIAMOND AGE, Week 3 NETHERITE AGE, Week 4 ADVANCES WEEK (enchanting unlocks), Week 5 FIGHT WEEK (PvP turns on!) and the celebration.");
