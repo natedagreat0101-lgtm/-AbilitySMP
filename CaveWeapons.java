@@ -175,7 +175,8 @@ final class CaveWeapons implements Listener {
             case LUMINOUS_BLADE -> {
                 if (!cooled(p, d, 45)) return;
                 p.getWorld().playSound(p.getLocation(), Sound.BLOCK_GLASS_BREAK, 1f, 1.6f);
-                p.getWorld().spawnParticle(Particle.FLASH, p.getEyeLocation(), 1);
+                p.getWorld().spawnParticle(Particle.FLASH, p.getEyeLocation(), 1, 0, 0, 0, 0,
+                        org.bukkit.Color.fromRGB(255, 244, 190)); // FLASH needs a Color value on Paper 1.21.11 (v20.1)
                 for (LivingEntity le : p.getLocation().getNearbyLivingEntities(7)) {
                     if (le == p) continue;
                     le.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0));

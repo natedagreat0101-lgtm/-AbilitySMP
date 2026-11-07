@@ -14,6 +14,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
@@ -795,7 +796,32 @@ public class AbilitySMP extends JavaPlugin implements Listener {
     }
 
     private void puff(Location loc, Particle type, int count) {
-        if (particles()) loc.getWorld().spawnParticle(type, loc, count, 0.4, 0.6, 0.4, 0.02);
+        if (particles()) spawnSafe(loc.getWorld(), type, loc, count, 0.4, 0.6, 0.4, 0.02);
+    }
+
+    /**
+     * Some particles refuse to spawn without their extra data value and
+     * throw IllegalArgumentException instead (Dragon Breath and Sculk
+     * Charge want a Float, Shriek an Integer, Flash a Color, Dust its
+     * options). Spawn those with a sane default. (v20.1: on Paper
+     * 1.21.11 DRAGON_BREATH has a Float data class, so the Nebula aura
+     * spammed the console every second.)
+     */
+    static void spawnSafe(World world, Particle type, Location loc, int count,
+                          double ox, double oy, double oz, double speed) {
+        Class<?> data = type.getDataType();
+        if (data == Float.class) {
+            world.spawnParticle(type, loc, count, ox, oy, oz, speed, 1.0f);
+        } else if (data == Integer.class) {
+            world.spawnParticle(type, loc, count, ox, oy, oz, speed, 0);
+        } else if (data == Color.class) {
+            world.spawnParticle(type, loc, count, ox, oy, oz, speed, Color.WHITE);
+        } else if (data == Particle.DustOptions.class) {
+            world.spawnParticle(type, loc, count, ox, oy, oz, speed,
+                    new Particle.DustOptions(Color.WHITE, 1.0f));
+        } else {
+            world.spawnParticle(type, loc, count, ox, oy, oz, speed);
+        }
     }
 
     /** Horizontal look direction that is never zero. */
@@ -1227,7 +1253,7 @@ public class AbilitySMP extends JavaPlugin implements Listener {
             }
 
             if (particles() && !p.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
-                p.getWorld().spawnParticle(particleFor(power), p.getLocation().add(0, 1, 0), 2, 0.3, 0.5, 0.3, 0.01);
+                spawnSafe(p.getWorld(), particleFor(power), p.getLocation().add(0, 1, 0), 2, 0.3, 0.5, 0.3, 0.01);
             }
         }
     }

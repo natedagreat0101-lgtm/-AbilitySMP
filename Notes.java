@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 /** /notes: patch notes and how to use the new features. */
 final class Notes {
 
-    static final String VERSION = "20.0";
+    static final String VERSION = "20.1";
 
     private Notes() {
     }
@@ -28,6 +28,9 @@ final class Notes {
     static void show(AbilitySMP plugin, CommandSender s, String[] args) {
         boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
 
+        h(s, "===== Unbound SMP Patch Notes: v20.1 - Particle Fix =====");
+        h(s, "- FIXED: the console spam (Task exception: missing required data class Float). On the new Paper, the Nebula power's dragon-breath particles need one extra value - Nebula players were spamming the console every second. Fixed for good, and the same fix covers the Cave power's shop weapons: the Luminous Blade's flash works again.");
+        s.sendMessage(Component.text(""));
         h(s, "===== Unbound SMP Patch Notes: v20.0 - THE CAVE UPDATE =====");
         h(s, "- THE CAVE UPDATE IS HERE, on the golden-slots version: Cave Coins are back! Mine ores below Y=20, finish /cavequests, beat /caveboss and claim /daily to earn them.");
         h(s, "- /caveshop: spend Cave Coins on the 5 custom cave weapons - Echo Blaster, Crystal Spear, Deepslate Hammer, Luminous Blade and the Magma Bow - plus cave loot. Power Pack v8 gives every cave weapon its own texture!");
